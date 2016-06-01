@@ -59,7 +59,7 @@ input[type=text],select {min-width:98px !important}
 optgroup option {padding-left:8px}
 .bb {font: 18px/12px Arial}
 </style>
-<script src="http://emon/jq/jquery.js" type="text/javascript"></script>
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.3.2/jquery.min.js" type="text/javascript"></script>
 <script type="text/javascript">
 $(document).ready(function(){
 $("#username").focus();
