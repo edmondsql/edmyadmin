@@ -59,7 +59,7 @@ input[type=text],select {min-width:98px !important}
 optgroup option {padding-left:8px}
 .bb {font: 18px/12px Arial}
 </style>
-<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.3.2/jquery.min.js" type="text/javascript"></script>
+<script src="http://emon/jq/jquery.js" type="text/javascript"></script>
 <script type="text/javascript">
 $(document).ready(function(){
 $("#username").focus();
@@ -144,7 +144,7 @@ if(get_magic_quotes_gpc()) {
 $el= stripslashes($el);
 }
 if($cod==1) {
-return trim(str_replace(array(">","<","\\","\r\n","\r"), array("&gt;","&lt;","\\\\","\n","\n"), $el));//between quota
+return trim(str_replace(array(">","<","\r\n","\r"), array("&gt;","&lt;","\n","\n"), $el));//between quota
 } else {
 return trim(str_replace(array(">","<","\\","'",'"',"\r\n","\r"), array("&gt;","&lt;","\\\\","&#039;","&quot;","\n","\n"), $el));
 }
@@ -245,7 +245,7 @@ function check($level=array(), $param=array()) {
 			$_SESSION['token']= $token;
 		}
 		} else {
-		redir("50",array('err'=>"Wrong user account, try again"));
+		redir("50",array('err'=>"Can't connect to the server"));
 		}
 	} else {
 		redir("50");
@@ -257,12 +257,13 @@ function check($level=array(), $param=array()) {
 	
 	//privileges
 	$u_pr=array();$u_db=array();
-	$q_upri = mysql_query("SHOW GRANTS FOR '{$usr}'@'{$ho}'");
+	//$q_upri = mysql_query("SHOW GRANTS FOR '{$usr}'@'{$ho}'");
+	$q_upri = mysql_query("SHOW GRANTS FOR CURRENT_USER()");
 	while($r_upri= mysql_fetch_row($q_upri)) {
 	preg_match('/^GRANT\s(.*)\sON\s(.*)\./i', $r_upri[0], $upr);
-	$u_pr[]= $upr[1];$u_db[]= $upr[2];
+	$u_pr[]= $upr[1];//$u_db[]= $upr[2];//array_shift($u_db);
 	}
-	array_shift($u_db);
+	$u_db[]= $_SESSION['dbname'];
 	$us_db=array();
 	foreach($u_db as $udb) {
 	$us_db[]= str_replace("`","",$udb);
@@ -984,7 +985,7 @@ case "21": //table browse
 		echo "<td><a href='{$path}23/$db/$tb/$nu/$rw0'>Edit</a><td><a href='{$path}24/$db/$tb/$nu/$rw0'>Delete</a></td>";
 		}
 		for($i=0;$i<$r_cl;$i++) {
-			$val = stripslashes($r_rw[$i]);
+			$val = htmlentities($r_rw[$i],ENT_QUOTES);
 			$bin = mysql_field_flags($q_res,$i);//blob-bin
 			if(stristr($bin,"blob binary") == true && !in_array($db,$deny)) {
 				echo "<td class='pro'>[binary] ".number_format((strlen($r_rw[$i])/1024),2)." KB</td>";
@@ -1210,7 +1211,7 @@ case "30"://import
 			$finame= explode('.',$_FILES['importfile']['name']);
 			$ext= strtolower(end($finame));
 			if($ext == 'sql') {//sql file
-				$fi= clean(file_get_contents($tmp),1);
+				$fi= file_get_contents($tmp);
 				$e= preg_split($rgex, $fi, -1, PREG_SPLIT_NO_EMPTY);
 			} elseif($ext == 'csv') {//csv file
 				$handle= fopen("$tmp","r");
@@ -1759,15 +1760,16 @@ case "49": //drop sp
 break;
 
 case "50": //login
-	if(post('lhost','!e') && post('username','!e') && post('password','i')) {
+	if(post('lhost','!e') && post('username','!e') && post('password','i') && post('dbname','!e')) {
 		$_SESSION['user']= post('username');
 		$_SESSION['host']= post('lhost');
+		$_SESSION['dbname']= post('dbname');
 		$_SESSION['token']= base64_encode(mcrypt_encrypt(MCRYPT_RIJNDAEL_128, md5($salt.$_SERVER['HTTP_USER_AGENT']), post('lhost')."*#*".post('password'), MCRYPT_MODE_ECB, $iv));
 		redir();
 	}
 	session_unset();
 	session_destroy();
-	echo $head."<div class='scroll'>".form("50")."<table class='a1'><caption>LOGIN</caption><tr><td>Host<br/><input type='text' name='lhost' value='localhost' /></td></tr><tr><td>Username<br/><input type='text' id='username' name='username' /></td></tr><tr><td>Password<br/><input type='password' name='password' /></td></tr><tr><td><button type='submit'>Login</button></table></form>";
+	echo $head."<div class='scroll'>".form("50")."<table class='a1'><caption>LOGIN</caption><tr><td>Host<br/><input type='text' name='lhost' value='localhost' /></td></tr><tr><td>DB<br/><input type='text' name='dbname' /></td></tr><tr><td>Username<br/><input type='text' id='username' name='username' /></td></tr><tr><td>Password<br/><input type='password' name='password' /></td></tr><tr><td><button type='submit'>Login</button></table></form>";
 break;
 
 case "51": //logout
