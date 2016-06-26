@@ -62,7 +62,7 @@ optgroup option {padding-left:8px}
 <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.3.2/jquery.min.js" type="text/javascript"></script>
 <script type="text/javascript">
 $(document).ready(function(){
-$("#username").focus();
+$("#dbname").focus();
 '.((empty($_SESSION['ok']) && empty($_SESSION['err'])) ? '':'$("body").fadeIn("slow").prepend("'.
 (!empty($_SESSION['ok']) ? '<div class=\"msg ok\">'.$_SESSION['ok'].'<\/div>':'').
 (!empty($_SESSION['err']) ? '<div class=\"msg err\">'.$_SESSION['err'].'<\/div>':'').'");
@@ -236,12 +236,14 @@ function check($level=array(), $param=array()) {
 		} else {
 			$token= $_SESSION['token'];
 			$hho= $_SESSION['host'];
+			$dbsess= $_SESSION['dbname'];
 			session_unset();
 			session_destroy();
 			session_start();
 			session_regenerate_id();
 			$_SESSION['user']= $usr;
 			$_SESSION['host']= $hho;
+			$_SESSION['dbname']= $dbsess;
 			$_SESSION['token']= $token;
 		}
 		} else {
@@ -257,12 +259,11 @@ function check($level=array(), $param=array()) {
 	
 	//privileges
 	$u_pr=array();$u_db=array();
-	//$q_upri = mysql_query("SHOW GRANTS FOR '{$usr}'@'{$ho}'");
-	$q_upri = mysql_query("SHOW GRANTS FOR CURRENT_USER()");
-	while($r_upri= mysql_fetch_row($q_upri)) {
+	$q_upri = mysql_query("SHOW GRANTS FOR '{$usr}'@'{$ho}'");
+	$r_upri= mysql_fetch_row($q_upri);
 	preg_match('/^GRANT\s(.*)\sON\s(.*)\./i', $r_upri[0], $upr);
 	$u_pr[]= $upr[1];//$u_db[]= $upr[2];//array_shift($u_db);
-	}
+	
 	$u_db[]= $_SESSION['dbname'];
 	$us_db=array();
 	foreach($u_db as $udb) {
@@ -985,11 +986,11 @@ case "21": //table browse
 		echo "<td><a href='{$path}23/$db/$tb/$nu/$rw0'>Edit</a><td><a href='{$path}24/$db/$tb/$nu/$rw0'>Delete</a></td>";
 		}
 		for($i=0;$i<$r_cl;$i++) {
-			$val = htmlentities($r_rw[$i],ENT_QUOTES);
+			$val = htmlentities($r_rw[$i],ENT_QUOTES,"UTF-8");
 			$bin = mysql_field_flags($q_res,$i);//blob-bin
 			if(stristr($bin,"blob binary") == true && !in_array($db,$deny)) {
 				echo "<td class='pro'>[binary] ".number_format((strlen($r_rw[$i])/1024),2)." KB</td>";
-			} elseif(strlen($val) > 200 ) {
+			} elseif(strlen($val) > 200) {
 				echo "<td class='pro'>",substr($val,0,200),"...</td>";
 			} else {
 				echo "<td class='pro'>",$val,"</td>";
@@ -1769,7 +1770,7 @@ case "50": //login
 	}
 	session_unset();
 	session_destroy();
-	echo $head."<div class='scroll'>".form("50")."<table class='a1'><caption>LOGIN</caption><tr><td>Host<br/><input type='text' name='lhost' value='localhost' /></td></tr><tr><td>DB<br/><input type='text' name='dbname' /></td></tr><tr><td>Username<br/><input type='text' id='username' name='username' /></td></tr><tr><td>Password<br/><input type='password' name='password' /></td></tr><tr><td><button type='submit'>Login</button></table></form>";
+	echo $head."<div class='scroll'>".form("50")."<table class='a1'><caption>LOGIN</caption><tr><td>Host<br/><input type='text' name='lhost' value='localhost' /></td></tr><tr><td>DB<br/><input type='text' id='dbname' name='dbname' value='test' /></td></tr><tr><td>Username<br/><input type='text' name='username' value='root' /></td></tr><tr><td>Password<br/><input type='password' name='password' /></td></tr><tr><td><button type='submit'>Login</button></table></form>";
 break;
 
 case "51": //logout
@@ -1829,6 +1830,7 @@ case "53": //add user
 			}
 		}
 		}
+		if(version_compare($v2,'5.0.0','<')) mysql_query("UPDATE mysql.user SET Password = OLD_PASSWORD('".post('password')."') WHERE User='{$user}'");
 		mysql_query("FLUSH PRIVILEGES");
 		redir("52",array('ok'=>"Added user"));
 	}
@@ -1905,9 +1907,9 @@ case "54": //edit-update user
 			}
 		}
 		}
-
 		if(post('password','!e')) {
-		mysql_query("SET PASSWORD FOR '$usr'@'$hst' = PASSWORD('".post('password')."')");
+		$oldp= (version_compare($v2,'5.0.0','<') ? "OLD_PASSWORD":"PASSWORD");
+		mysql_query("SET PASSWORD FOR '$usr'@'$hst' = ".$oldp."('".post('password')."')");
 		}
 		if(post('host','!e') || post('username','!e')) {
 		$comma= ((post('host','e') && post('username','e'))?"":",");
