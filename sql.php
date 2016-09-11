@@ -175,9 +175,9 @@ global $path;
 return "<form action='".$path.$url."' method='post'".($enc==1 ? " enctype='multipart/form-data'":"").">";
 }
 function menu($db, $tb="",$left="",$sp=array()) {
-global $path;
+global $path,$deny;
 $f=1;$nrf_op='';
-while($f<100) {
+while($f<50) {
 $nrf_op.= "<option value='$f'>$f</option>";
 ++$f;
 }
@@ -192,8 +192,8 @@ if($left==1) $str .= "<table><tr><td class='c1 left'>
 <tr><td class='th'>Create Table</td></tr>
 <tr><td>".form("7/$db")."Table Name<br/><input type='text' name='ctab' /><br/>
 Number of fields<br/><select name='nrf'>".$nrf_op."</select><br/><button type='submit'>Create</button></form></td></tr>
-<tr><td class='th'>Rename DB</td></tr><tr><td>".form("3/$db")."<input type='text' name='rdb' /><br/><button type='submit'>Rename</button></form></td></tr>".(version_compare(PHP_VERSION,'5.0.0','<')?"":"
-<tr><td class='th'>Create</td></tr><tr><td><a href='{$path}40/$db'>View</a> | <a href='{$path}41/$db'>Trigger</a> | <a href='{$path}42/$db'>Routine</a> | <a href='{$path}43/$db'>Event</a></td></tr>")."</table></td><td>";
+<tr><td class='th'>Rename DB</td></tr><tr><td>".form("3/$db")."<input type='text' name='rdb' /><br/><button type='submit'>Rename</button></form></td></tr>".((version_compare(PHP_VERSION,'5.0.0','>=') && !in_array($db,$deny))?"
+<tr><td class='th'>Create</td></tr><tr><td><a href='{$path}40/$db'>View</a> | <a href='{$path}41/$db'>Trigger</a> | <a href='{$path}42/$db'>Routine</a> | <a href='{$path}43/$db'>Event</a></td></tr>":"")."</table></td><td>";
 return $str;
 }
 $stru= "<table class='a1'><tr><th colspan=".(isset($sg[0]) && $sg[0]==12?9:8).">TABLE STRUCTURE</th></tr><tr><th class='pro'>FIELD</th><th class='pro'>TYPE</th><th class='pro'>VALUE</th><th class='pro'>ATTRIBUTES</th><th class='pro'>NULL</th><th class='pro'>DEFAULT</th><th class='pro'>COLLATION</th><th class='pro'>AUTO <input type='radio' name='ex[]'/></th>".(isset($sg[0]) && $sg[0]==12?"<th class='pro'>POSITION</th>":"")."</tr>";
@@ -524,10 +524,12 @@ case "5": //Show Tables
 	$q_sp = array();
 	foreach($spps as $spp){
 		$q_spp = mysql_query("SHOW {$spp} STATUS");
+		if($q_spp) {
 		while($r_spp = mysql_fetch_row($q_spp)) {
 		if($r_spp[0] == $db) {
 			$tsp=1;
 			$q_sp[] = $r_spp;
+		}
 		}
 		}
 	}
@@ -553,8 +555,9 @@ case "5": //Show Tables
 	}
 	}//sp end
 	if(version_compare($v2,'5.1.6','>=')) {//events
+	if(!in_array($db,$deny)) {
 	$q_eve=mysql_query("SHOW EVENTS FROM ".$db);
-	if(mysql_num_rows($q_eve)) {
+	if($q_eve) {
 	echo "<table class='a mrg'><tr><th>EVENT</th><th>SCHEDULE</th><th>START</th><th>END</th><th>ACTIONS</th></tr>";
 	while($r_eve = mysql_fetch_assoc($q_eve)) {
 	$bg=($bg==1)?2:1;
@@ -563,7 +566,7 @@ case "5": //Show Tables
 	}
 	echo "</table>";
 	}
-	}
+	}}
 
 	}//end rows
 	echo "</td></tr></table>";
