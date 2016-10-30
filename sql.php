@@ -8,7 +8,7 @@ $pg_lr=8;
 $salt="#123#";
 $bg="";
 $del=" onclick=\"return confirm('are you sure?')\"";
-$version="2.0";
+$version="2.1";
 $deny= array('mysql','information_schema','performance_schema');
 $pi= (isset($_SERVER['PATH_INFO']) ? $_SERVER['PATH_INFO'] : @getenv('PATH_INFO'));
 $sg= preg_split('!/!', $pi,-1,PREG_SPLIT_NO_EMPTY);
@@ -186,7 +186,7 @@ $str= "<div class='l2'><a href='{$path}'>List DBs</a> | <a href='{$path}31/$db'>
 "<div class='l3'>DB: <b>$db</b>".($tb==""?"":" || Table: <b>$tb</b>").(count($sp) >1 ?" || ".$sp[0].": <b>".$sp[1]."</b>":"")."</div><div class='scroll'>";
 if($left==1) $str .= "<table><tr><td class='c1 left'>
 <table><tr><td class='th'>Query</td></tr><tr><td>".form("30/$db")."<textarea name='qtxt'></textarea><br/><button type='submit'>Do</button></form></td></tr>
-<tr><td class='th'>Import SQL, CSV</td></tr>
+<tr><td class='th'>Import SQL, CSV, GZ</td></tr>
 <tr><td>".form("30/$db",1)."<input type='file' name='importfile' />
 <input type='hidden' name='send' value='ja' /><br/><button type='submit'>Do</button></form></td></tr>
 <tr><td class='th'>Create Table</td></tr>
@@ -1238,6 +1238,27 @@ case "30"://import
 				}
 				fclose($handle);
 				if(empty($e)) redir("5/$db",array('err'=>"Query failed"));
+			} elseif($ext == 'gz') {//gz file
+				if(($fgz = fopen($tmp, 'r')) !== FALSE) {
+					if(@fread($fgz, 3) != "\x1F\x8B\x08") {
+					redir("5/$db",array('err'=>"Not a valid GZ file"));
+					}
+					fclose($fgz);
+				}
+				if(@function_exists('gzopen')) {
+					$file = @gzopen($tmp, 'rb');
+					if (!$file) {
+					redir("5/$db",array('err'=>"Can't open GZ file"));
+					}
+					$e = '';
+					while (!gzeof($file)) {
+					$e .= gzgetc($file);
+					}
+					$e= preg_split($rgex, $e, -1, PREG_SPLIT_NO_EMPTY);
+					gzclose($file);
+				} else {
+					redir("5/$db",array('err'=>"Can't open GZ file"));
+				}
 			} else {
 				redir("5/$db",array('err'=>"Disallowed extension"));
 			}
