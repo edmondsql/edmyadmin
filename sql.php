@@ -1744,10 +1744,12 @@ case "40": //add view
 	$ed->check(array(1));
 	$db= $ed->sg[1];
 	if($ed->post('vname','!e') && $ed->post('vstat','!e')) {//add
+	$vn= $ed->sanitize($ed->post('vname'));
+	if(is_numeric(substr($vn,0,1))) $ed->redir("5/".$db,array('err'=>"Not a valid name"));
 	$vstat= $ed->post('vstat','',1);
 	$stat= $ed->con->query($vstat);
 	if(!$stat->num_row()) $ed->redir("5/".$db,array('err'=>"Wrong statement"));
-	$e_v= $ed->con->query("CREATE VIEW `".$ed->post('vname')."` AS ".$vstat);
+	$e_v= $ed->con->query("CREATE VIEW `".$vn."` AS ".$vstat);
 	if($e_v) $ed->redir("5/".$db,array('ok'=>"Successfully created"));
 	else $ed->redir("5/".$db,array('err'=>"Create view failed"));
 	}
@@ -1762,7 +1764,9 @@ case "41": //add trigger
 	$ed->check(array(1));
 	$db= $ed->sg[1];
 	if($ed->post('trgnm','!e') && $ed->post('trgdf','!e')) {//add
-	$q_tgcrt= $ed->con->query("CREATE TRIGGER `".$ed->post('trgnm')."` ".$ed->post('trgti')." ".$ed->post('trgev')." ON `".$ed->post('trgtb')."` FOR EACH ROW ".$ed->post('trgdf','',1));
+	$tn= $ed->sanitize($ed->post('trgnm'));
+	if(is_numeric(substr($tn,0,1))) $ed->redir("5/".$db,array('err'=>"Not a valid name"));
+	$q_tgcrt= $ed->con->query("CREATE TRIGGER `".$tn."` ".$ed->post('trgti')." ".$ed->post('trgev')." ON `".$ed->post('trgtb')."` FOR EACH ROW ".$ed->post('trgdf','',1));
 	if($q_tgcrt) $ed->redir("5/".$db,array('ok'=>"Successfully created"));
 	else $ed->redir("5/".$db,array('err'=>"Create trigger failed"));
 	}
@@ -1790,8 +1794,10 @@ case "42": //add routine
 	$db= $ed->sg[1];
 	$sdas= array('CONTAINS SQL','NO SQL','READS SQL DATA','MODIFIES SQL DATA');
 	if($ed->post('ronme','!e') && $ed->post('rodf','!e')) {//add
+		$pn= $ed->sanitize($ed->post('ronme'));
+		if(is_numeric(substr($pn,0,1))) $ed->redir("5/".$db,array('err'=>"Not a valid name"));
 		$roty= $ed->post('roty');
-		$rtn= "CREATE DEFINER=`".$_SESSION['user']."`@`".$_SESSION['host']."` $roty `".$ed->post('ronme')."`";
+		$rtn= "CREATE DEFINER=`".$_SESSION['user']."`@`".$_SESSION['host']."` $roty `".$pn."`";
 		$rt2="(";
 		$roc= count($ed->post('ropty'));
 		if($roty=='PROCEDURE') {
@@ -1886,7 +1892,9 @@ case "43": //add event
 	$ed->check(array(1));
 	$db= $ed->sg[1];
 	if($ed->post('evnme','!e') && $ed->post('evstat','!e')) {
-		$q_evcrt = $ed->con->query("CREATE EVENT `".$ed->post('evnme')."` ON SCHEDULE ".($ed->post('evpre','i')? "AT '".$ed->post('evsta')."'":"EVERY '".$ed->post('evevr1')."' ".$ed->post('evevr2')." STARTS '".$ed->post('evsta')."' ENDS '".$ed->post('evend')."'")." ON COMPLETION".($ed->post('evpre','i')?"":" NOT")." PRESERVE ".$ed->post('evendi')." COMMENT '".$ed->post('evcom')."' DO ".$ed->post('evstat','',1));
+		$evn= $ed->sanitize($ed->post('evnme'));
+		if(is_numeric(substr($evn,0,1))) $ed->redir("5/".$db,array('err'=>"Not a valid name"));
+		$q_evcrt = $ed->con->query("CREATE EVENT `".$evn."` ON SCHEDULE ".($ed->post('evpre','i')? "AT '".$ed->post('evsta')."'":"EVERY '".$ed->post('evevr1')."' ".$ed->post('evevr2')." STARTS '".$ed->post('evsta')."' ENDS '".$ed->post('evend')."'")." ON COMPLETION".($ed->post('evpre','i')?"":" NOT")." PRESERVE ".$ed->post('evendi')." COMMENT '".$ed->post('evcom')."' DO ".$ed->post('evstat','',1));
 		if($q_evcrt) $ed->redir("5/".$db,array('ok'=>"Successfully created"));
 		else $ed->redir("5/".$db,array('err'=>"Create event failed"));
 	}
