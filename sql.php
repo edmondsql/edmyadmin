@@ -50,13 +50,6 @@ class DBT {
 		return false;
 		}
 	}
-	//public function err() {
-	//	if($_SESSION['contype'] == self::$contype[0]) {
-	//	return $this->_cnx->error;
-	//	} else {
-	//	return $this->_query->rowCount();
-	//	}
-	//}
 	public function last() {
 		if($_SESSION['contype'] == self::$contype[0]) {
 		return $this->_cnx->affected_rows;
@@ -1146,10 +1139,14 @@ case "22": //table insert
 		$n = ($ed->post('r0','e') ? 1:0);//id auto increment
 		while($n<$nrcol) {
 			$qr2.=$coln[$n].",";
-			if(stristr($colt[$n],"blob") === false) {
-				$qr4.= "'".$ed->post('r'.$n,'',1)."',";
-			} elseif(substr($colt[$n],0,3)=='bit') {
-				$qr4.= "'".($ed->post('r'.$n,0) ? 1:'')."',";
+			if(stristr($colt[$n],"blob") == true) {
+				if(!empty($_FILES["r".$n]['tmp_name'])) {
+				$qr4.= "'".addslashes(file_get_contents($_FILES["r".$n]['tmp_name']))."',";
+				} else {
+				$qr4.= "'',";
+				}
+			} elseif(stristr($colt[$n],'bit')==true) {
+				$qr4.= "b'".$ed->post('r'.$n,0)."',";
 			} else {
 				if(!empty($_FILES['r'.$n]['tmp_name'])) {
 				$blb = addslashes(file_get_contents($_FILES['r'.$n]['tmp_name']));
@@ -1222,7 +1219,7 @@ case "23": //table edit row
 				$qr2.= $coln[$p]."='".$blb."',";
 				}
 			} elseif(stristr($colt[$p],'bit') == true) {
-				$qr2.= $coln[$p]."='".($ed->post("te".$p,0) ? 1:'')."',";
+				$qr2.= $coln[$p]."=b'".$ed->post("te".$p,0)."',";
 			} else {
 				$qr2.= $coln[$p]."='".$ed->post("te".$p,'',1)."',";
 			}
@@ -1287,14 +1284,13 @@ case "25": //blob download
 	$ph= $ed->sg[5];
 	$q_ph = $ed->con->query("SELECT {$ph} FROM {$tb} WHERE {$nu} LIKE '".$id."' LIMIT 1")->fetch();
 	$len= strlen($q_ph[0]);
-	if($len < 5 || strpos($q_ph[0], "\0")===false) $ed->redir("21/$db/$tb",array('err'=>"Not a blob"));
 	if($len >= 2 && $q_ph[0][0] == chr(0xff) && $q_ph[0][1] == chr(0xd8)) {$tp= 'image/jpeg';$xt='.jpg';}
 	elseif($len >= 3 && substr($q_ph[0], 0, 3) == 'GIF') {$tp= 'image/gif';$xt='.gif';}
 	elseif($len >= 4 && substr($q_ph[0], 0, 4) == "\x89PNG") {$tp= 'image/png';$xt='.png';}
 	else {$tp= 'application/octet-stream';$xt='.bin';}
 	header("Content-type: ".$tp);
 	header("Content-Length: ".$len);
-	header("Content-Disposition: attachment; filename=bin-".$id.$xt);
+	header("Content-Disposition: attachment; filename=".$tb."-data".$xt);
 	die($q_ph[0]);
 break;
 
@@ -1571,7 +1567,13 @@ case "32": //export
 						for($e=0;$e<$cols;$e++) {
 							$bi = $r_fil[$e][1];//blob
 							if(stristr($bi,"blob") == true) {
-							$inn .= (empty($r_rx[$e]) ? "''":"0x".bin2hex($r_rx[$e])).", ";
+								if(empty($r_rx[$e])) {
+								$inn .= "'', ";
+								} elseif(strpos($r_rx[$e], "\0")===true) {
+								$inn .= "0x".bin2hex($r_rx[$e]).", ";
+								} else {
+								$inn .= "'".addslashes($r_rx[$e])."', ";
+								}
 							} elseif(is_numeric($r_rx[$e])){
 							$inn .= $r_rx[$e].", ";
 							} else {
