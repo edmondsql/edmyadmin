@@ -5,7 +5,7 @@ if(!extension_loaded('mysqli') && !extension_loaded('pdo_mysql')) die('Install m
 session_start();
 $bg='';
 $step=15;
-$version="3.0";
+$version="3.1";
 $del=" onclick=\"return confirm('are you sure?')\"";
 $bbs= array('False','True');
 
@@ -49,6 +49,18 @@ class DBT {
 		} catch(Exception $e) {
 		return false;
 		}
+	}
+	public function begin() {
+		if($_SESSION['contype'] == self::$contype[0]) {
+		$this->_cnx->autocommit(FALSE);
+		if(version_compare(PHP_VERSION, '5.5.0', '<')) return $this->query("START TRANSACTION");
+		else return $this->_cnx->begin_transaction();
+		} else {
+		return $this->_cnx->beginTransaction();
+		}
+	}
+	public function commit() {
+		return $this->_cnx->commit();
 	}
 	public function last() {
 		if($_SESSION['contype'] == self::$contype[0]) {
@@ -110,7 +122,7 @@ class DBT {
 }
 
 class ED {
-	public $con, $path, $sg, $u_pr, $fieldtype, $ver, $pg_lr=8, $salt="#123#";
+	public $con, $path, $sg, $u_pr, $fieldtype, $ver, $sqlda, $pg_lr=8, $salt="#123#";
 	public $deny= array('mysql','information_schema','performance_schema', 'sys');
 	public function __construct() {
 	$pi= (isset($_SERVER['PATH_INFO']) ? $_SERVER['PATH_INFO'] : @getenv('PATH_INFO'));
@@ -121,13 +133,14 @@ class ED {
 	$this->path= $scheme.$_SERVER['HTTP_HOST'].(strpos($r_uri, $script) === 0 ? $script : rtrim(dirname($script),'/.\\')).'/';
 	$this->iv= mcrypt_create_iv(mcrypt_get_iv_size(MCRYPT_BLOWFISH, MCRYPT_MODE_ECB));
 	$this->fieldtype= array('Numbers'=>array('INT','TINYINT','SMALLINT','MEDIUMINT','BIGINT','DOUBLE','DECIMAL','FLOAT'),'Strings'=>array('VARCHAR','CHAR','TEXT','TINYTEXT','MEDIUMTEXT','LONGTEXT'),'DateTime'=>array('DATE','DATETIME','TIME','TIMESTAMP','YEAR'),'Binary'=>array('BIT','BLOB','TINYBLOB','MEDIUMBLOB','LONGBLOB'),'Lists'=>array('ENUM','SET'));
+	$this->sqlda= array('CONTAINS_SQL'=>'CONTAINS SQL','NO SQL'=>'NO SQL','READS_SQL_DATA'=>'READS SQL DATA','MODIFIES_SQL_DATA'=>'MODIFIES SQL DATA');
 	}
 	public function clean($el, $cod='') {
 		if(get_magic_quotes_gpc()) {
 		$el= stripslashes($el);
 		}
 		if($cod==1) {
-		return trim(str_replace(array(">","<","\r\n","\r"), array("&gt;","&lt;","\n","\n"), $el));//between quota
+		return trim(str_replace(array(">","<","\r\n","\r"), array("&gt;","&lt;","\n","\n"), $el));//quota
 		} else {
 		return trim(str_replace(array(">","<","\\","'",'"',"\r\n","\r"), array("&gt;","&lt;","\\\\","&#039;","&quot;","\n","\n"), $el));
 		}
@@ -163,17 +176,17 @@ class ED {
 		++$f;
 		}
 		$str= "<div class='l2'><a href='{$this->path}'>List DBs</a> | <a href='{$this->path}31/$db'>Export</a> | <a href='{$this->path}5/$db'>List Tables</a>".
-		($tb==""?"</div>":" || <a href='{$this->path}10/$db/$tb'>Structure</a> | <a href='{$this->path}21/$db/$tb'>Browse</a> | <a href='{$this->path}26/$db/$tb'>Empty</a> | <a href='{$this->path}27/$db/$tb'>Drop</a> | <a href='{$this->path}28/$db/$tb'>Optimize</a></div>").
+		($tb==""?"</div>":" || <a href='{$this->path}10/$db/$tb'>Structure</a> | <a href='{$this->path}21/$db/$tb'>Browse</a> | <a href='{$this->path}22/$db/$tb'>Insert</a> | <a href='{$this->path}26/$db/$tb'>Empty</a> | <a href='{$this->path}27/$db/$tb'>Drop</a> | <a href='{$this->path}28/$db/$tb'>Optimize</a></div>").
 		"<div class='l3'>DB: <b>$db</b>".($tb==""?"":" || Table: <b>$tb</b>").(count($sp) >1 ?" || ".$sp[0].": <b>".$sp[1]."</b>":"")."</div><div class='scroll'>";
 		if($left==1) $str .= "<table><tr><td class='c1 left'>
-		<table><tr><td class='th'>Query</td></tr><tr><td>".$this->form("30/$db")."<textarea name='qtxt'></textarea><br/><button type='submit'>Do</button></form></td></tr>
-		<tr><td class='th'>Import SQL, CSV, GZ, ZIP</td></tr>
+		<table><tr><td class='th'>Query</td></tr><tr><td>".$this->form("30/$db")."<textarea name='qtxt'></textarea><br/><button type='submit'>Do</button></form></td></tr>".(!in_array($db,$this->deny)?"
+		<tr><td class='th'>Import sql, csv, gz, zip</td></tr>
 		<tr><td>".$this->form("30/$db",1)."<input type='file' name='importfile' />
 		<input type='hidden' name='send' value='ja' /><br/><button type='submit'>Do</button></form></td></tr>
 		<tr><td class='th'>Create Table</td></tr>
 		<tr><td>".$this->form("7/$db")."Table Name<br/><input type='text' name='ctab' /><br/>
 		Number of fields<br/><select name='nrf'>".$nrf_op."</select><br/><button type='submit'>Create</button></form></td></tr>
-		<tr><td class='th'>Rename DB</td></tr><tr><td>".$this->form("3/$db")."<input type='text' name='rdb' /><br/><button type='submit'>Rename</button></form></td></tr>".((version_compare(PHP_VERSION,'5.0.0','>=') && !in_array($db,$this->deny))?"
+		<tr><td class='th'>Rename DB</td></tr><tr><td>".$this->form("3/$db")."<input type='text' name='rdb' /><br/><button type='submit'>Rename</button></form></td></tr>
 		<tr><td class='th'>Create</td></tr><tr><td><a href='{$this->path}40/$db'>View</a> | <a href='{$this->path}41/$db'>Trigger</a> | <a href='{$this->path}42/$db'>Routine</a> | <a href='{$this->path}43/$db'>Event</a></td></tr>":"")."</table></td><td>";
 		return $str;
 	}
@@ -222,7 +235,7 @@ class ED {
 		$q_upri = $this->con->query("SHOW GRANTS FOR '{$usr}'@'{$ho}'");
 		$r_upri= $q_upri->fetch();
 		preg_match('/^GRANT\s(.*)\sON\s(.*)\./i', $r_upri[0], $upr);
-		$this->u_pr[]= $upr[1];//$this->u_db[]= $upr[2];//array_shift($this->u_db);
+		$this->u_pr[]= $upr[1];
 
 		$this->u_db[]= $_SESSION['dbname'];
 		$us_db=array();
@@ -355,6 +368,55 @@ class ED {
 		if(empty($e)) $this->redir("5/".$this->sg[1],array('err'=>"Query failed"));
 		return $e;
 	}
+	public function create_ro($db, $pn) {
+		if(is_numeric(substr($pn,0,1))) $this->redir("5/".$db,array('err'=>"Not a valid name"));
+		$roty= $this->post('roty');
+
+		$rtn= "CREATE DEFINER=`".$_SESSION['user']."`@`".$_SESSION['host']."` $roty `".$pn."`";
+		$rt2="(";
+		$roc= count($this->post('ropty'));
+		if($roty=='PROCEDURE') {
+			$rc2=0;
+			while($rc2 < $roc) {
+			if($this->post('roppa',$rc2) =='') {
+				$rt2.= ' ';
+			} else {
+				$rt2.=$this->post('ropin',$rc2)." `".$this->post('roppa',$rc2)."` ".$this->post('ropty',$rc2).($this->post('ropva',$rc2)!=''?"(".$this->post('ropva',$rc2).")":"");
+				if(in_array($this->post('ropty',$rc2),$this->fieldtype['Numbers'])) {
+				$rt2.=($this->post('rop1',$rc2)!=''?" ".$this->post('rop1',$rc2):"");
+				}
+				if(in_array($this->post('ropty',$rc2),$this->fieldtype['Strings'])) {
+				$rt2.=($this->post('rop2',$rc2)!=''?" CHARSET ".$this->post('rop2',$rc2):"");
+				}
+				$rt2.=",";
+			}
+			++$rc2;
+			}
+			$rtn.=substr($rt2,0,-1).") ";
+		} elseif($roty=='FUNCTION') {
+			$rc3=0;
+			while($rc3 < $roc) {
+			$rt2.="`".$this->post('roppa',$rc3)."` ".$this->post('ropty',$rc3).($this->post('ropva',$rc3)!=''?"(".$this->post('ropva',$rc3).")":"");
+			if(in_array($this->post('ropty',$rc3),$this->fieldtype['Numbers'])) {
+			$rt2.=($this->post('rop1',$rc3)!=''?" ".$this->post('rop1',$rc3):"");
+			}
+			if(in_array($this->post('ropty',$rc3),$this->fieldtype['Strings'])) {
+			$rt2.=($this->post('rop2',$rc3)!=''?" ".$this->post('rop2',$rc3):"");
+			}
+			$rt2.=",";
+			++$rc3;
+			}
+			$rtn.=substr($rt2,0,-1).") RETURNS ".$this->post('rorty').($this->post('rorva','!e')?"(".$this->post('rorva').")":"");
+			if(in_array($this->post('rorty'),$this->fieldtype['Numbers'])) {
+			$rtn.=($this->post('rorop1','!e')?" ".$this->post('rorop1'):"");
+			}
+			if(in_array($this->post('rorty'),$this->fieldtype['Strings'])) {
+			$rtn.=($this->post('rorop2','!e')?" CHARSET ".$this->post('rorop2'):"");
+			}
+		}
+		$rtn.= " ".$this->sqlda[$this->post('rosda')].($this->post('rodet','i')?" DETERMINISTIC":"").($this->post('rosec')=='INVOKER'?" SQL SECURITY INVOKER":"").($this->post('rocom','!e')?" COMMENT '".$this->post('rocom')."'":"")."\n".$this->post('rodf','',1);
+		return $this->con->query($rtn);
+	}
 }
 $ed= new ED;
 $head= '<!DOCTYPE html><html><head>
@@ -397,7 +459,7 @@ input[type=text],select {min-width:98px !important}
 optgroup option {padding-left:8px}
 .bb {font: 18px/12px Arial}
 </style>
-<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.3.2/jquery.min.js" type="text/javascript"></script>
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js" type="text/javascript"></script>
 <script type="text/javascript">
 $(document).ready(function(){
 $("#dbname").focus();
@@ -406,47 +468,59 @@ $("#dbname").focus();
 (!empty($_SESSION['err']) ? '<div class=\"msg err\">'.$_SESSION['err'].'<\/div>':'').'");
 setTimeout(function(){$(".msg").fadeOut("slow",function(){$(this).remove();});}, 7000);').'
 $(".msg").dblclick(function(){$(this).hide()});
+if($("#one:checked").val()=="on"){$("#every,#evend").hide();}else{$("#every,#evend").show();}
 $("#one").click(function(){if($("#one:checked").val()=="on"){$("#every,#evend").hide();}else{$("#every,#evend").show();}});//add event case
+if($("#rou").val()=="FUNCTION"){$(".rou1").hide();$(".rou2").show();}else{$(".rou1").show();$(".rou2").hide();}
 $("#rou").change(function(){//routine form
 if($(this).val()=="FUNCTION"){$(".rou1").hide();$(".rou2").show();}else{$(".rou1").show();$(".rou2").hide();}
 });
-routine();
-$("#plus").click(function(){//routine clone row
-var curr=$("[id^=\"rr_\"]").length;
-var cnt="rr_" + (curr + 1);
-$("#rr_"+curr).clone(true).insertAfter("#rr_"+curr).attr("id",cnt);
-routine(curr);
-});
+//load param rows
+var rou_p= $(".pty1").length;
+for (var i=0;i < rou_p;i++) {
+routine(i);
+}
 $("#minus").click(function(){//routine remove row
 var crr=$("[id^=\"rr_\"]").length;
 if(crr>1) $("#rr_"+crr).remove();
 });
-//$(".left textarea").click(function(){$(this).width(580+"px")}).blur(function(){$(this).width(100+"%")});
 $(".up,.down").click(function(){//reorder
 var row= $(this).parents("tr:first");
-if($(this).is(".up")){row.insertBefore(row.prev());obj1=row.next().attr("id");obj2=row.attr("id");}else{
-row.insertAfter(row.next());obj1=row.attr("id");obj2=row.prev().attr("id");
+if($(this).is(".up")){row.insertBefore(row.prev());obj1=row.next().prop("id");obj2=row.prop("id");}else{
+row.insertAfter(row.next());obj1=row.prop("id");obj2=row.prev().prop("id");
 }
 $.ajax({type: "POST", url:"'.$ed->path.'9/'.(empty($ed->sg[1])?"":$ed->sg[1]).'/'.(empty($ed->sg[2])?"":$ed->sg[2]).'", data:"n1="+obj1+"&n2="+obj2, success:function(){location.reload();}});
 });
 if($("#seldb:checked").length == 1){$("#tdbs").fadeIn();}else{$("#tdbs").hide();}
 if($("#selpriv:checked").length == 1){$("#privs").fadeIn();}else{$("#privs").hide();}
 });//end
+function plus(){//routine clone row
+var curr=$("[id^=\"rr_\"]").length;
+var cnt="rr_" + (curr + 1);
+$("#rr_"+curr).clone(true).insertAfter("#rr_"+curr).prop("id",cnt);
+routine(curr);
+}
 function routine(id){
 var ar1=["INT","TINYINT","SMALLINT","MEDIUMINT","BIGINT","DOUBLE","DECIMAL","FLOAT"];
 var ar2=["VARCHAR","CHAR","TEXT","TINYTEXT","MEDIUMTEXT","LONGTEXT"];
+//function returns
 var ej=$("#pty2"),ej1=$("#px1"),ej2=$("#px2");
+function routin2(){
 if($.inArray(ej.val(),ar1)!= -1){ej1.show();ej2.hide();}else if($.inArray(ej.val(),ar2)!= -1){ej1.hide();ej2.show();}else{ej1.hide();ej2.hide();}
+}
+routin2();
 ej.change(function(){
-if($.inArray(ej.val(),ar1)!= -1){ej1.show();ej2.hide();}else if($.inArray(ej.val(),ar2)!= -1){ej1.hide();ej2.show();}else{ej1.hide();ej2.hide();}
+routin2();
 });
-if(id === undefined) id=0;
+//parameters
+function routin1(id){
 var el=$(".pty1").eq(id),el1=$(".pa1").eq(id),el2=$(".pa2").eq(id);
 if($.inArray(el.val(),ar1)!= -1){el1.show();el2.hide();}else if($.inArray(el.val(),ar2)!= -1){el1.hide();el2.show();}else{el1.hide();el2.hide();}
+}
+if(id === undefined) id=0;
+routin1(id);
 $(".pty1").change(function(){
-var ix= $(".pty1").index(this);
-var el=$(".pty1").eq(ix),el1=$(".pa1").eq(ix),el2=$(".pa2").eq(ix);
-if($.inArray(el.val(),ar1)!= -1){el1.show();el2.hide();}else if($.inArray(el.val(),ar2)!= -1){el1.hide();el2.show();}else{el1.hide();el2.hide();}
+id= $(".pty1").index(this);
+routin1(id);
 });
 }
 function show(ex){$("#"+ex).fadeIn("slow");}
@@ -476,9 +550,9 @@ if(opt[0].checked == false) opt[i].checked=false;
 opt[i].parentElement.style.display=(opt[0].checked ? "block":"none");
 }}
 </script>
-</head><body><div class="l1"><b><a href="https://github.com/edmondsql/edmyadmin">EdMyAdmin '.$version.'</a></b>'.(isset($ed->sg[0]) && $ed->sg[0]==50 ? "": '<div class="lgn"><a href="'.$ed->path.'52">Users</a> | <a href="'.$ed->path.'51">Logout ['.(isset($_SESSION['user']) ? $_SESSION['user']:"").']</a>&nbsp;</div>').'</div>';
+</head><body><div class="l1"><b><a href="https://github.com/edmondsql/edmyadmin">EdMyAdmin '.$version.'</a></b>'.(isset($ed->sg[0]) && $ed->sg[0]==50 ? "": '<div class="lgn"><a href="'.$ed->path.'60">Info</a> | <a href="'.$ed->path.'52">Users</a> | <a href="'.$ed->path.'51">Logout ['.(isset($_SESSION['user']) ? $_SESSION['user']:"").']</a>&nbsp;</div>').'</div>';
 $stru= "<table class='a1'><tr><th colspan=".(isset($ed->sg[0]) && $ed->sg[0]==11?9:8).">TABLE STRUCTURE</th></tr><tr><th class='pro'>FIELD</th><th class='pro'>TYPE</th><th class='pro'>VALUE</th><th class='pro'>ATTRIBUTES</th><th class='pro'>NULL</th><th class='pro'>DEFAULT</th><th class='pro'>COLLATION</th><th class='pro'>AUTO <input type='radio' name='ex[]'/></th>".(isset($ed->sg[0]) && $ed->sg[0]==11?"<th class='pro'>POSITION</th>":"")."</tr>";
-$inttype= array(''=>'&nbsp;','UNSIGNED'=>'UNSIGNED','ZEROFILL'=>'ZEROFILL','UNSIGNED ZEROFILL'=>'UNSIGNED ZEROFILL');
+$inttype= array(''=>'&nbsp;','UNSIGNED'=>'unsigned','ZEROFILL'=>'zerofill','UNSIGNED ZEROFILL'=>'unsigned zerofill');
 $prvs= array('SELECT','INSERT','UPDATE','DELETE','CREATE','DROP','REFERENCES','INDEX','ALTER','CREATE USER','SHOW VIEW','CREATE VIEW','CREATE ROUTINE','ALTER ROUTINE','TRIGGER','EVENT','CREATE TEMPORARY TABLES','LOCK TABLES','FILE','EXECUTE','RELOAD','SHUTDOWN','PROCESS','SHOW DATABASES','SUPER','REPLICATION SLAVE','REPLICATION CLIENT');
 
 if(!isset($ed->sg[0])) $ed->sg[0]=0;
@@ -497,7 +571,7 @@ case "": //show DBs
 		$q_tbs= $ed->con->query("SHOW TABLES FROM ".$r_db);
 		echo "<tr class='r c$bg'><td>".$r_db."</td><td>".$q_tbs->num_row()."</td><td>
 		<a href='{$ed->path}31/".$r_db."'>Exp</a> | ".
-		(in_array($r_db, $ed->deny) ? "":"<a".$del." href='{$ed->path}4/".$r_db."'>Drop</a> | ").
+		(in_array($r_db, $ed->deny) ? "":"<a href='{$ed->path}4/".$r_db."'$del>Drop</a> | ").
 		"<a href='{$ed->path}5/".$r_db."'>Browse</a></td></tr>";
 		}
 	} else {
@@ -507,7 +581,7 @@ case "": //show DBs
 		$q_tbs= $ed->con->query("SHOW TABLES FROM ".$r_db[0]);
 		echo "<tr class='r c$bg'><td>".$r_db[0]."</td><td>".$q_tbs->num_row()."</td><td>
 		<a href='{$ed->path}31/".$r_db[0]."'>Exp</a> | ".
-		(in_array($r_db[0], $ed->deny) ? "":"<a".$del." href='{$ed->path}4/".$r_db[0]."'>Drop</a> | ").
+		(in_array($r_db[0], $ed->deny) ? "":"<a href='{$ed->path}4/".$r_db[0]."'$del>Drop</a> | ").
 		"<a href='{$ed->path}5/".$r_db[0]."'>Browse</a></td></tr>";
 	}
 	}
@@ -577,7 +651,7 @@ case "4": //Drop DB
 	$q_drodb = $ed->con->query("DROP DATABASE ".$db);
 	if($q_drodb) $ed->redir("",array('ok'=>"Succeful deleted DB"));
 	}
-	$ed->redir('',array('err'=>"Can't delete DB"));
+	$ed->redir('',array('err'=>"Delete DB failed"));
 break;
 
 case "5": //Show Tables
@@ -614,16 +688,18 @@ case "5": //Show Tables
 		foreach($q_com->fetch(2) as $r_cm) {
 		$_vl= "/$db/".$tables[$ofset];
 		if($r_cm['Comment']=='VIEW') {
-			$lnk="45{$_vl}/view";
+			$lnk="40{$_vl}/view";
 			$dro="49{$_vl}/view";
+			$ins="";
 		} else {
 			$lnk="10".$_vl;
 			$dro="27".$_vl;
+			$ins=" | <a href='".$ed->path."22/$db/".$tables[$ofset]."'>Insert</a>";
 		}
 		if($r_cm['Engine'] || $r_cm['Comment']=='VIEW') {
 		$q_rows = $ed->con->query("SELECT COUNT(*) FROM ".$tables[$ofset])->fetch();
 		} else $q_rows=0;
-		echo "<tr class='r c$bg'><td>".$tables[$ofset]."</td><td>".$q_rows[0]."</td><td>".$r_cm['Engine']."</td><td>".$r_cm['Collation']."</td><td>".$r_cm['Comment']."</td><td><a href='".$ed->path.$lnk."'>Structure</a> | <a href='".$ed->path.$dro."'>Drop</a> | <a href='".$ed->path."21/$db/".$tables[$ofset]."'>Browse</a></td></tr>";
+		echo "<tr class='r c$bg'><td>".$tables[$ofset]."</td><td>".$q_rows[0]."</td><td>".$r_cm['Engine']."</td><td>".$r_cm['Collation']."</td><td>".$r_cm['Comment']."</td><td><a href='".$ed->path.$lnk."'>Structure</a> | <a href='".$ed->path.$dro."'$del>Drop</a> | <a href='".$ed->path."21/$db/".$tables[$ofset]."'>Browse</a>$ins</td></tr>";
 		}
 		}
 		++$ofset;
@@ -650,7 +726,7 @@ case "5": //Show Tables
 		foreach($q_sp as $r_sp){
 			$bg=($bg==1)?2:1;
 			if($r_sp[0]==$db) {
-			echo "<tr class='r c$bg'><td>".$r_sp[1]."</td><td>".$r_sp[2]."</td><td>".$r_sp[7]."</td><td><a href='{$ed->path}45/".$r_sp[0]."/".$r_sp[1]."/".strtolower($r_sp[2])."'>Edit</a> | <a href='{$ed->path}49/".$r_sp[0]."/".$r_sp[1]."/".strtolower($r_sp[2])."'>Drop</a></td></tr>";
+			echo "<tr class='r c$bg'><td>".$r_sp[1]."</td><td>".$r_sp[2]."</td><td>".$r_sp[7]."</td><td><a href='{$ed->path}42/".$r_sp[0]."/".$r_sp[1]."/".strtolower($r_sp[2])."'>Edit</a> | <a href='{$ed->path}49/".$r_sp[0]."/".$r_sp[1]."/".strtolower($r_sp[2])."'$del>Drop</a></td></tr>";
 			}
 		}
 		echo "</table>";
@@ -661,7 +737,7 @@ case "5": //Show Tables
 		echo "<table class='a mrg'><tr><th>TRIGGER</th><th>TABLE</th><th>TIMING</th><th>EVENT</th><th>ACTIONS</th></tr>";
 		foreach($q_trg->fetch(1) as $r_tg) {
 		$bg=($bg==1)?2:1;
-		echo "<tr class='r c$bg'><td>".$r_tg[0]."</td><td>".$r_tg[2]."</td><td>".$r_tg[4]."</td><td>".$r_tg[1]."</td><td><a href='{$ed->path}45/$db/".$r_tg[0]."/trigger'>Edit</a> | <a href='{$ed->path}49/$db/".$r_tg[0]."/trigger'>Drop</a></td></tr>";
+		echo "<tr class='r c$bg'><td>".$r_tg[0]."</td><td>".$r_tg[2]."</td><td>".$r_tg[4]."</td><td>".$r_tg[1]."</td><td><a href='{$ed->path}41/$db/".$r_tg[0]."/trigger'>Edit</a> | <a href='{$ed->path}49/$db/".$r_tg[0]."/trigger'$del>Drop</a></td></tr>";
 		}
 	echo "</table>";
 	}
@@ -673,7 +749,7 @@ case "5": //Show Tables
 	foreach($q_eve->fetch(2) as $r_eve) {
 	$bg=($bg==1)?2:1;
 	echo "<tr class='r c$bg'><td>".$r_eve['Name']."</td><td>".
-	($r_eve['Type']=='RECURRING' ? "Every ".$r_eve['Interval value'].$r_eve['Interval field']."</td><td>".$r_eve['Starts']."</td><td>".$r_eve['Ends']:"AT </td><td>".$r_eve['Execute at']."</td><td>")."</td><td><a href='{$ed->path}45/$db/".$r_eve['Name']."/event'>Edit</a> | <a href='{$ed->path}49/$db/".$r_eve['Name']."/event'>Drop</a></td></tr>";
+	($r_eve['Type']=='RECURRING' ? "Every ".$r_eve['Interval value'].$r_eve['Interval field']."</td><td>".$r_eve['Starts']."</td><td>".$r_eve['Ends']:"AT </td><td>".$r_eve['Execute at']."</td><td>")."</td><td><a href='{$ed->path}43/$db/".$r_eve['Name']."/event'>Edit</a> | <a href='{$ed->path}49/$db/".$r_eve['Name']."/event'$del>Drop</a></td></tr>";
 	}
 	echo "</table>";
 	}
@@ -701,7 +777,7 @@ case "7": //Create table
 				$qry1 .= $c1." ".$c2.$c3.$c4." ".$c5.$c6.$c7.$c8.",";
 			}
 			$qry2 = substr($qry1,0,-1);
-			$qry = $qry2.")".($ed->post('tcomm')!="" ? " COMMENT='".$ed->post('tcomm')."'":"").";";
+			$qry = $qry2.")".($ed->post('engs')==""?"":" ENGINE=".$ed->post('engs')).($ed->post('tcomm')!="" ? " COMMENT='".$ed->post('tcomm')."'":"").";";
 			echo "<p class='box'>".($ed->con->query($qry) ? "<b>OK!</b> $qry" : "<b>FAILED!</b> $qry")."</p>";
 		} else {
 			echo $ed->form("7/$db")."
@@ -724,7 +800,12 @@ case "7": //Create table
 				}
 				echo "</select></td><td><input type='radio' name='ex[]' value='$nf' /></td></tr>";
 			}
-			echo "<tr><td class='div' colspan=8>Table Comment: <input type='text' maxlength='60' size='72' name='tcomm' /></td></tr>
+			echo "<tr><td class='div' colspan=8>Engine <select name='engs'><option value=''>&nbsp;</option>";
+			$q_eng= $ed->con->query("SELECT ENGINE FROM information_schema.ENGINES WHERE ENGINE IS NOT NULL AND SUPPORT<>'NO'")->fetch(1);
+			foreach($q_eng as $r_eng) {
+				echo "<option value=".$r_eng[0].">".$r_eng[0]."</option>";
+			}
+			echo "</select> Table Comment: <input type='text' maxlength='60' size='72' name='tcomm' /></td></tr>
 			<tr><td colspan=8><button type='submit' name='crtb'>Create Table</button></td></tr></table></form>";
 		}
 	} else {
@@ -739,7 +820,12 @@ case "9":
 	if($ed->post('cll','i')) {//change table collation
 		$q_altcll = $ed->con->query('ALTER TABLE '.$db.'.'.$tb.' CONVERT TO CHARACTER SET '.strtok($ed->post('cll'),'_').' COLLATE '.$ed->post('cll'));
 		if($q_altcll) $ed->redir("10/$db/".$tb, array('ok'=>"Successfully changed"));
-		$ed->redir("10/$db/".$tb, array('err'=>"Can't change Collate"));
+		$ed->redir("10/$db/".$tb, array('err'=>"Change failed"));
+	}
+	if($ed->post('engs','i')) {//change table engine
+		$q_engs = $ed->con->query('ALTER TABLE '.$db.'.'.$tb.' ENGINE='.$ed->post('engs'));
+		if($q_engs) $ed->redir("5/$db/$tb", array('ok'=>"Successfully changed"));
+		$ed->redir("10/$db/$tb", array('err'=>"Change failed"));
 	}
 	if($ed->post('copytab','!e')) {//copy table in new DB
 		$ndb = $ed->post('copytab');
@@ -818,18 +904,20 @@ case "9":
 	}
 	if(isset($ed->sg[3])) {//drop index
 		if($ed->sg[3] == "PRIMARY") {
-			$ed->con->query("ALTER TABLE `".$tb."` DROP PRIMARY KEY");
+			$q_alt= $ed->con->query("ALTER TABLE `".$tb."` DROP PRIMARY KEY");
 		} else {
 			$q_key = $ed->con->query("SHOW KEYS FROM ".$tb);
 			if($q_key) {
 			foreach($q_key->fetch(2) as $r_key) {
-			if($r_key['Key_name'] == $ed->sg[3]) $ed->con->query('ALTER TABLE '.$tb.' DROP INDEX '.$r_key['Key_name']);
+			if($r_key['Key_name'] == $ed->sg[3]) $keys= $r_key['Key_name'];
 			}
+			$q_alt= $ed->con->query("ALTER TABLE `".$tb."` DROP INDEX ".$keys);
 			}
 		}
-		$ed->redir("10/$db/".$tb,array('ok'=>"Successfully dropped"));
+		if($q_alt) $ed->redir("10/$db/".$tb,array('ok'=>"Successfully dropped"));
+		else $ed->redir("10/$db/".$tb,array('err'=>"Drop index failed"));
 	}
-	$ed->redir("5/".$db);
+	$ed->redir("5/".$db,array('err'=>"Action failed"));
 break;
 
 case "10": //table structure
@@ -900,7 +988,14 @@ case "10": //table structure
 		echo "<option value='".$r_cl[0]."'>".$r_cl[0]."</option>";
 		}
 	}
-	echo "</select><br/><button type='submit'>Change</button></form></td></tr></table></td></tr></table>";
+	echo "</select><br/><button type='submit'>Change</button></form><br/>
+	Change Table Engine<br/>".$ed->form("9/$db/$tb")."<select name='engs'>";
+	$q_eng= $ed->con->query("SELECT ENGINE FROM information_schema.ENGINES WHERE ENGINE IS NOT NULL AND SUPPORT<>'NO'")->fetch(1);
+	foreach($q_eng as $r_eng) {
+		echo "<option value=".$r_eng[0].">".$r_eng[0]."</option>";
+	}
+	echo "</select><br/><button type='submit'>Change</button></form>
+	</td></tr></table></td></tr></table>";
 break;
 
 case "11": //Add field
@@ -1023,7 +1118,7 @@ case "12": //structure change
 	echo "</select></td><td><input type='text' name='de' value='".$r_fe[5]."' /></td><td><select name='clls'><option value=''>&nbsp;</option>";
 	$q_colls = $ed->con->query("SHOW COLLATION");
 	foreach($q_colls->fetch(1) as $r_cl) {
-		echo "<option value='".$r_cl[0].(($r_fe[2]==$r_cl[0]) ? " selected":"")."'>".$r_cl[0]."</option>";
+		echo "<option value='".$r_cl[0]."'".($r_fe[2]==$r_cl[0] ? " selected":"").">".$r_cl[0]."</option>";
 	}
 	echo "</select></td><td><input type='radio' name='ex[]' value='1' ".($r_fe[6]=="auto_increment" ? "checked":"")." /></td>
 	</tr><tr><td colspan=9><button type='submit'>Change field</button></td></tr></table></form>";
@@ -1069,7 +1164,7 @@ case "21": //table browse
 	echo $head.$ed->menu($db, ($q_vic[17]!='VIEW' ? $tb:''), 1);//17-comment
 	echo "<table class='a'><tr>";
 	if($q_vic[17]!='VIEW'){
-	echo "<th colspan=2><a href='{$ed->path}22/$db/$tb'>INSERT</a></th>";
+	echo "<th colspan=2>ACTIONS</th>";
 	}
 
 	$q_bro= $ed->con->query("SHOW FIELDS FROM ".$tb);
@@ -1136,7 +1231,7 @@ case "22": //table insert
 		$qr2="";
 		$qr3="VALUES(";
 		$qr4="";
-		$n = ($ed->post('r0','e') ? 1:0);//id auto increment
+		$n= 0;
 		while($n<$nrcol) {
 			$qr2.=$coln[$n].",";
 			if(stristr($colt[$n],"blob") == true) {
@@ -1151,7 +1246,9 @@ case "22": //table insert
 				if(!empty($_FILES['r'.$n]['tmp_name'])) {
 				$blb = addslashes(file_get_contents($_FILES['r'.$n]['tmp_name']));
 				$qr4.= "'{$blb}',";
-				} else $qr4.= "'',";
+				} else {
+				$qr4.= "'".$ed->post('r'.$n)."',";
+				}
 			}
 			++$n;
 		}
@@ -1233,7 +1330,7 @@ case "23": //table edit row
 		$q_flds = $ed->con->query("SHOW COLUMNS FROM ".$tb);
 		$r_fnr = $q_flds->num_row();
 		$q_rst = $ed->con->query("SELECT * FROM $tb WHERE $nu='{$id}'");
-		if($q_rst->num_row() < 1) $ed->redir("21/$db/".$tb,array('err'=>"Can't edit"));
+		if($q_rst->num_row() < 1) $ed->redir("21/$db/".$tb,array('err'=>"Edit failed"));
 		$r_rx = $q_rst->fetch();
 		echo $head.$ed->menu($db, $tb, 1);
 		echo $ed->form("23/$db/$tb/$nu/".base64_encode($r_rx['0']),1)."<table class='a'><caption>Edit Row</caption>";
@@ -1368,7 +1465,7 @@ case "30"://import
 				if(@function_exists('gzopen')) {
 					$gzfile = @gzopen($tmp, 'rb');
 					if (!$gzfile) {
-					$ed->redir("5/$db",array('err'=>"Can't open GZ file"));
+					$ed->redir("5/$db",array('err'=>"Open GZ failed"));
 					}
 					$e = '';
 					while (!gzeof($gzfile)) {
@@ -1381,7 +1478,7 @@ case "30"://import
 					elseif($e_ext == 'csv') $e= $ed->imp_csv($entr['filename'], $e);
 					else $ed->redir("5/$db",array('err'=>"Disallowed extension"));
 				} else {
-					$ed->redir("5/$db",array('err'=>"Can't open GZ file"));
+					$ed->redir("5/$db",array('err'=>"Open GZ failed"));
 				}
 			} elseif($ext == 'zip') {//zip file
 				if(($fzip = fopen($tmp, 'r')) !== FALSE) {
@@ -1414,16 +1511,18 @@ case "30"://import
 			$ed->redir("5/$db",array('err'=>"Query failed"));
 		}
 		if(is_array($e)) {
+			$ed->con->begin();
 			foreach($e as $qry) {
 				$qry= trim($qry);
 				if(!empty($qry)) {
 					$exc = $ed->con->query($qry);
 					$op= array('insert','update','delete');
 					$p_qry= strtolower(substr($qry,0,6));
-					if(in_array($p_qry, $op)) $exc = $exc->last();
+					if(in_array($p_qry, $op) && $exc) $exc= $exc->last();
 					$out .= "<p>".($exc ? "<b>OK!</b> $qry" : "<b>FAILED!</b> $qry")."</p>";
 				}
 			}
+			$ed->con->commit();
 		}
 	}
 	echo $head.$ed->menu($db).$out."</div>";
@@ -1742,198 +1841,274 @@ case "32": //export
 	}
 break;
 
-case "40": //add view
+case "40": //view
 	$ed->check(array(1));
 	$db= $ed->sg[1];
-	if($ed->post('vname','!e') && $ed->post('vstat','!e')) {//add
-	$vn= $ed->sanitize($ed->post('vname'));
-	if(is_numeric(substr($vn,0,1))) $ed->redir("5/".$db,array('err'=>"Not a valid name"));
-	$vstat= $ed->post('vstat','',1);
-	$stat= $ed->con->query($vstat);
-	if(!$stat->num_row()) $ed->redir("5/".$db,array('err'=>"Wrong statement"));
-	$e_v= $ed->con->query("CREATE VIEW `".$vn."` AS ".$vstat);
-	if($e_v) $ed->redir("5/".$db,array('ok'=>"Successfully created"));
-	else $ed->redir("5/".$db,array('err'=>"Create view failed"));
+	if(!isset($ed->sg[2]) && !isset($ed->sg[3])) {//add
+		$r_uv= array(0=>'',1=>'');
+		if($ed->post('uv1','!e') && $ed->post('uv2','!e')) {
+			$tb= $ed->sanitize($ed->post('uv1'));
+			$exi= $ed->con->query("SELECT 1 FROM ".$tb);
+			if($exi) $ed->redir("5/".$db,array('err'=>"This name exist"));
+			$vstat= $ed->post('uv2','',1);
+			$stat= $ed->con->query($vstat);
+			if($stat === false) $ed->redir("5/".$db,array('err'=>"Wrong statement"));
+			$v_cre= $ed->con->query("CREATE VIEW ".$tb." AS ".$vstat);
+			if($v_cre === false) $ed->redir("5/".$db,array('err'=>"Create view failed"));
+			else $ed->redir("5/".$db,array('ok'=>"Successfully created"));
+		}
+		echo $head.$ed->menu($db);
+		echo $ed->form("40/$db");
+		$b_lbl="Create";
+	} else {//edit
+		$ed->check(array(1,5));
+		$sp= $ed->sg[2];$ty= $ed->sg[3];
+		$r_uv= $ed->con->query("SELECT TABLE_NAME,VIEW_DEFINITION FROM information_schema.VIEWS WHERE `TABLE_SCHEMA`='$db' AND `TABLE_NAME`='$sp'")->fetch();
+		if($ed->post('uv1','!e') && $ed->post('uv2','!e')) {
+			$tb= $ed->sanitize($ed->post('uv1'));
+			if(is_numeric(substr($tb,0,1))) $ed->redir("5/".$db,array('err'=>"Not a valid name"));
+			$exi= $ed->con->query("SELECT 1 FROM ".$tb);
+			if($exi && $tb!=$r_uv[0]) $ed->redir("5/".$db,array('err'=>"This name exist"));
+			$vstat= $ed->post('uv2','',1);
+			$stat= $ed->con->query($vstat);
+			if(!$stat) $ed->redir("5/".$db,array('err'=>"Wrong statement"));
+			$ed->con->query("DROP EVENT ".$sp);
+			$ed->con->query("CREATE VIEW ".$tb." AS ".$vstat);
+			$ed->redir("5/".$db,array('ok'=>"Successfully updated"));
+		}
+		echo $head.$ed->menu($db,'','',array($ty,$sp));
+		echo $ed->form("40/$db/$sp/$ty");
+		$b_lbl="Edit";
 	}
-	echo $head.$ed->menu($db);
-	echo $ed->form("40/$db")."<table class='a1'><tr><th colspan=2>Create View</th></tr>
-	<tr><td>Name</td><td><input type='text' name='vname'/></td></tr>
-	<tr><td>Statement</td><td><textarea name='vstat'></textarea></td></tr>
-	<tr><td class='c1' colspan=2><button type='submit'>Create</button></td></tr></table></form>";
+	echo "<table class='a1'><tr><th colspan=2>{$b_lbl} View</th></tr>
+	<tr><td>Name</td><td><input type='text' name='uv1' value='".$r_uv[0]."'/></td></tr>
+	<tr><td>Statement</td><td><textarea name='uv2'>".$r_uv[1]."</textarea></td></tr>
+	<tr><td class='c1' colspan=2><button type='submit'>Save</button></td></tr></table></form></div>";
 break;
 
-case "41": //add trigger
+case "41": //trigger
 	$ed->check(array(1));
 	$db= $ed->sg[1];
-	if($ed->post('trgnm','!e') && $ed->post('trgdf','!e')) {//add
-	$tn= $ed->sanitize($ed->post('trgnm'));
-	if(is_numeric(substr($tn,0,1))) $ed->redir("5/".$db,array('err'=>"Not a valid name"));
-	$q_tgcrt= $ed->con->query("CREATE TRIGGER `".$tn."` ".$ed->post('trgti')." ".$ed->post('trgev')." ON `".$ed->post('trgtb')."` FOR EACH ROW ".$ed->post('trgdf','',1));
-	if($q_tgcrt) $ed->redir("5/".$db,array('ok'=>"Successfully created"));
-	else $ed->redir("5/".$db,array('err'=>"Create trigger failed"));
-	}
-	$tgtb= array();
-	$q_trgt = $ed->con->query("SHOW TABLE STATUS FROM ".$db);
-	foreach($q_trgt->fetch(2) as $r_trgt) {
+
+	$tgtb= array();//list tables
+	$q_trgt = $ed->con->query("SHOW TABLE STATUS FROM ".$db)->fetch(2);
+	foreach($q_trgt as $r_trgt) {
 	if($r_trgt['Comment']!='VIEW') {
 	$tgtb[] = $r_trgt['Name'];
 	}
 	}
-	echo $head.$ed->menu($db);
-	echo $ed->form("41/$db")."<table class='a1'><tr><th colspan=2>Create Trigger</th></tr>
-	<tr><td>Trigger Name</td><td><input type='text' name='trgnm'/></td></tr>
-	<tr><td>Table</td><td><select name='trgtb'>";
-	foreach($tgtb as $tgt) echo "<option value='".$tgt."'>".$tgt."</option>";
-	echo "</select></td></tr>
-	<tr><td>Time</td><td><select name='trgti'><option value='BEFORE'>BEFORE</option><option value='AFTER'>AFTER</option></select></td></tr>
-	<tr><td>Event</td><td><select name='trgev'><option value='INSERT'>INSERT</option><option value='UPDATE'>UPDATE</option><option value='DELETE'>DELETE</option></select></td></tr>
-	<tr><td>Definition</td><td><textarea name='trgdf'></textarea></td></tr>
-	<tr><td class='c1' colspan=2><button type='submit'>Create</button></td></tr></table></form>";
-break;
-
-case "42": //add routine
-	$ed->check(array(1));
-	$db= $ed->sg[1];
-	$sdas= array('CONTAINS SQL','NO SQL','READS SQL DATA','MODIFIES SQL DATA');
-	if($ed->post('ronme','!e') && $ed->post('rodf','!e')) {//add
-		$pn= $ed->sanitize($ed->post('ronme'));
-		if(is_numeric(substr($pn,0,1))) $ed->redir("5/".$db,array('err'=>"Not a valid name"));
-		$roty= $ed->post('roty');
-		$rtn= "CREATE DEFINER=`".$_SESSION['user']."`@`".$_SESSION['host']."` $roty `".$pn."`";
-		$rt2="(";
-		$roc= count($ed->post('ropty'));
-		if($roty=='PROCEDURE') {
-			$rc2=0;
-			while($rc2 < $roc) {
-			$rt2.=$ed->post('ropin',$rc2)." `".$ed->post('roppa',$rc2)."` ".$ed->post('ropty',$rc2).($ed->post('ropva',$rc2)!=''?"(".$ed->post('ropva',$rc2).")":"");
-			if(in_array($ed->post('ropty',$rc2),$ed->fieldtype['Numbers'])) {
-			$rt2.=($ed->post('rop1',$rc2)!=''?" ".$ed->post('rop1',$rc2):"");
-			}
-			if(in_array($ed->post('ropty',$rc2),$ed->fieldtype['Strings'])) {
-			$rt2.=($ed->post('rop2',$rc2)!=''?" CHARSET ".$ed->post('rop2',$rc2):"");
-			}
-			$rt2.=",";
-			++$rc2;
-			}
-			$rtn.=substr($rt2,0,-1).")";
-		} elseif($roty=='FUNCTION') {
-			$rc3=0;
-			while($rc3 < $roc) {
-			$rt2.="`".$ed->post('roppa',$rc3)."` ".$ed->post('ropty',$rc3).($ed->post('ropva',$rc3)!=''?"(".$ed->post('ropva',$rc3).")":"");
-			if(in_array($ed->post('ropty',$rc2),$ed->fieldtype['Numbers'])) {
-			$rt2.=($ed->post('rop1',$rc2)!=''?" ".$ed->post('rop1',$rc2):"");
-			}
-			if(in_array($ed->post('ropty',$rc2),$ed->fieldtype['Strings'])) {
-			$rt2.=($ed->post('rop2',$rc2)!=''?" ".$ed->post('rop2',$rc2):"");
-			}
-			$rt2.=",";
-			++$rc3;
-			}
-			$rtn.=substr($rt2,0,-1).") RETURNS ".$ed->post('rorty').($ed->post('rorva','!e')?"(".$ed->post('rorva').")":"");
-			if(in_array($ed->post('rorty'),$ed->fieldtype['Numbers'])) {
-			$rtn.=($ed->post('rorop1','!e')?" ".$ed->post('rorop1'):"");
-			}
-			if(in_array($ed->post('rorty'),$ed->fieldtype['Strings'])) {
-			$rtn.=($ed->post('rorop2','!e')?" CHARSET ".$ed->post('rorop2'):"");
+	
+	if(!isset($ed->sg[2]) && !isset($ed->sg[3])) {//add
+		$r_tge= array(0=>'');
+		if($ed->post('utg1','!e') && $ed->post('utg5','!e')) {
+		$utg1= $ed->sanitize($ed->post('utg1'));
+		if(is_numeric(substr($t_nm,0,1))) $ed->redir("41/".$db,array('err'=>"Not a valid name"));
+		$utg2= $ed->post('utg2');$utg3= $ed->post('utg3');$utg4= $ed->post('utg4');$utg5= $ed->post('utg5','',1);
+		$q_tgcrt= $ed->con->query("CREATE TRIGGER `".$utg1."` ".$utg2." ".$utg3." ON `".$utg4."` FOR EACH ROW ".$utg5);
+		if($q_tgcrt) $ed->redir("5/".$db,array('ok'=>"Successfully created"));
+		else $ed->redir("5/".$db,array('err'=>"Create failed"));
+		}
+		echo $head.$ed->menu($db);
+		echo $ed->form("41/$db");
+		$t_lbl="Create";
+	} else {//edit
+		$ed->check(array(1,5));
+		$sp= $ed->sg[2];$ty= $ed->sg[3];
+		if($ed->post('utg1','!e') && $ed->post('utg5','!e')) {
+			$utg1= $ed->sanitize($ed->post('utg1'));
+			$utg2= $ed->post('utg2');$utg3= $ed->post('utg3');$utg4= $ed->post('utg4');$utg5= $ed->post('utg5','',1);
+			if(is_numeric(substr($utg1,0,1))) $ed->redir("5/".$db,array('err'=>"Not a valid name"));
+			$sess= $ed->con->query("SHOW CREATE ".$ty." {$db}.".$sp)->fetch();
+			$_SESSION['t_tmp']= $sess[2];
+			$ed->con->query("DROP {$ty} {$db}.".$sp);
+			$q_tgcrt= $ed->con->query("CREATE TRIGGER `".$utg1."` ".$utg2." ".$utg3." ON `".$utg4."` FOR EACH ROW ".$utg5);
+			if($q_tgcrt) {
+			unset($_SESSION["t_tmp"]);
+			$ed->redir("5/".$db,array('ok'=>"Successfully updated"));
+			} else {
+			$ed->con->query($_SESSION["t_tmp"]);
+			unset($_SESSION["t_tmp"]);
+			$ed->redir("41/$db/$sp/$ty",array('err'=>"Update failed"));
 			}
 		}
-		if($ed->post('rosda')==1) $dd=$sdas[1];
-		elseif($ed->post('rosda')==2) $dd=$sdas[2];
-		elseif($ed->post('rosda')==3) $dd=$sdas[3];
-		else $dd=$sdas[0];
-		$rtn.= $dd.($ed->post('rodet','i')?" DETERMINISTIC":"").($ed->post('rosec')=='INVOKER'?" SQL SECURITY INVOKER":"").($ed->post('rocom','!e')?" COMMENT '".$ed->post('rocom')."'":"")."\n".$ed->post('rodf','',1);
+		$r_tge= $ed->con->query("SELECT TRIGGER_NAME,EVENT_OBJECT_TABLE,ACTION_TIMING,EVENT_MANIPULATION,ACTION_STATEMENT FROM information_schema.TRIGGERS WHERE `TRIGGER_SCHEMA`='$db' AND `TRIGGER_NAME`='$sp'")->fetch();
+		echo $head.$ed->menu($db,'','',array($ty,$sp));
+		echo $ed->form("41/$db/$sp/$ty");
+		$t_lbl="Edit";
+	}
+	
+	echo "<table class='a1'><tr><th colspan=2>{$t_lbl} Trigger</th></tr>
+	<tr><td>Trigger Name</td><td><input type='text' name='utg1' value='".$r_tge[0]."'/></td></tr>
+	<tr><td>Table</td><td><select name='utg4'>";
+	foreach($tgtb as $tgt) echo "<option value='".$tgt."'".($r_tge[1]==$tgt? " selected":"").">".$tgt."</option>";
+	echo "</select></td></tr><tr><td>Time</td><td><select name='utg2'>";
+	$tm= array('BEFORE','AFTER');
+	foreach($tm as $tn) echo "<option value='$tn'".($r_tge[2]==$tn?" selected":"").">$tn</option>";
+	echo "</select></td></tr>
+	<tr><td>Event</td><td><select name='utg3'>";
+	$evm= array('INSERT','UPDATE','DELETE');
+	foreach($evm as $evn) echo "<option value='$evn'".($r_tge[3]==$evn?" selected":"").">$evn</option>";
+	echo "</select></td></tr>
+	<tr><td>Definition</td><td><textarea name='utg5'>".$r_tge[4]."</textarea></td></tr>
+	<tr><td class='c1' colspan=2><button type='submit'>Save</button></td></tr></table></form></div>";
+break;
 
-		$run_ro= $ed->con->query($rtn);
-		if($run_ro) $ed->redir("5/$db",array('ok'=>"Created routine"));
-		else $ed->redir("5/$db",array('err'=>"Can't create routine"));
+case "42": //routine
+	$ed->check(array(1));
+	$db= $ed->sg[1];
+	if(!isset($ed->sg[2]) && !isset($ed->sg[3])) {//add
+		$r_rou= array(0=>'',1=>'',5=>'NO');$plist=1;$retrn=array(1=>'');
+		if($ed->post('ronme','!e') && $ed->post('rodf','!e')) {
+		$r_new= $ed->sanitize($ed->post('ronme'));
+		$crea= $ed->create_ro($db,$r_new);
+		if($crea) $ed->redir("5/$db",array('ok'=>"Created routine"));
+		else $ed->redir("5/$db",array('err'=>"Create failed"));
+		}
+		echo $head.$ed->menu($db);
+		echo $ed->form("42/$db");
+		$t_lbl="Create";
+	} else {//edit
+		$ed->check(array(1,5));
+		$sp= $ed->sg[2];$ty= $ed->sg[3];
+		if($ed->post('ronme','!e') && $ed->post('rodf','!e')) {
+		$r_new= $ed->sanitize($ed->post('ronme'));
+		$r_tmp= $r_new.'_'.uniqid(mt_rand());
+		$crea= $ed->create_ro($db,$r_tmp);
+		$ed->con->query("DROP ".$ty." IF EXISTS ".$r_tmp);
+		if($crea) {
+		$ed->con->query("DROP ".$ty." IF EXISTS ".$sp);
+		$ed->create_ro($db,$r_new);
+		$ed->redir("5/$db",array('ok'=>"Updated routine"));
+		} else $ed->redir("42/$db/$sp/$ty",array('err'=>"Update failed"));
+		}
+
+		$r_rou= $ed->con->query("SELECT name,type,param_list,returns,body,is_deterministic,security_type,sql_data_access,comment FROM mysql.proc WHERE `db`='$db' AND `name`='$sp'")->fetch();
+		//function return
+		$r_f1=(stripos($r_rou[3],') ')?'\s*[\(](.*)[\)]':'');
+		$r_f2=(stripos($r_rou[3],' CHARSET ')?'(CHARSET)\s+':'');
+		preg_match('/^(\w+)'.$r_f1.'\s+'.$r_f2.'(.*)/', $r_rou[3], $retrn);
+		//param_list
+		$plist= preg_split("/\(.*?\)(*SKIP)(*F)|,/", $r_rou[2]);
+		echo $head.$ed->menu($db,'','',array($ty,$sp));
+		echo $ed->form("42/$db/$sp/$ty");
+		$t_lbl="Edit";
 	}
 	
 	$swcl= "<option value=''>&nbsp;</option>";
-	$q_rocl= $ed->con->query("SHOW COLLATION");
-	foreach($q_rocl->fetch(1) as $r_rocl) {
-		$swcl .= "<option value='".$r_rocl[0]."'>".$r_rocl[0]."</option>";
-	}
-	echo $head.$ed->menu($db);
-	echo $ed->form("42/$db")."<table class='a1'><tr><th colspan=2>Create Routine</th></tr>
-	<tr><td>Name</td><td><input type='text' name='ronme'/></td></tr>
-	<tr><td>Type</td><td><select id='rou' name='roty'><option value='PROCEDURE'>PROCEDURE</option><option value='FUNCTION'>FUNCTION</option></select></td></tr>
+	$q_swcl= $ed->con->query("SHOW CHARACTER SET")->fetch(1);
+	$pfs= array('PROCEDURE','FUNCTION');
+	echo "<table class='a1'><tr><th colspan=2>{$t_lbl} Routine</th></tr>
+	<tr><td>Name</td><td><input type='text' name='ronme' value='".$r_rou[0]."' /></td></tr>
+	<tr><td>Type</td><td><select id='rou' name='roty'>";
+	foreach($pfs as $pf) echo "<option value='$pf'".($pf==$r_rou[1]?" selected":"").">$pf</option>";
+	echo "</select></td></tr>
 	<tr><td>Parameters</td><td>
 	<table>
-	<tr><th class='rou1'>Direction</th><th>Name</th><th>Type</th><th>Values</th><th>Options</th><th class='bb' id='minus'>-</th></tr>
-	<tr id='rr_1'><td class='rou1'>
-		<select name='ropin[]'><option value='IN'>IN</option><option value='OUT'>OUT</option><option value='INOUT'>INOUT</option></select>
-		</td><td><input type='text' name='roppa[]'/></td><td>
-		<select class='pty1' name='ropty[]'>".$ed->fieldtypes()."</select>
-		</td><td><input type='text' name='ropva[]'/></td><td>
+	<tr><th class='rou1'>Direction</th><th>Name</th><th>Type</th><th>Values</th><th>Options</th><th class='bb' id='minus'>-</th></tr>";
+	$p=1;
+	$p_f1=($r_rou[1]=='PROCEDURE' ? '(\w+)\s+':'');
+	while($p<=count($plist)) {
+	$p_curr= $plist[$p-1];
+	$p_f2=(stripos($p_curr,')')?'\s*[\(](.*)[\)]':'');
+	$p_f3=(stripos($p_curr,' CHARSET ')?'(CHARSET)\s+':'');
+	preg_match('/'.$p_f1.'`(.*)`\s+(.*)'.$p_f2.$p_f3.'(.*)/', $p_curr, $pre);
+	if(isset($r_rou[1]) && $r_rou[1]=='PROCEDURE') array_shift($pre);
+	
+	echo "<tr id='rr_".$p."'><td class='rou1'>
+		<select name='ropin[]'>";
+		$inouts= array('IN','OUT','INOUT');
+		foreach($inouts as $inout) echo "<option value='$inout'".($inout==trim($pre[0])?" selected":"").">$inout</option>";
+		echo "</select>
+		</td><td><input type='text' name='roppa[]' value='".$pre[1]."' /></td><td>
+		<select class='pty1' name='ropty[]'>".$ed->fieldtypes(trim($pre[2]))."</select>
+		</td><td><input type='text' name='ropva[]' value='".($pre[3]!='CHARSET'?$pre[3]:'')."'/></td><td>
 		<select class='pa1' name='rop1[]'>";
 		foreach($inttype as $itk=>$itt) {
-		echo "<option value='$itk'>$itt</option>";
+		echo "<option value='$itk'".(trim($pre[4])==$itk?" selected":"").">$itt</option>";
 		}
+		foreach($q_swcl as $r_rocl) $swcl .= "<option value='".$r_rocl[0]."'".($pre[4]==$r_rocl[0]?" selected":"").">".$r_rocl[0]."</option>";
 		echo "</select><select class='pa2' name='rop2[]'>".$swcl."</select>
-		</td><td class='bb' id='plus'>+</td></tr></table>
-	</td></tr>
+		</td><td class='bb' onclick='plus()'>+</td></tr>";
+	++$p;
+	}
 
-	<tr class='rou2'><td>Return type</td><td><select id='pty2' name='rorty'>".$ed->fieldtypes()."</select></td></tr>
-	<tr class='rou2'><td>Return values</td><td><input type='text' name='rorva'/></td></tr>
+	echo "</table></td></tr><tr class='rou2'><td>Return type</td><td><select id='pty2' name='rorty'>".(isset($retrn[1])?$ed->fieldtypes(strtoupper($retrn[1])):$ed->fieldtypes())."</select></td></tr>
+	<tr class='rou2'><td>Return values</td><td><input type='text' name='rorva' value='".((isset($retrn[2]) && $retrn[2]!='CHARSET')?$retrn[2]:"")."'/></td></tr>
 	<tr class='rou2'><td>Return options</td><td><select id='px1' name='rorop1'>";
 	foreach($inttype as $itk=>$itt) {
-	echo "<option value='$itk'>$itt</option>";
+	echo "<option value='$itk'".($retrn[3]==$itt?" selected":"").">$itt</option>";
 	}
-	echo "</select><select id='px2' name='rorop2'>".$swcl."</select></td></tr>
-
-	<tr><td>Definition</td><td><textarea name='rodf'></textarea></td></tr>
-	<tr><td>Deterministic</td><td><input type='checkbox' name='rodet'/></td></tr>
-	<tr><td>Security type</td><td><select name='rosec'><option value='DEFINER'>DEFINER</option><option value='INVOKER'>INVOKER</option></select></td></tr>
+	echo "</select><select id='px2' name='rorop2'>";
+	foreach($q_swcl as $r_rocl) {
+	echo "<option value='".$r_rocl[0]."'".($retrn[3]==$r_rocl[0]?" selected":"").">".$r_rocl[0]."</option>";
+	}
+	echo "</select></td></tr>
+	<tr><td>Definition</td><td><textarea name='rodf'>".$r_rou[4]."</textarea></td></tr>
+	<tr><td>Deterministic</td><td><input type='checkbox' name='rodet'".($r_rou[5]=="NO"?"":" checked")."/></td></tr>
+	<tr><td>Security type</td><td><select name='rosec'>";
+	$dfns= array('DEFINER','INVOKER');
+	foreach($dfns as $dfn) echo "<option value='$dfn'".($r_rou[6]==$dfn?" selected":"").">$dfn</option>";
+	echo "</select></td></tr>
 	<tr><td>SQL data access</td><td><select name='rosda'>";
-	foreach($sdas as $sdk=>$sda) echo "<option value='$sdk'>$sda</option>";
-	echo "</select></td></tr><tr><td>Comment</td><td><input type='text' name='rocom'/></td></tr>
-	<tr><td class='c1' colspan=2><button type='submit'>Create</button></td></tr></table></form>";
+	foreach($ed->sqlda as $sdk=>$sda) echo "<option value='$sdk'".($r_rou[7]==$sdk?" selected":"").">$sda</option>";
+	echo "</select></td></tr><tr><td>Comment</td><td><input type='text' name='rocom' value='".$r_rou[8]."'/></td></tr>
+	<tr><td class='c1' colspan=2><button type='submit'>Save</button></td></tr></table></form>";
 break;
 
-case "43": //add event
+case "43": //event
 	$ed->check(array(1));
 	$db= $ed->sg[1];
-	if($ed->post('evnme','!e') && $ed->post('evstat','!e')) {
-		$evn= $ed->sanitize($ed->post('evnme'));
-		if(is_numeric(substr($evn,0,1))) $ed->redir("5/".$db,array('err'=>"Not a valid name"));
-		$q_evcrt = $ed->con->query("CREATE EVENT `".$evn."` ON SCHEDULE ".($ed->post('evpre','i')? "AT '".$ed->post('evsta')."'":"EVERY '".$ed->post('evevr1')."' ".$ed->post('evevr2')." STARTS '".$ed->post('evsta')."' ENDS '".$ed->post('evend')."'")." ON COMPLETION".($ed->post('evpre','i')?"":" NOT")." PRESERVE ".$ed->post('evendi')." COMMENT '".$ed->post('evcom')."' DO ".$ed->post('evstat','',1));
-		if($q_evcrt) $ed->redir("5/".$db,array('ok'=>"Successfully created"));
-		else $ed->redir("5/".$db,array('err'=>"Create event failed"));
-	}
-	echo $head.$ed->menu($db);
-	echo $ed->form("43/$db")."<table class='a1'><tr><th colspan=2>Create Event</th></tr>
-	<tr><td>Name</td><td><input type='text' name='evnme'/></td></tr>
-	<tr><td>Start</td><td><input type='text' name='evsta'/></td></tr>
-	<tr id='evend'><td>End</td><td><input type='text' name='evend'/></td></tr>
-	<tr><td>One time</td><td><input type='checkbox' id='one' name='evone'/></td></tr>
-	<tr id='every'><td>Every</td><td class='div'><input type='text' name='evevr1' size='3'/><select name='evevr2'>";
-	$evr= array('YEAR','QUARTER','MONTH','DAY','HOUR','MINUTE','WEEK','SECOND','YEAR_MONTH','DAY_HOUR','DAY_MINUTE','DAY_SECOND','HOUR_MINUTE','HOUR_SECOND','MINUTE_SECOND');
-	foreach($evr as $vr) echo "<option value='$vr'>$vr</option>";
-	echo "</select></td></tr>
-	<tr><td>Status</td><td><select name='evendi'><option value='ENABLE'>ENABLE</option><option value='DISABLE'>DISABLE</option><option value='DISABLE ON SLAVE'>DISABLE ON SLAVE</option></select></td></tr>
-	<tr><td>Comment</td><td><input type='text' name='evcom'/></td></tr>
-	<tr><td>On completion preserve</td><td><input type='checkbox' name='evpre'/></td></tr>
-	<tr><td>Statement</td><td><textarea name='evstat'></textarea></td></tr>
-	<tr><td class='c1' colspan=2><button type='submit'>Create</button></td></tr></table></form>";
-break;
-
-case "45": //edit sp
-	$ed->check(array(1,5));
-	$db= $ed->sg[1];
-	$sp= $ed->sg[2];
-	$ty= $ed->sg[3];
-	if($ed->post('sp2','!e')) {
-		$ed->con->query("DROP {$ty} IF EXISTS ".$sp);
-		$ed->con->query($ed->post('sp2','',1));
-		$ed->redir("5/".$db,array('ok'=>"Successfully updated"));
-	} else {
+	if(!isset($ed->sg[2]) && !isset($ed->sg[3])) {//add
+		$r_eve= array(0=>'',1=>'',2=>'',3=>'',4=>'');
+		if($ed->post('evnme','!e') && $ed->post('evstat','!e')) {
+			$evn= $ed->sanitize($ed->post('evnme'));
+			if(is_numeric(substr($evn,0,1))) $ed->redir("43/".$db,array('err'=>"Not a valid name"));
+			$q_evcrt = $ed->con->query("CREATE EVENT `".$evn."` ON SCHEDULE ".($ed->post('evpre','i')? "AT '".$ed->post('evsta')."'":"EVERY '".$ed->post('evevr1')."' ".$ed->post('evevr2')." STARTS '".$ed->post('evsta')."' ENDS '".$ed->post('evend')."'")." ON COMPLETION".($ed->post('evpre','i')?"":" NOT")." PRESERVE ".$ed->post('evendi')." COMMENT '".$ed->post('evcom')."' DO ".$ed->post('evstat','',1));
+			if($q_evcrt) $ed->redir("5/".$db,array('ok'=>"Successfully created"));
+			else $ed->redir("5/".$db,array('err'=>"Create event failed"));
+		}
+		echo $head.$ed->menu($db);
+		echo $ed->form("43/$db");
+		$t_lbl="Create";
+	} else {//edit
+		$ed->check(array(1,5));
+		$sp= $ed->sg[2];$ty= $ed->sg[3];
+		if($ed->post('evnme','!e') && $ed->post('evstat','!e')) {
+			$evn= $ed->sanitize($ed->post('evnme'));
+			if(is_numeric(substr($evn,0,1))) $ed->redir("5/".$db,array('err'=>"Not a valid name"));
+			$q_evcrt = $ed->con->query("ALTER EVENT `".$sp."` ON SCHEDULE ".
+			($ed->post('evone','!e') ? "AT '".$ed->post('evsta')."'":"EVERY '".$ed->post('evevr1')."' ".$ed->post('evevr2')." STARTS '".$ed->post('evsta')."' ENDS '".$ed->post('evend')."'").
+			" ON COMPLETION".($ed->post('evpre','!e')?"":" NOT")." PRESERVE ".$ed->post('evendi')." COMMENT '".$ed->post('evcom')."' DO ".$ed->post('evstat','',1));
+			if(!$q_evcrt) $ed->redir("5/".$db,array('err'=>"Update event failed"));
+			if($sp != $evn) {
+			$q_evren = $ed->con->query("ALTER EVENT `".$sp."` RENAME TO ".$evn);
+			if(!$q_evren) $ed->redir("5/".$db,array('err'=>"Rename event failed"));
+			}
+			$ed->redir("5/".$db,array('ok'=>"Updated event"));
+		}
+		$r_eve= $ed->con->query("SELECT EVENT_NAME,STARTS,ENDS,EVENT_TYPE,INTERVAL_VALUE,INTERVAL_FIELD,EXECUTE_AT,STATUS,EVENT_COMMENT,ON_COMPLETION,EVENT_DEFINITION FROM information_schema.EVENTS WHERE `EVENT_SCHEMA`='$db' AND `EVENT_NAME`='$sp'")->fetch();
 		echo $head.$ed->menu($db,'','',array($ty,$sp));
-		echo "<div class='box'>".$ed->form("45/$db/$sp/$ty")."<textarea name='sp2'>";
-		$q_spp = $ed->con->query("SHOW CREATE ".$ty." {$db}.".$sp);
-		$sx = $q_spp->fetch();
-		echo ($ty=='view' ? $sx[1]:($ty=='event'?$sx[3]:$sx[2]));
-		echo "</textarea><br/><button type='submit'>Save</button></form></div>";
+		echo $ed->form("43/$db/$sp/$ty");
+		$t_lbl="Edit";
 	}
+	
+	echo "<table class='a1'><tr><th colspan=2>{$t_lbl} Event</th></tr>
+	<tr><td>Name</td><td><input type='text' name='evnme' value='".$r_eve[0]."'/></td></tr>
+	<tr><td>Start</td><td><input type='text' name='evsta' value='".($r_eve[3]=='ONE TIME'?$r_eve[6]:$r_eve[1])."'/></td></tr>
+	<tr id='evend'><td>End</td><td><input type='text' name='evend' value='".$r_eve[2]."'/></td></tr>
+	<tr><td>One time</td><td><input type='checkbox' id='one' name='evone'".($r_eve[3]=='ONE TIME'?" checked":"")."/></td></tr>
+	<tr id='every'><td>Every</td><td class='div'><input type='text' name='evevr1' size='3' value='".$r_eve[4]."'/><select name='evevr2'>";
+	$evr= array('YEAR','QUARTER','MONTH','DAY','HOUR','MINUTE','WEEK','SECOND','YEAR_MONTH','DAY_HOUR','DAY_MINUTE','DAY_SECOND','HOUR_MINUTE','HOUR_SECOND','MINUTE_SECOND');
+	foreach($evr as $vr) echo "<option value='$vr'".($r_eve[5]==$vr?" selected":"").">$vr</option>";
+	echo "</select></td></tr><tr><td>Status</td><td><select name='evendi'>";
+	$stv= array('ENABLED'=>'ENABLE','DISABLED'=>'DISABLE','SLAVESIDE_DISABLED'=>'DISABLE ON SLAVE');
+	foreach($stv as $ktv=>$tv) echo "<option value='$tv'".($r_eve[7]==$ktv?" selected":"").">$tv</option>";
+	
+	echo "</select></td></tr>
+	<tr><td>Comment</td><td><input type='text' name='evcom' value='".$r_eve[8]."'/></td></tr>
+	<tr><td>On completion preserve</td><td><input type='checkbox' name='evpre'".($r_eve[9]=='PRESERVE'?' checked':'')."/></td></tr>
+	<tr><td>Statement</td><td><textarea name='evstat'>".$r_eve[10]."</textarea></td></tr>
+	<tr><td class='c1' colspan=2><button type='submit'>Save</button></td></tr></table></form>";
 break;
 
 case "49": //drop sp
@@ -2165,6 +2340,18 @@ case "55": //drop user
 	$ed->con->query("DROP USER '$uu'@'$hh'");
 	$ed->con->query("FLUSH PRIVILEGES");
 	$ed->redir("52",array('ok'=>"Successfully deleted"));
+break;
+
+case "60": //info
+	$ed->check();
+	echo $head."<div class='l2'><a href='{$ed->path}'>List DBs</a></div><div class='scroll'>
+	<table class='a1' style='word-break:break-all'><tr><th>VARIABLE</th><th>VALUE</th></tr>";
+	$q_var = $ed->con->query("SHOW VARIABLES")->fetch(1);
+	foreach($q_var as $r_var) {
+	$bg=($bg==1)?2:1;
+	echo "<tr class='r c$bg'><td class='pro'>".$r_var[0]."</td><td class='pro'>".$r_var[1]."</td></tr>";
+	}
+	echo "</table>";
 break;
 }//End Switch
 unset($_POST);
