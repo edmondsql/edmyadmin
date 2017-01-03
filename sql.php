@@ -6,7 +6,6 @@ session_start();
 $bg='';
 $step=15;
 $version="3.1";
-$del=" onclick=\"return confirm('are you sure?')\"";
 $bbs= array('False','True');
 
 class DBT {
@@ -176,7 +175,7 @@ class ED {
 		++$f;
 		}
 		$str= "<div class='l2'><a href='{$this->path}'>List DBs</a> | <a href='{$this->path}31/$db'>Export</a> | <a href='{$this->path}5/$db'>List Tables</a>".
-		($tb==""?"</div>":" || <a href='{$this->path}10/$db/$tb'>Structure</a> | <a href='{$this->path}21/$db/$tb'>Browse</a> | <a href='{$this->path}22/$db/$tb'>Insert</a> | <a href='{$this->path}26/$db/$tb'>Empty</a> | <a href='{$this->path}27/$db/$tb'>Drop</a> | <a href='{$this->path}28/$db/$tb'>Optimize</a></div>").
+		($tb==""?"</div>":" || <a href='{$this->path}10/$db/$tb'>Structure</a> | <a href='{$this->path}20/$db/$tb'>Browse</a> | <a href='{$this->path}21/$db/$tb'>Insert</a> | <a href='{$this->path}24/$db/$tb'>Empty</a> | <a class='del' href='{$this->path}25/$db/$tb'>Drop</a> | <a href='{$this->path}26/$db/$tb/analyze'>Analyze</a> | <a href='{$this->path}26/$db/$tb/optimize'>Optimize</a> | <a href='{$this->path}26/$db/$tb/check'>Check</a> | <a href='{$this->path}26/$db/$tb/repair'>Repair</a></div>").
 		"<div class='l3'>DB: <b>$db</b>".($tb==""?"":" || Table: <b>$tb</b>").(count($sp) >1 ?" || ".$sp[0].": <b>".$sp[1]."</b>":"")."</div><div class='scroll'>";
 		if($left==1) $str .= "<table><tr><td class='c1 left'>
 		<table><tr><td class='th'>Query</td></tr><tr><td>".$this->form("30/$db")."<textarea name='qtxt'></textarea><br/><button type='submit'>Do</button></form></td></tr>".(!in_array($db,$this->deny)?"
@@ -219,8 +218,6 @@ class ED {
 			$this->con = DBT::factory($ho, $usr, $pwd);
 			if($this->con === false) {
 				$this->redir("50",array('err'=>"Can't connect to the server"));
-			} else {
-				session_regenerate_id(true);
 			}
 		} else {
 			$this->redir("50");
@@ -262,7 +259,7 @@ class ED {
 			if(!$q_com->num_row()) $this->redir("5/".$db);
 			foreach($q_com->fetch(2) as $r_com) {
 			if(stristr($r_com['Comment'],'Unknown storage')==true) $this->redir("5/".$db);
-			if($r_com['Comment']=='VIEW' && $this->sg[0] != 21) $this->redir("5/".$db);//prevent to show view as table
+			if($r_com['Comment']=='VIEW' && $this->sg[0] != 20) $this->redir("5/".$db);//prevent to show view as table
 			}
 			$q_ = $this->con->query("SELECT COUNT(*) FROM ".$this->sg[2]);
 			if(!$q_->num_row()) $this->redir("5/".$db);
@@ -283,7 +280,7 @@ class ED {
 			$q_com = $this->con->query("SHOW TABLE STATUS FROM $db like '".$this->sg[2]."'");
 			if($q_com->num_row()) {
 			foreach($q_com->fetch(2) as $r_com) {
-			if($r_com['Comment']!='VIEW' && $this->sg[0] != 21) $this->redir("5/".$db);//prevent to show table
+			if($r_com['Comment']!='VIEW' && $this->sg[0] != 20) $this->redir("5/".$db);//prevent to show table
 			}
 			}
 			$sp= array('view','trigger','procedure','function','event');
@@ -317,7 +314,7 @@ class ED {
 		if($totalpg > 1) {
 		$kl= ($pg > $this->pg_lr ? $pg-$this->pg_lr:1);//left pg
 		$kr= (($pg > $totalpg-$this->pg_lr) ? $totalpg:$pg+$this->pg_lr);//right pg
-		if($this->sg[0]==21) $link= $this->path."21/".$this->sg[1]."/".$this->sg[2];
+		if($this->sg[0]==20) $link= $this->path."20/".$this->sg[1]."/".$this->sg[2];
 		elseif($this->sg[0]==5) $link= $this->path."5/".$this->sg[1];
 		$pgs='';
 		while($kl <= $kr) {
@@ -449,9 +446,10 @@ input[type=checkbox],input[type=radio]{position: relative;vertical-align: middle
 .l2,.c1 {background:#cdf}
 .l3, tr:hover.r, button:hover {background:#fe3 !important}
 #tdbs,#privs,[class^=pa],[id^=px],.rou2 {display:none}
-.move,.bb {cursor:pointer;cursor:hand}
+.move,.bb, .msg {cursor:pointer;cursor:hand}
 .lgn, .msg{position:absolute;top:0;right:0}
-.msg {padding:8px;font-weight:bold;font-size:13px;z-index:1}
+.msg {z-index:1}
+.ok, .err {display:inline-block;padding:8px;font-weight:bold;font-size:13px}
 .ok {background:#EFE;color:#080;border-bottom:2px solid #080}
 .err {background:#FEE;color:#f00;border-bottom:2px solid #f00}
 .left *, input[type=password] {width:196px;position: relative;z-index:1}
@@ -467,6 +465,14 @@ $("#dbname").focus();
 (!empty($_SESSION['ok']) ? '<div class=\"msg ok\">'.$_SESSION['ok'].'<\/div>':'').
 (!empty($_SESSION['err']) ? '<div class=\"msg err\">'.$_SESSION['err'].'<\/div>':'').'");
 setTimeout(function(){$(".msg").fadeOut("slow",function(){$(this).remove();});}, 7000);').'
+$(".del").click(function(e){//confirm
+e.preventDefault();
+$(".msg").remove();
+var but=$(this);
+$("body").fadeIn("slow").prepend("<div class=\"msg\"><div class=\"ok\">Yes<\/div><div class=\"err\">No<\/div><\/div>");
+$(".msg .ok").click(function(){window.location = but.attr("href");});
+$(".msg .err").click(function(){$(".msg").remove();});
+});
 $(".msg").dblclick(function(){$(this).hide()});
 if($("#one:checked").val()=="on"){$("#every,#evend").hide();}else{$("#every,#evend").show();}
 $("#one").click(function(){if($("#one:checked").val()=="on"){$("#every,#evend").hide();}else{$("#every,#evend").show();}});//add event case
@@ -571,7 +577,7 @@ case "": //show DBs
 		$q_tbs= $ed->con->query("SHOW TABLES FROM ".$r_db);
 		echo "<tr class='r c$bg'><td>".$r_db."</td><td>".$q_tbs->num_row()."</td><td>
 		<a href='{$ed->path}31/".$r_db."'>Exp</a> | ".
-		(in_array($r_db, $ed->deny) ? "":"<a href='{$ed->path}4/".$r_db."'$del>Drop</a> | ").
+		(in_array($r_db, $ed->deny) ? "":"<a class='del' href='{$ed->path}4/".$r_db."'>Drop</a> | ").
 		"<a href='{$ed->path}5/".$r_db."'>Browse</a></td></tr>";
 		}
 	} else {
@@ -581,7 +587,7 @@ case "": //show DBs
 		$q_tbs= $ed->con->query("SHOW TABLES FROM ".$r_db[0]);
 		echo "<tr class='r c$bg'><td>".$r_db[0]."</td><td>".$q_tbs->num_row()."</td><td>
 		<a href='{$ed->path}31/".$r_db[0]."'>Exp</a> | ".
-		(in_array($r_db[0], $ed->deny) ? "":"<a href='{$ed->path}4/".$r_db[0]."'$del>Drop</a> | ").
+		(in_array($r_db[0], $ed->deny) ? "":"<a class='del' href='{$ed->path}4/".$r_db[0]."'>Drop</a> | ").
 		"<a href='{$ed->path}5/".$r_db[0]."'>Browse</a></td></tr>";
 	}
 	}
@@ -678,7 +684,7 @@ case "5": //Show Tables
 	
 	echo $head.$ed->menu($db,'',1);
 	if($ttalr > 0) {//start rows
-	echo "<table class='a'><tr><th>TABLE</th><th>RECORDS</th><th>ENGINE</th><th>COLLATE</th><th>COMMENTS</th><th>ACTIONS</th></tr>";
+	echo "<table class='a'><tr><th>TABLE</th><th>ROWS</th><th>ENGINE</th><th>COLLATE</th><th>COMMENTS</th><th>ACTIONS</th></tr>";
 	$ofset= ($pg - 1) * $step;
 	$max= $step + $ofset;
 	while($ofset < $max) {
@@ -690,16 +696,14 @@ case "5": //Show Tables
 		if($r_cm['Comment']=='VIEW') {
 			$lnk="40{$_vl}/view";
 			$dro="49{$_vl}/view";
-			$ins="";
 		} else {
 			$lnk="10".$_vl;
-			$dro="27".$_vl;
-			$ins=" | <a href='".$ed->path."22/$db/".$tables[$ofset]."'>Insert</a>";
+			$dro="25".$_vl;
 		}
 		if($r_cm['Engine'] || $r_cm['Comment']=='VIEW') {
 		$q_rows = $ed->con->query("SELECT COUNT(*) FROM ".$tables[$ofset])->fetch();
 		} else $q_rows=0;
-		echo "<tr class='r c$bg'><td>".$tables[$ofset]."</td><td>".$q_rows[0]."</td><td>".$r_cm['Engine']."</td><td>".$r_cm['Collation']."</td><td>".$r_cm['Comment']."</td><td><a href='".$ed->path.$lnk."'>Structure</a> | <a href='".$ed->path.$dro."'$del>Drop</a> | <a href='".$ed->path."21/$db/".$tables[$ofset]."'>Browse</a>$ins</td></tr>";
+		echo "<tr class='r c$bg'><td>".$tables[$ofset]."</td><td>".$q_rows[0]."</td><td>".$r_cm['Engine']."</td><td>".$r_cm['Collation']."</td><td>".$r_cm['Comment']."</td><td><a href='".$ed->path.$lnk."'>Structure</a> | <a class='del' href='".$ed->path.$dro."'>Drop</a> | <a href='".$ed->path."20/$db/".$tables[$ofset]."'>Browse</a></td></tr>";
 		}
 		}
 		++$ofset;
@@ -726,7 +730,7 @@ case "5": //Show Tables
 		foreach($q_sp as $r_sp){
 			$bg=($bg==1)?2:1;
 			if($r_sp[0]==$db) {
-			echo "<tr class='r c$bg'><td>".$r_sp[1]."</td><td>".$r_sp[2]."</td><td>".$r_sp[7]."</td><td><a href='{$ed->path}42/".$r_sp[0]."/".$r_sp[1]."/".strtolower($r_sp[2])."'>Edit</a> | <a href='{$ed->path}49/".$r_sp[0]."/".$r_sp[1]."/".strtolower($r_sp[2])."'$del>Drop</a></td></tr>";
+			echo "<tr class='r c$bg'><td>".$r_sp[1]."</td><td>".$r_sp[2]."</td><td>".$r_sp[7]."</td><td><a href='{$ed->path}42/".$r_sp[0]."/".$r_sp[1]."/".strtolower($r_sp[2])."'>Edit</a> | <a class='del' href='{$ed->path}49/".$r_sp[0]."/".$r_sp[1]."/".strtolower($r_sp[2])."'>Drop</a></td></tr>";
 			}
 		}
 		echo "</table>";
@@ -737,7 +741,7 @@ case "5": //Show Tables
 		echo "<table class='a mrg'><tr><th>TRIGGER</th><th>TABLE</th><th>TIMING</th><th>EVENT</th><th>ACTIONS</th></tr>";
 		foreach($q_trg->fetch(1) as $r_tg) {
 		$bg=($bg==1)?2:1;
-		echo "<tr class='r c$bg'><td>".$r_tg[0]."</td><td>".$r_tg[2]."</td><td>".$r_tg[4]."</td><td>".$r_tg[1]."</td><td><a href='{$ed->path}41/$db/".$r_tg[0]."/trigger'>Edit</a> | <a href='{$ed->path}49/$db/".$r_tg[0]."/trigger'$del>Drop</a></td></tr>";
+		echo "<tr class='r c$bg'><td>".$r_tg[0]."</td><td>".$r_tg[2]."</td><td>".$r_tg[4]."</td><td>".$r_tg[1]."</td><td><a href='{$ed->path}41/$db/".$r_tg[0]."/trigger'>Edit</a> | <a class='del' href='{$ed->path}49/$db/".$r_tg[0]."/trigger'>Drop</a></td></tr>";
 		}
 	echo "</table>";
 	}
@@ -749,7 +753,7 @@ case "5": //Show Tables
 	foreach($q_eve->fetch(2) as $r_eve) {
 	$bg=($bg==1)?2:1;
 	echo "<tr class='r c$bg'><td>".$r_eve['Name']."</td><td>".
-	($r_eve['Type']=='RECURRING' ? "Every ".$r_eve['Interval value'].$r_eve['Interval field']."</td><td>".$r_eve['Starts']."</td><td>".$r_eve['Ends']:"AT </td><td>".$r_eve['Execute at']."</td><td>")."</td><td><a href='{$ed->path}43/$db/".$r_eve['Name']."/event'>Edit</a> | <a href='{$ed->path}49/$db/".$r_eve['Name']."/event'$del>Drop</a></td></tr>";
+	($r_eve['Type']=='RECURRING' ? "Every ".$r_eve['Interval value'].$r_eve['Interval field']."</td><td>".$r_eve['Starts']."</td><td>".$r_eve['Ends']:"AT </td><td>".$r_eve['Execute at']."</td><td>")."</td><td><a href='{$ed->path}43/$db/".$r_eve['Name']."/event'>Edit</a> | <a class='del' href='{$ed->path}49/$db/".$r_eve['Name']."/event'>Drop</a></td></tr>";
 	}
 	echo "</table>";
 	}
@@ -829,8 +833,10 @@ case "9":
 	}
 	if($ed->post('copytab','!e')) {//copy table in new DB
 		$ndb = $ed->post('copytab');
-		$q_altcrt = $ed->con->query("CREATE TABLE ".$ndb.".".$tb." LIKE ".$db.".".$tb);
-		$q_altins = $ed->con->query("INSERT ".$ndb.".".$tb." SELECT * FROM ".$db.".".$tb);
+		$q_altchk = $ed->con->query("SELECT 1 FROM {$ndb}.{$tb}");
+		if($q_altchk) $ed->redir("10/$db/".$tb, array('err'=>"Table already exists"));
+		$q_altcrt = $ed->con->query("CREATE TABLE {$ndb}.{$tb} LIKE {$db}.{$tb}");
+		$q_altins = $ed->con->query("INSERT {$ndb}.{$tb} SELECT * FROM {$db}.{$tb}");
 		if($q_altcrt && $q_altins) $ed->redir("10/$db/".$tb, array('ok'=>"Successfully copied"));
 		$ed->redir("10/$db/".$tb, array('err'=>"Copy table failed"));
 	}
@@ -933,7 +939,7 @@ case "10": //table structure
 		$bg=($bg==1)?2:1;
 		echo "<tr class='r c$bg' id='".$r_fi['Field']."'><td><input type='checkbox' name='idx[]' value='".$r_fi['Field']."' /></td><td class='pro'>".$r_fi['Field']."</td><td class='pro'>".$r_fi['Type']."</td><td class='pro'>".$r_fi['Null']."</td>";
 		echo "<td class='pro'>".($r_fi['Collation']!='NULL' ? $r_fi['Collation']:'')."</td>";
-		echo "<td class='pro'>".$r_fi['Default']."</td><td class='pro'>".$r_fi['Extra']."</td><td class='pro'><a href='{$ed->path}12/$db/$tb/".$r_fi['Field']."'>change</a> | <a href='{$ed->path}13/$db/$tb/".$r_fi['Field']."'>drop</a> | <a href='{$ed->path}11/$db/$tb/".$r_fi['Field']."'>add field</a>";
+		echo "<td class='pro'>".$r_fi['Default']."</td><td class='pro'>".$r_fi['Extra']."</td><td class='pro'><a href='{$ed->path}12/$db/$tb/".$r_fi['Field']."'>change</a> | <a class='del' href='{$ed->path}13/$db/$tb/".$r_fi['Field']."'>drop</a> | <a href='{$ed->path}11/$db/$tb/".$r_fi['Field']."'>add field</a>";
 		if($r_filds>1){
 		$lim=" | ";
 		$up= "<a class='move up' title='Up'>&#9650;</a>";
@@ -967,7 +973,7 @@ case "10": //table structure
 	echo "<tr class='r c$bg'><td class='pro'>".$idxnam."</td><td class='pro'>";
 	foreach($idxcol['column'] as $col) echo $col."<br/>";
 	echo "</td><td class='pro'>".$idxcol['type'];
-	echo "</td><td class='pro'><a href='{$ed->path}9/$db/$tb/".$idxnam."'>drop</a></td></tr>";
+	echo "</td><td class='pro'><a class='del' href='{$ed->path}9/$db/$tb/".$idxnam."'>drop</a></td></tr>";
 	}
 	}
 	}
@@ -1144,7 +1150,7 @@ case "13": //Drop field
 	$ed->redir("10/$db/".$tb, array('err'=>"Field delete failed"));
 break;
 
-case "21": //table browse
+case "20": //table browse
 	$ed->check(array(1,2));
 	$db= $ed->sg[1];
 	$tb= $ed->sg[2];
@@ -1157,7 +1163,7 @@ case "21": //table browse
 		$pg = 1;
 	} else {
 		$pg= $ed->sg[3];
-		$ed->check(array(1,4),array('pg'=>$pg,'total'=>$totalpg,'redir'=>"21/$db/$tb"));
+		$ed->check(array(1,4),array('pg'=>$pg,'total'=>$totalpg,'redir'=>"20/$db/$tb"));
 	}
 
 	$q_vic = $ed->con->query("SHOW TABLE STATUS FROM $db like '".$tb."'")->fetch();
@@ -1187,7 +1193,7 @@ case "21": //table browse
 		$rw0= base64_encode($r_rw[0]);
 		echo "<tr class='r c$bg'>";
 		if($q_vic[17]!='VIEW'){
-		echo "<td><a href='".$ed->path."23/$db/$tb/$nu/$rw0'>Edit</a><td><a href='".$ed->path."24/$db/$tb/$nu/$rw0'>Delete</a></td>";
+		echo "<td><a href='".$ed->path."22/$db/$tb/$nu/$rw0'>Edit</a><td><a href='".$ed->path."23/$db/$tb/$nu/$rw0'>Delete</a></td>";
 		}
 		for($i=0;$i<$r_cl;$i++) {
 			$val = htmlentities($r_rw[$i],ENT_QUOTES,"UTF-8");
@@ -1196,7 +1202,7 @@ case "21": //table browse
 				$le= strlen($r_rw[$i]);
 				echo "[blob] ";
 				if($le > 4) {
-				echo "<a href='".$ed->path."25/$db/$tb/$nu/$rw0/".$coln[$i]."'>".number_format(($le/1024),2)." KB</a>";
+				echo "<a href='".$ed->path."33/$db/$tb/$nu/$rw0/".$coln[$i]."'>".number_format(($le/1024),2)." KB</a>";
 				} else {
 				echo number_format(($le/1024),2)." KB";
 				}
@@ -1212,7 +1218,7 @@ case "21": //table browse
 	echo "</table>".$ed->pg_number($pg, $totalpg)."</td></tr></table>";
 break;
 
-case "22": //table insert
+case "21": //table insert
 	$ed->check(array(1,2));
 	$db= $ed->sg[1];
 	$tb= $ed->sg[2];
@@ -1255,11 +1261,11 @@ case "22": //table insert
 		$qr2=substr($qr2,0,-1).") ";
 		$qr4=substr($qr4,0,-1).")";
 		$q_rins = $ed->con->query($qr1.$qr2.$qr3.$qr4);
-		if($q_rins) $ed->redir("21/{$db}/".$tb,array('ok'=>"Successfully inserted"));
-		else $ed->redir("21/{$db}/".$tb,array('err'=>"Insert failed"));
+		if($q_rins) $ed->redir("20/{$db}/".$tb,array('ok'=>"Successfully inserted"));
+		else $ed->redir("20/{$db}/".$tb,array('err'=>"Insert failed"));
 	} else {
 		echo $head.$ed->menu($db, $tb, 1);
-		echo $ed->form("22/$db/$tb",1)."<table class='a'><caption>Insert Row</caption>";
+		echo $ed->form("21/$db/$tb",1)."<table class='a'><caption>Insert Row</caption>";
 		$q_res= $ed->con->query("SELECT * FROM ".$tb);
 		$r_col= $q_res->num_col();
 		$j=0;
@@ -1290,8 +1296,8 @@ case "22": //table insert
 	}
 break;
 
-case "23": //table edit row
-	$ed->check(array(1,2,3),array('redir'=>'21'));
+case "22": //table edit row
+	$ed->check(array(1,2,3),array('redir'=>'20'));
 	$db= $ed->sg[1];
 	$tb= $ed->sg[2];
 	$nu= $ed->sg[3];
@@ -1324,16 +1330,16 @@ case "23": //table edit row
 		$qr2=substr($qr2,0,-1);
 		$qr3=" WHERE $nu='$id' LIMIT 1";
 		$q_upd = $ed->con->query($qr1.$qr2.$qr3);
-		if($q_upd) $ed->redir("21/{$db}/".$tb,array('ok'=>"Successfully updated"));
-		else $ed->redir("21/{$db}/".$tb,array('err'=>"Update failed"));
+		if($q_upd) $ed->redir("20/{$db}/".$tb,array('ok'=>"Successfully updated"));
+		else $ed->redir("20/{$db}/".$tb,array('err'=>"Update failed"));
 	} else {
 		$q_flds = $ed->con->query("SHOW COLUMNS FROM ".$tb);
 		$r_fnr = $q_flds->num_row();
 		$q_rst = $ed->con->query("SELECT * FROM $tb WHERE $nu='{$id}'");
-		if($q_rst->num_row() < 1) $ed->redir("21/$db/".$tb,array('err'=>"Edit failed"));
+		if($q_rst->num_row() < 1) $ed->redir("20/$db/".$tb,array('err'=>"Edit failed"));
 		$r_rx = $q_rst->fetch();
 		echo $head.$ed->menu($db, $tb, 1);
-		echo $ed->form("23/$db/$tb/$nu/".base64_encode($r_rx['0']),1)."<table class='a'><caption>Edit Row</caption>";
+		echo $ed->form("22/$db/$tb/$nu/".base64_encode($r_rx['0']),1)."<table class='a'><caption>Edit Row</caption>";
 		for ($k=0;$k<$r_fnr;$k++) {
 			echo "<tr><td>".$coln[$k]."</td><td>";
 			if(stristr($colt[$k],"enum") == true OR stristr($colt[$k],"set") == true) {//enum
@@ -1361,43 +1367,24 @@ case "23": //table edit row
 	}
 break;
 
-case "24": //table delete row
-	$ed->check(array(1,2,3),array('redir'=>'21'));
+case "23": //table delete row
+	$ed->check(array(1,2,3),array('redir'=>'20'));
 	$db= $ed->sg[1];
 	$tb= $ed->sg[2];
 	$nu= $ed->sg[3];
 	$id= base64_decode($ed->sg[4]);
 	$q_delro = $ed->con->query("DELETE FROM {$tb} WHERE {$nu} LIKE '".$id."' LIMIT 1");
-	if($q_delro->last()) $ed->redir("21/$db/".$tb,array('ok'=>"Successfully deleted"));
-	else $ed->redir("21/$db/$tb",array('err'=>"Delete row failed"));
+	if($q_delro->last()) $ed->redir("20/$db/".$tb,array('ok'=>"Successfully deleted"));
+	else $ed->redir("20/$db/$tb",array('err'=>"Delete row failed"));
 break;
 
-case "25": //blob download
-	$ed->check(array(1,2,3),array('redir'=>'21'));
-	$db= $ed->sg[1];
-	$tb= $ed->sg[2];
-	$nu= $ed->sg[3];
-	$id= base64_decode($ed->sg[4]);
-	$ph= $ed->sg[5];
-	$q_ph = $ed->con->query("SELECT {$ph} FROM {$tb} WHERE {$nu} LIKE '".$id."' LIMIT 1")->fetch();
-	$len= strlen($q_ph[0]);
-	if($len >= 2 && $q_ph[0][0] == chr(0xff) && $q_ph[0][1] == chr(0xd8)) {$tp= 'image/jpeg';$xt='.jpg';}
-	elseif($len >= 3 && substr($q_ph[0], 0, 3) == 'GIF') {$tp= 'image/gif';$xt='.gif';}
-	elseif($len >= 4 && substr($q_ph[0], 0, 4) == "\x89PNG") {$tp= 'image/png';$xt='.png';}
-	else {$tp= 'application/octet-stream';$xt='.bin';}
-	header("Content-type: ".$tp);
-	header("Content-Length: ".$len);
-	header("Content-Disposition: attachment; filename=".$tb."-data".$xt);
-	die($q_ph[0]);
-break;
-
-case "26": //table empty
+case "24": //table empty
 	$ed->check(array(1,2));
 	$ed->con->query("TRUNCATE TABLE ".$ed->sg[2]);
-	$ed->redir("21/".$ed->sg[1]."/".$ed->sg[2],array('ok'=>"Table is empty"));
+	$ed->redir("20/".$ed->sg[1]."/".$ed->sg[2],array('ok'=>"Table is empty"));
 break;
 
-case "27": //table drop
+case "25": //table drop
 	$ed->check(array(1,2));
 	$db= $ed->sg[1];
 	$tb= $ed->sg[2];
@@ -1426,10 +1413,23 @@ case "27": //table drop
 	$ed->redir("5/".$db,array('ok'=>"Successfully dropped"));
 break;
 
-case "28": //optimize table
+case "26": //optimize, analyze, check, repair
 	$ed->check(array(1,2));
-	$ed->con->query("OPTIMIZE TABLE ".$ed->sg[2]);
-	$ed->redir("5/".$ed->sg[1],array('ok'=>"Successfully optimized"));
+	$db= $ed->sg[1];
+	$tb= $ed->sg[2];
+	$op= $ed->sg[3];
+	$ops= array('optimize','analyze','check','repair');
+	if(!empty($op) && in_array($op, $ops)) {
+	$q_op= $ed->con->query($op." TABLE ".$tb);
+	
+	if($op == 'check' || $op == 'repair') {
+	$r_op= $q_op->fetch();
+	if($r_op[3]=='OK') $ed->redir("10/$db/$tb",array('ok'=>"Successfully {$op}ed"));
+	else $ed->redir("10/$db/$tb",array('err'=>$r_op[3]));
+	}
+	
+	$ed->redir("10/$db/$tb",array('ok'=>"Successfully {$op}d"));
+	} else $ed->redir("10/$db/$tb",array('err'=>"Action failed"));
 break;
 
 case "30"://import
@@ -1439,8 +1439,7 @@ case "30"://import
 	$out="<div class='box'>";
 	if($ed->post()) {
 		$e='';
-		$rgex =
-"~^\xEF\xBB\xBF|DELIMITER.*?[^ ]|(\#|--).*|([\$].*[^\$])|(?-m)\(([^)]*\)*(\".*\")*('.*'))(*SKIP)(*F)|(?s)(BEGIN.*?END)(*SKIP)(*F)|(?<=;)(?![ ]*$)~im";
+		$rgex ="~^\xEF\xBB\xBF|DELIMITER.*?[^ ]|(\#|--).*|(\/\*).*(\*\/)|([\$].*[^\$])|(?-m)\(([^)]*\)*(\".*\")*('.*'))(*SKIP)(*F)|(?s)(BEGIN.*?END)(*SKIP)(*F)|(?<=;)(?![ ]*$)~im";
 		if($ed->post('qtxt','!e')) {//in textarea
 			$e= preg_split($rgex, $ed->post('qtxt','',1), -1, PREG_SPLIT_NO_EMPTY);
 		} elseif($ed->post('send','i') && $ed->post('send') == "ja") {//from file
@@ -1841,6 +1840,25 @@ case "32": //export
 	}
 break;
 
+case "33": //blob download
+	$ed->check(array(1,2,3),array('redir'=>'20'));
+	$db= $ed->sg[1];
+	$tb= $ed->sg[2];
+	$nu= $ed->sg[3];
+	$id= base64_decode($ed->sg[4]);
+	$ph= $ed->sg[5];
+	$q_ph = $ed->con->query("SELECT {$ph} FROM {$tb} WHERE {$nu} LIKE '".$id."' LIMIT 1")->fetch();
+	$len= strlen($q_ph[0]);
+	if($len >= 2 && $q_ph[0][0] == chr(0xff) && $q_ph[0][1] == chr(0xd8)) {$tp= 'image/jpeg';$xt='.jpg';}
+	elseif($len >= 3 && substr($q_ph[0], 0, 3) == 'GIF') {$tp= 'image/gif';$xt='.gif';}
+	elseif($len >= 4 && substr($q_ph[0], 0, 4) == "\x89PNG") {$tp= 'image/png';$xt='.png';}
+	else {$tp= 'application/octet-stream';$xt='.bin';}
+	header("Content-type: ".$tp);
+	header("Content-Length: ".$len);
+	header("Content-Disposition: attachment; filename=".$tb."-data".$xt);
+	die($q_ph[0]);
+break;
+
 case "40": //view
 	$ed->check(array(1));
 	$db= $ed->sg[1];
@@ -2150,7 +2168,7 @@ case "52": //users
 	$q_usr = $ed->con->query("SELECT User, Host FROM mysql.user");
 	foreach($q_usr->fetch(1) as $r_usr) {
 	$bg=($bg==1)?2:1;
-	echo "<tr class='r c$bg'><td class='pro'>".$r_usr[0]."</td><td class='pro'>".$r_usr[1]."</td><td><a".$del." href='{$ed->path}55/".$r_usr[0]."/".base64_encode($r_usr[1])."'>Drop</a> | <a href='{$ed->path}54/".$r_usr[0]."/".base64_encode($r_usr[1])."'>Edit</a></td></tr>";
+	echo "<tr class='r c$bg'><td class='pro'>".$r_usr[0]."</td><td class='pro'>".$r_usr[1]."</td><td><a class='del' href='{$ed->path}55/".$r_usr[0]."/".base64_encode($r_usr[1])."'>Drop</a> | <a href='{$ed->path}54/".$r_usr[0]."/".base64_encode($r_usr[1])."'>Edit</a></td></tr>";
 	}
 	echo "</table>";
 break;
