@@ -2,14 +2,15 @@
 error_reporting(E_ALL);
 if(version_compare(PHP_VERSION, '5.3.0', '<')) die('Require PHP 5.3 or higher');
 if(!extension_loaded('mysqli') && !extension_loaded('pdo_mysql')) die('Install mysqli or pdo_mysql extension!');
+session_name('SQL');
 session_start();
 $bg='';
 $step=15;
-$version="3.1";
+$version="3.2";
 $bbs= array('False','True');
 
 class DBT {
-	public static $contype= array('mysqli','pdo_mysql');
+	public static $sqltype= array('mysqli','pdo_mysql');
 	private $_cnx, $_query, $_fetch = array(), $_num_col;
 	private static $instance = NULL;
 	public static function factory($host,$user,$pwd,$db='') {
@@ -22,7 +23,7 @@ class DBT {
 		return self::$instance;
 	}
 	public function __construct($host,$user,$pwd,$db) {
-		if($_SESSION['contype'] == self::$contype[0]) {
+		if($_SESSION['sqltype'] == self::$sqltype[0]) {
 			mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 			$this->_cnx = new mysqli($host,$user,$pwd,$db);
 			mysqli_report(MYSQLI_REPORT_OFF);
@@ -37,7 +38,7 @@ class DBT {
 	}
 	public function query($sql) {
 		try{
-			if($_SESSION['contype'] == self::$contype[0]) {
+			if($_SESSION['sqltype'] == self::$sqltype[0]) {
 			mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 			$this->_query = $this->_cnx->query($sql);
 			mysqli_report(MYSQLI_REPORT_OFF);
@@ -50,7 +51,7 @@ class DBT {
 		}
 	}
 	public function begin() {
-		if($_SESSION['contype'] == self::$contype[0]) {
+		if($_SESSION['sqltype'] == self::$sqltype[0]) {
 		$this->_cnx->autocommit(FALSE);
 		if(version_compare(PHP_VERSION, '5.5.0', '<')) return $this->query("START TRANSACTION");
 		else return $this->_cnx->begin_transaction();
@@ -62,7 +63,7 @@ class DBT {
 		return $this->_cnx->commit();
 	}
 	public function last() {
-		if($_SESSION['contype'] == self::$contype[0]) {
+		if($_SESSION['sqltype'] == self::$sqltype[0]) {
 		return $this->_cnx->affected_rows;
 		} else {
 		return $this->_query->rowCount();
@@ -70,7 +71,7 @@ class DBT {
 	}
 	public function fetch($mode=0) {
 	$res= array();
-	if($_SESSION['contype'] == self::$contype[0]) {
+	if($_SESSION['sqltype'] == self::$sqltype[0]) {
 		if($mode == 1) {
 			while($row = $this->_query->fetch_row()) {
 			$res[] = $row;
@@ -103,7 +104,7 @@ class DBT {
 	}
 	}
 	public function num_row() {
-		if($_SESSION['contype'] == self::$contype[0]) {
+		if($_SESSION['sqltype'] == self::$sqltype[0]) {
 		$_num_row = $this->_query->num_rows;
 		} else {
 		$_num_row = $this->_query->rowCount();
@@ -111,7 +112,7 @@ class DBT {
 		return $_num_row;
 	}
 	public function num_col() {
-		if($_SESSION['contype'] == self::$contype[0]) {
+		if($_SESSION['sqltype'] == self::$sqltype[0]) {
 		$this->_num_col = $this->_query->field_count;
 		} else {
 		$this->_num_col = $this->_query->columnCount();
@@ -175,13 +176,13 @@ class ED {
 		++$f;
 		}
 		$str= "<div class='l2'><a href='{$this->path}'>List DBs</a> | <a href='{$this->path}31/$db'>Export</a> | <a href='{$this->path}5/$db'>List Tables</a>".
-		($tb==""?"</div>":" || <a href='{$this->path}10/$db/$tb'>Structure</a> | <a href='{$this->path}20/$db/$tb'>Browse</a> | <a href='{$this->path}21/$db/$tb'>Insert</a> | <a href='{$this->path}24/$db/$tb'>Empty</a> | <a class='del' href='{$this->path}25/$db/$tb'>Drop</a> | <a href='{$this->path}26/$db/$tb/analyze'>Analyze</a> | <a href='{$this->path}26/$db/$tb/optimize'>Optimize</a> | <a href='{$this->path}26/$db/$tb/check'>Check</a> | <a href='{$this->path}26/$db/$tb/repair'>Repair</a></div>").
+		($tb==""?"</div>":" || <a href='{$this->path}10/$db/$tb'>Structure</a> | <a href='{$this->path}20/$db/$tb'>Browse</a> | <a href='{$this->path}21/$db/$tb'>Insert</a> | <a href='{$this->path}24/$db/$tb'>Empty</a> | <a class='del' href='{$this->path}25/$db/$tb'>Drop</a></div>").
 		"<div class='l3'>DB: <b>$db</b>".($tb==""?"":" || Table: <b>$tb</b>").(count($sp) >1 ?" || ".$sp[0].": <b>".$sp[1]."</b>":"")."</div><div class='scroll'>";
 		if($left==1) $str .= "<table><tr><td class='c1 left'>
 		<table><tr><td class='th'>Query</td></tr><tr><td>".$this->form("30/$db")."<textarea name='qtxt'></textarea><br/><button type='submit'>Do</button></form></td></tr>".(!in_array($db,$this->deny)?"
 		<tr><td class='th'>Import sql, csv, gz, zip</td></tr>
 		<tr><td>".$this->form("30/$db",1)."<input type='file' name='importfile' />
-		<input type='hidden' name='send' value='ja' /><br/><button type='submit'>Do</button></form></td></tr>
+		<input type='hidden' name='send' value='ja' /><br/><button type='submit'>Upload (<".ini_get("upload_max_filesize")."B)</button></form></td></tr>
 		<tr><td class='th'>Create Table</td></tr>
 		<tr><td>".$this->form("7/$db")."Table Name<br/><input type='text' name='ctab' /><br/>
 		Number of fields<br/><select name='nrf'>".$nrf_op."</select><br/><button type='submit'>Create</button></form></td></tr>
@@ -456,11 +457,13 @@ input[type=checkbox],input[type=radio]{position: relative;vertical-align: middle
 input[type=text],select {min-width:98px !important}
 optgroup option {padding-left:8px}
 .bb {font: 18px/12px Arial}
+.rgh {float:right;padding:3px 0}
 </style>
 <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js" type="text/javascript"></script>
 <script type="text/javascript">
 $(document).ready(function(){
-$("#dbname").focus();
+$("#host").focus();
+$("noscript").remove();
 '.((empty($_SESSION['ok']) && empty($_SESSION['err'])) ? '':'$("body").fadeIn("slow").prepend("'.
 (!empty($_SESSION['ok']) ? '<div class=\"msg ok\">'.$_SESSION['ok'].'<\/div>':'').
 (!empty($_SESSION['err']) ? '<div class=\"msg err\">'.$_SESSION['err'].'<\/div>':'').'");
@@ -472,6 +475,10 @@ var but=$(this);
 $("body").fadeIn("slow").prepend("<div class=\"msg\"><div class=\"ok\">Yes<\/div><div class=\"err\">No<\/div><\/div>");
 $(".msg .ok").click(function(){window.location = but.attr("href");});
 $(".msg .err").click(function(){$(".msg").remove();});
+$(document).keyup(function(e){
+if(e.which==89 || e.which==13 || e.which==32) window.location=but.attr("href");
+if(e.which==27 || e.which==78) $(".msg").remove();
+});
 });
 $(".msg").dblclick(function(){$(this).hide()});
 if($("#one:checked").val()=="on"){$("#every,#evend").hide();}else{$("#every,#evend").show();}
@@ -556,7 +563,8 @@ if(opt[0].checked == false) opt[i].checked=false;
 opt[i].parentElement.style.display=(opt[0].checked ? "block":"none");
 }}
 </script>
-</head><body><div class="l1"><b><a href="https://github.com/edmondsql/edmyadmin">EdMyAdmin '.$version.'</a></b>'.(isset($ed->sg[0]) && $ed->sg[0]==50 ? "": '<div class="lgn"><a href="'.$ed->path.'60">Info</a> | <a href="'.$ed->path.'52">Users</a> | <a href="'.$ed->path.'51">Logout ['.(isset($_SESSION['user']) ? $_SESSION['user']:"").']</a>&nbsp;</div>').'</div>';
+</head><body><noscript><h1 class="msg err">Please, activate javascript in browser!</h1></noscript>
+<div class="l1"><b><a href="https://github.com/edmondsql/edmyadmin">EdMyAdmin '.$version.'</a></b>'.(isset($ed->sg[0]) && $ed->sg[0]==50 ? "": '<div class="lgn"><a href="'.$ed->path.'60">Info</a> | <a href="'.$ed->path.'52">Users</a> | <a href="'.$ed->path.'51">Logout ['.(isset($_SESSION['user']) ? $_SESSION['user']:"").']</a>&nbsp;</div>').'</div>';
 $stru= "<table class='a1'><tr><th colspan=".(isset($ed->sg[0]) && $ed->sg[0]==11?9:8).">TABLE STRUCTURE</th></tr><tr><th class='pro'>FIELD</th><th class='pro'>TYPE</th><th class='pro'>VALUE</th><th class='pro'>ATTRIBUTES</th><th class='pro'>NULL</th><th class='pro'>DEFAULT</th><th class='pro'>COLLATION</th><th class='pro'>AUTO <input type='radio' name='ex[]'/></th>".(isset($ed->sg[0]) && $ed->sg[0]==11?"<th class='pro'>POSITION</th>":"")."</tr>";
 $inttype= array(''=>'&nbsp;','UNSIGNED'=>'unsigned','ZEROFILL'=>'zerofill','UNSIGNED ZEROFILL'=>'unsigned zerofill');
 $prvs= array('SELECT','INSERT','UPDATE','DELETE','CREATE','DROP','REFERENCES','INDEX','ALTER','CREATE USER','SHOW VIEW','CREATE VIEW','CREATE ROUTINE','ALTER ROUTINE','TRIGGER','EVENT','CREATE TEMPORARY TABLES','LOCK TABLES','FILE','EXECUTE','RELOAD','SHUTDOWN','PROCESS','SHOW DATABASES','SUPER','REPLICATION SLAVE','REPLICATION CLIENT');
@@ -952,7 +960,8 @@ case "10": //table structure
 		++$h;
 	}
 	echo "</tbody><tr><td class='div' colspan=8>
-	<button type='submit' name='primary'>Primary</button> <button type='submit' name='index'>Index</button> <button type='submit' name='unique'>Unique</button> <button type='submit' name='fulltext'>Fulltext</button></td></tr></table></form>
+	<button type='submit' name='primary'>Primary</button> <button type='submit' name='index'>Index</button> <button type='submit' name='unique'>Unique</button> <button type='submit' name='fulltext'>Fulltext</button>
+	<div class='rgh'><a href='{$ed->path}26/$db/$tb/analyze'>Analyze</a> <a href='{$ed->path}26/$db/$tb/optimize'>Optimize</a> <a href='{$ed->path}26/$db/$tb/check'>Check</a> <a href='{$ed->path}26/$db/$tb/repair'>Repair</a></div></td></tr></table></form>
 	<table class='a mrg'><tr><th colspan=4>TABLE INDEX</th></tr><tr><th class='pro'>KEY NAME</th><th class='pro'>FIELD</th><th class='pro'>TYPE</th><th class='pro'>ACTIONS</th></tr>";
 	$q_idx= $ed->con->query("SHOW KEYS FROM ".$tb);
 	if($q_idx->num_row()) {
@@ -1230,7 +1239,7 @@ case "21": //table insert
 		$colt[]= $r_brw['Type'];
 	}
 	
-	if($ed->post('save','i')) {
+	if($ed->post('save','i') || $ed->post('save2','i')) {
 		$q_res= $ed->con->query("SELECT * FROM ".$tb);
 		$nrcol= $q_res->num_col();
 		$qr1="INSERT INTO $tb (";
@@ -1261,8 +1270,10 @@ case "21": //table insert
 		$qr2=substr($qr2,0,-1).") ";
 		$qr4=substr($qr4,0,-1).")";
 		$q_rins = $ed->con->query($qr1.$qr2.$qr3.$qr4);
-		if($q_rins) $ed->redir("20/{$db}/".$tb,array('ok'=>"Successfully inserted"));
-		else $ed->redir("20/{$db}/".$tb,array('err'=>"Insert failed"));
+		if($ed->post('save2','i')) $rr=21;
+		else $rr=20;
+		if($q_rins) $ed->redir("$rr/$db/$tb",array('ok'=>"Successfully inserted"));
+		else $ed->redir("$rr/$db/$tb",array('err'=>"Insert failed"));
 	} else {
 		echo $head.$ed->menu($db, $tb, 1);
 		echo $ed->form("21/$db/$tb",1)."<table class='a'><caption>Insert Row</caption>";
@@ -1291,7 +1302,7 @@ case "21": //table insert
 			}
 			++$j;
 		}
-		echo "<tr><td class='c1' colspan=2><button type='submit' name='save'>Save</button></td></tr>
+		echo "<tr><td class='c1'><button type='submit' name='save'>Save</button></td><td class='c1'><button type='submit' name='save2'>Save & Insert Next</button></td></tr>
 		</table></form></td></tr></table>";
 	}
 break;
@@ -1436,10 +1447,12 @@ case "30"://import
 	$ed->check(array(1));
 	$db= $ed->sg[1];
 	$ed->con->query("SET NAMES utf8");
-	$out="<div class='box'>";
+	$out="";
+	$q=0;
+	set_time_limit(0);
 	if($ed->post()) {
 		$e='';
-		$rgex ="~^\xEF\xBB\xBF|DELIMITER.*?[^ ]|(\#|--).*|(\/\*).*(\*\/)|([\$].*[^\$])|(?-m)\(([^)]*\)*(\".*\")*('.*'))(*SKIP)(*F)|(?s)(BEGIN.*?END)(*SKIP)(*F)|(?<=;)(?![ ]*$)~im";
+		$rgex ="~^\xEF\xBB\xBF|DELIMITER.*?[^ ]|(\#|--).*|(\/\*).*(\*\/;*)|([\$].*[^\$])|(?-m)\(([^)]*\)*(\"*.*\"*)*('*.*'*))(*SKIP)(*F)|(?s)(BEGIN.*?END)(*SKIP)(*F)|(?<=;)(?![ ]*$)~im";
 		if($ed->post('qtxt','!e')) {//in textarea
 			$e= preg_split($rgex, $ed->post('qtxt','',1), -1, PREG_SPLIT_NO_EMPTY);
 		} elseif($ed->post('send','i') && $ed->post('send') == "ja") {//from file
@@ -1518,13 +1531,14 @@ case "30"://import
 					$op= array('insert','update','delete');
 					$p_qry= strtolower(substr($qry,0,6));
 					if(in_array($p_qry, $op) && $exc) $exc= $exc->last();
-					$out .= "<p>".($exc ? "<b>OK!</b> $qry" : "<b>FAILED!</b> $qry")."</p>";
+					if($exc) ++$q;
+					else $out .= "<p><b>FAILED!</b> $qry</p>";
 				}
 			}
 			$ed->con->commit();
 		}
 	}
-	echo $head.$ed->menu($db).$out."</div>";
+	echo $head.$ed->menu($db)."<div class='box'><p>Successfully executed: <b>".$q." quer".($q>1?'ies':'y')."</b></p>".$out."</div>";
 break;
 
 case "31": //export form
@@ -2140,15 +2154,15 @@ case "50": //login
 		$_SESSION['user']= $ed->post('username');
 		$_SESSION['host']= $ed->post('lhost');
 		$_SESSION['dbname']= $ed->post('dbname');
-		$_SESSION['contype']= $ed->post('contype');
+		$_SESSION['sqltype']= $ed->post('sqltype');
 		$_SESSION['token']= base64_encode(mcrypt_encrypt(MCRYPT_RIJNDAEL_128, md5($ed->salt.$_SERVER['HTTP_USER_AGENT']), $ed->post('lhost')."*#*".$ed->post('password'), MCRYPT_MODE_ECB, $ed->iv));
 		$ed->redir();
 	}
 	session_unset();
 	session_destroy();
-	echo $head."<div class='scroll'>".$ed->form("50")."<table class='a1'><caption>LOGIN</caption><tr><td>Host<br/><input type='text' name='lhost' value='localhost' /></td></tr><tr><td>DB<br/><input type='text' id='dbname' name='dbname' value='test' /></td></tr>
-	<tr><td>Connect with<br/><select name='contype'>";
-	foreach(DBT::$contype as $cotyp) {
+	echo $head."<div class='scroll'>".$ed->form("50")."<table class='a1'><caption>LOGIN</caption><tr><td>Host<br/><input type='text' id='host' name='lhost' value='localhost' /></td></tr><tr><td>DB<br/><input type='text' name='dbname' value='test' /></td></tr>
+	<tr><td>Connect with<br/><select name='sqltype'>";
+	foreach(DBT::$sqltype as $cotyp) {
 	if(extension_loaded($cotyp)) echo "<option value='".$cotyp."'>".$cotyp."</option>";
 	}
 	echo "</select></td></tr>
@@ -2362,8 +2376,12 @@ break;
 
 case "60": //info
 	$ed->check();
+	$ver= @file_get_contents("https://raw.githubusercontent.com/edmondsql/edmondsql.github.io/master/sql.txt");
+	if($ver === FALSE) $ver='(offline)';
+	else $ver="<a href='https://github.com/edmondsql/edmyadmin/archive/".$ver.".zip'>".$ver."</a>";
 	echo $head."<div class='l2'><a href='{$ed->path}'>List DBs</a></div><div class='scroll'>
 	<table class='a1' style='word-break:break-all'><tr><th>VARIABLE</th><th>VALUE</th></tr>";
+	echo "<tr class='r c$bg'><td class='pro'>Latest version</td><td class='pro'>".$ver."</td></tr>";
 	$q_var = $ed->con->query("SHOW VARIABLES")->fetch(1);
 	foreach($q_var as $r_var) {
 	$bg=($bg==1)?2:1;
@@ -2375,5 +2393,4 @@ break;
 unset($_POST);
 unset($_SESSION["ok"]);
 unset($_SESSION["err"]);
-echo '</div><div class="l1" style="text-align:center"><a href="http://edmondsql.github.io">edmondsql</a></div></body></html>';
-?>
+?></div><div class="l1" style="text-align:center"><a href="http://edmondsql.github.io">edmondsql</a></div></body></html>
