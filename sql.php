@@ -6,7 +6,7 @@ session_name('SQL');
 session_start();
 $bg='';
 $step=15;
-$version="3.2";
+$version="3.3";
 $bbs= array('False','True');
 
 class DBT {
@@ -175,9 +175,10 @@ class ED {
 		$nrf_op.= "<option value='$f'>$f</option>";
 		++$f;
 		}
+		$srch=((!empty($_SESSION['_sqlsearch_'.$db.'_'.$tb]) && $this->sg[0]==20) ? " [<a href='{$this->path}24/$db/$tb/reset'>reset search</a>]":"");
 		$str= "<div class='l2'><a href='{$this->path}'>List DBs</a> | <a href='{$this->path}31/$db'>Export</a> | <a href='{$this->path}5/$db'>List Tables</a>".
-		($tb==""?"</div>":" || <a href='{$this->path}10/$db/$tb'>Structure</a> | <a href='{$this->path}20/$db/$tb'>Browse</a> | <a href='{$this->path}21/$db/$tb'>Insert</a> | <a href='{$this->path}24/$db/$tb'>Empty</a> | <a class='del' href='{$this->path}25/$db/$tb'>Drop</a></div>").
-		"<div class='l3'>DB: <b>$db</b>".($tb==""?"":" || Table: <b>$tb</b>").(count($sp) >1 ?" || ".$sp[0].": <b>".$sp[1]."</b>":"")."</div><div class='scroll'>";
+		($tb==""?"</div>":" || <a href='{$this->path}10/$db/$tb'>Structure</a> | <a href='{$this->path}20/$db/$tb'>Browse</a> | <a href='{$this->path}21/$db/$tb'>Insert</a> | <a href='{$this->path}24/$db/$tb'>Search</a> | <a href='{$this->path}25/$db/$tb'>Empty</a> | <a class='del' href='{$this->path}26/$db/$tb'>Drop</a></div>").
+		"<div class='l3'>DB: <b>$db</b>".($tb==""?"":" || Table: <b>$tb</b>".$srch).(count($sp) >1 ?" || ".$sp[0].": <b>".$sp[1]."</b>":"")."</div><div class='scroll'>";
 		if($left==1) $str .= "<table><tr><td class='c1 left'>
 		<table><tr><td class='th'>Query</td></tr><tr><td>".$this->form("30/$db")."<textarea name='qtxt'></textarea><br/><button type='submit'>Do</button></form></td></tr>".(!in_array($db,$this->deny)?"
 		<tr><td class='th'>Import sql, csv, gz, zip</td></tr>
@@ -422,6 +423,7 @@ $head= '<!DOCTYPE html><html><head>
 <!--[if IE]><meta http-equiv="X-UA-Compatible" content="IE=edge" /><![endif]-->
 <style type="text/css">
 * {margin:0;padding:0;color:#333;font-size: 12px;font-family:Arial}
+html, textarea {overflow:auto}
 a {color:#842;text-decoration:none}
 a:hover {text-decoration:underline}
 a,a:active,a:hover {outline: 0}
@@ -434,7 +436,7 @@ table {border-collapse: collapse}
 .c2 {background:#fff}
 td, th {padding:4px;vertical-align:top}
 .th {border-top:1px solid #555;font-weight:bold}
-.scroll {overflow-x:auto}
+.scroll {overflow:auto;overflow-y:hidden;-ms-overflow-y:hidden;white-space:nowrap;position:relative}
 td.pro,th.pro {border: 1px dotted #842}
 .l1,.l2,l3,.wi {width:100%}
 input[type=text],input[type=password],input[type=file],textarea,button,select {width:100%;padding:2px 0;border:1px solid #bbb;outline:none;
@@ -450,14 +452,14 @@ input[type=checkbox],input[type=radio]{position: relative;vertical-align: middle
 .move,.bb, .msg {cursor:pointer;cursor:hand}
 .lgn, .msg{position:absolute;top:0;right:0}
 .msg {z-index:1}
-.ok, .err {display:inline-block;padding:8px;font-weight:bold;font-size:13px}
+.ok, .err {display:inline-block;padding:8px;font-weight:bold;font-size:13px;*display:inline;zoom:1}
 .ok {background:#EFE;color:#080;border-bottom:2px solid #080}
 .err {background:#FEE;color:#f00;border-bottom:2px solid #f00}
 .left *, input[type=password] {width:196px;position: relative;z-index:1}
 input[type=text],select {min-width:98px !important}
 optgroup option {padding-left:8px}
 .bb {font: 18px/12px Arial}
-.rgh {float:right;padding:3px 0}
+.rgh {float:right;*clear:left;padding:3px 0}
 </style>
 <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js" type="text/javascript"></script>
 <script type="text/javascript">
@@ -706,7 +708,7 @@ case "5": //Show Tables
 			$dro="49{$_vl}/view";
 		} else {
 			$lnk="10".$_vl;
-			$dro="25".$_vl;
+			$dro="26".$_vl;
 		}
 		if($r_cm['Engine'] || $r_cm['Comment']=='VIEW') {
 		$q_rows = $ed->con->query("SELECT COUNT(*) FROM ".$tables[$ofset])->fetch();
@@ -815,7 +817,7 @@ case "7": //Create table
 			echo "<tr><td class='div' colspan=8>Engine <select name='engs'><option value=''>&nbsp;</option>";
 			$q_eng= $ed->con->query("SELECT ENGINE FROM information_schema.ENGINES WHERE ENGINE IS NOT NULL AND SUPPORT<>'NO'")->fetch(1);
 			foreach($q_eng as $r_eng) {
-				echo "<option value=".$r_eng[0].">".$r_eng[0]."</option>";
+				echo "<option value='".$r_eng[0]."'>".$r_eng[0]."</option>";
 			}
 			echo "</select> Table Comment: <input type='text' maxlength='60' size='72' name='tcomm' /></td></tr>
 			<tr><td colspan=8><button type='submit' name='crtb'>Create Table</button></td></tr></table></form>";
@@ -960,8 +962,8 @@ case "10": //table structure
 		++$h;
 	}
 	echo "</tbody><tr><td class='div' colspan=8>
-	<button type='submit' name='primary'>Primary</button> <button type='submit' name='index'>Index</button> <button type='submit' name='unique'>Unique</button> <button type='submit' name='fulltext'>Fulltext</button>
-	<div class='rgh'><a href='{$ed->path}26/$db/$tb/analyze'>Analyze</a> <a href='{$ed->path}26/$db/$tb/optimize'>Optimize</a> <a href='{$ed->path}26/$db/$tb/check'>Check</a> <a href='{$ed->path}26/$db/$tb/repair'>Repair</a></div></td></tr></table></form>
+	<div class='rgh'><a href='{$ed->path}27/$db/$tb/analyze'>Analyze</a> <a href='{$ed->path}27/$db/$tb/optimize'>Optimize</a> <a href='{$ed->path}27/$db/$tb/check'>Check</a> <a href='{$ed->path}27/$db/$tb/repair'>Repair</a></div>
+	<button type='submit' name='primary'>Primary</button> <button type='submit' name='index'>Index</button> <button type='submit' name='unique'>Unique</button> <button type='submit' name='fulltext'>Fulltext</button></td></tr></table></form>
 	<table class='a mrg'><tr><th colspan=4>TABLE INDEX</th></tr><tr><th class='pro'>KEY NAME</th><th class='pro'>FIELD</th><th class='pro'>TYPE</th><th class='pro'>ACTIONS</th></tr>";
 	$q_idx= $ed->con->query("SHOW KEYS FROM ".$tb);
 	if($q_idx->num_row()) {
@@ -989,7 +991,7 @@ case "10": //table structure
 	echo "</table><table class='a c1 mrg'><tr><td>Rename Table<br/>".$ed->form("9/$db/$tb")."<input type='text' name='rtab' /><br/><button type='submit'>Rename</button></form><br/>Copy Table<br/>".$ed->form("9/$db/$tb")."<select name='copytab'>";
 	$q_ldb = $ed->con->query("SHOW DATABASES");
 	foreach($q_ldb->fetch(1) as $r_ldb) {
-		echo "<option value=".$r_ldb[0].">".$r_ldb[0]."</option>";
+		echo "<option value='".$r_ldb[0]."'".($r_ldb[0]==$db?" selected":"").">".$r_ldb[0]."</option>";
 	}
 	echo "</select><br/><button type='submit'>Copy</button></form><br/>";
 	$q_cll= $ed->con->query("SHOW TABLE STATUS FROM {$db} like '{$tb}'");
@@ -997,17 +999,14 @@ case "10": //table structure
 	$q_cl = $ed->con->query("SHOW COLLATION");
 	echo "Change Table Collation<br/>".$ed->form("9/$db/$tb")."<select name='cll'><option value=''>&nbsp;</option>";
 	foreach($q_cl->fetch(1) as $r_cl) {
-		if($r_cl[0] == $r_cll[0]['Collation']) {
-		echo "<option value='".$r_cl[0]."' selected='selected'>".$r_cl[0]."</option>";
-		} else {
-		echo "<option value='".$r_cl[0]."'>".$r_cl[0]."</option>";
-		}
+		echo "<option value='".$r_cl[0]."'".($r_cl[0] == $r_cll[0]['Collation']?" selected":"").">".$r_cl[0]."</option>";
 	}
 	echo "</select><br/><button type='submit'>Change</button></form><br/>
 	Change Table Engine<br/>".$ed->form("9/$db/$tb")."<select name='engs'>";
+	$q_def= $ed->con->query("SELECT ENGINE FROM information_schema.TABLES WHERE `TABLE_SCHEMA`='$db' AND `TABLE_NAME`='$tb'")->fetch();
 	$q_eng= $ed->con->query("SELECT ENGINE FROM information_schema.ENGINES WHERE ENGINE IS NOT NULL AND SUPPORT<>'NO'")->fetch(1);
 	foreach($q_eng as $r_eng) {
-		echo "<option value=".$r_eng[0].">".$r_eng[0]."</option>";
+		echo "<option value='".$r_eng[0]."'".($q_def[0]==$r_eng[0]?" selected":"").">".$r_eng[0]."</option>";
 	}
 	echo "</select><br/><button type='submit'>Change</button></form>
 	</td></tr></table></td></tr></table>";
@@ -1129,11 +1128,11 @@ case "12": //structure change
 	foreach($inttype as $b=>$b2) echo "<option value='$b'".($b==$big ? " selected":"").">".$b2."</option>";
 	echo "</select></td><td><select name='nc'>";
 	$cc = array('NOT NULL','NULL');
-	foreach ($cc as $c) echo("<option value='$c' ".(($r_fe[3]=="YES" && $c=="NULL")?"selected":"").">$c</option>");
+	foreach ($cc as $c) echo("<option value='$c'".(($r_fe[3]=="YES" && $c=="NULL")?" selected":"").">$c</option>");
 	echo "</select></td><td><input type='text' name='de' value='".$r_fe[5]."' /></td><td><select name='clls'><option value=''>&nbsp;</option>";
 	$q_colls = $ed->con->query("SHOW COLLATION");
 	foreach($q_colls->fetch(1) as $r_cl) {
-		echo "<option value='".$r_cl[0]."'".($r_fe[2]==$r_cl[0] ? " selected":"").">".$r_cl[0]."</option>";
+		echo "<option value='".$r_cl[0]."'".($r_fe[2]==$r_cl[0] ?" selected":"").">".$r_cl[0]."</option>";
 	}
 	echo "</select></td><td><input type='radio' name='ex[]' value='1' ".($r_fe[6]=="auto_increment" ? "checked":"")." /></td>
 	</tr><tr><td colspan=9><button type='submit'>Change field</button></td></tr></table></form>";
@@ -1164,8 +1163,9 @@ case "20": //table browse
 	$db= $ed->sg[1];
 	$tb= $ed->sg[2];
 	$ed->con->query("SET NAMES utf8");
+	$where=(!empty($_SESSION['_sqlsearch_'.$db.'_'.$tb])?" WHERE ".$_SESSION['_sqlsearch_'.$db.'_'.$tb] : "");
 	//paginate
-	$q_resul= $ed->con->query("SELECT COUNT(*) FROM ".$tb)->fetch();
+	$q_resul= $ed->con->query("SELECT COUNT(*) FROM ".$tb.$where)->fetch();
 	$totalr= $q_resul[0];
 	$totalpg= ceil($totalr/$step);
 	if(empty($ed->sg[3])) {
@@ -1176,7 +1176,7 @@ case "20": //table browse
 	}
 
 	$q_vic = $ed->con->query("SHOW TABLE STATUS FROM $db like '".$tb."'")->fetch();
-	echo $head.$ed->menu($db, ($q_vic[17]!='VIEW' ? $tb:''), 1);//17-comment
+	echo $head.$ed->menu($db, ($q_vic[17]=='VIEW'?'':$tb), 1,($q_vic[17]=='VIEW'?array('view',$tb):''));//17-comment
 	echo "<table class='a'><tr>";
 	if($q_vic[17]!='VIEW'){
 	echo "<th colspan=2>ACTIONS</th>";
@@ -1194,7 +1194,7 @@ case "20": //table browse
 	echo "</tr>";
 	
 	$offset = ($pg - 1) * $step;
-	$q_res= $ed->con->query("SELECT * FROM $tb LIMIT $offset, $step");
+	$q_res= $ed->con->query("SELECT * FROM {$tb}{$where} LIMIT $offset, $step");
 	
 	foreach($q_res->fetch(1) as $r_rw) {
 		$bg=($bg==1)?2:1;
@@ -1389,13 +1389,65 @@ case "23": //table delete row
 	else $ed->redir("20/$db/$tb",array('err'=>"Delete row failed"));
 break;
 
-case "24": //table empty
+case "24": //search
+	$ed->check(array(1,2));
+	$db= $ed->sg[1];
+	$tb= $ed->sg[2];
+	unset($_SESSION['_sqlsearch_'.$db.'_'.$tb]);
+	if(!empty($ed->sg[3]) && $ed->sg[3]=='reset') {
+	$ed->redir("20/$db/$tb",array('ok'=>"Reset search"));
+	}
+	$q_se= $ed->con->query("SHOW COLUMNS FROM ".$tb)->fetch(2);
+	$cond1=array('=','<','>','<=','>=','!=','LIKE','NOT LIKE','REGEXP','NOT REGEXP');
+	$cond2=array('BETWEEN','NOT BETWEEN');
+	$cond3=array('IN','NOT IN');
+	$cond4=array('IS NULL','IS NOT NULL');
+	$cond= array_merge($cond1,$cond2,$cond3,$cond4);
+	
+	if($ed->post('search','i')) {
+	$search_cond=array();
+	foreach($q_se as $r_se) {
+		if($ed->post($r_se['Field'],'!e') || in_array($ed->post('cond__'.$r_se['Field']),$cond4)) {
+		$fd= $r_se['Field'];
+		$cd= $ed->post('cond__'.$fd);
+		$po= $ed->post($fd);
+		if(in_array($cd,$cond2)) {
+		$sl= preg_split("/[,]+/", $po);
+		$sl2= (!empty($sl[1])?$sl[1]:$sl[0]);
+		$search_cond[]= $fd." ".$cd." '".$sl[0]."' AND '".$sl2."'";
+		}
+		elseif(in_array($cd,$cond3)) $search_cond[]= $fd." ".$cd." ('".$po."')";
+		elseif(in_array($cd,$cond4)) $search_cond[]= $fd." ".$cd;
+		else $search_cond[]= $fd." ".html_entity_decode($ed->post('cond__'.$fd))." '".$po."'";
+		}
+	}
+	$se_str = implode(" AND ", $search_cond).($ed->post('order_field','!e')?" ORDER BY ".$ed->post('order_field')." ".$ed->post('order_ord')." ":"");
+	$_SESSION['_sqlsearch_'.$db.'_'.$tb]= $se_str;
+	$ed->redir("20/$db/$tb");
+	}
+	
+	echo $head.$ed->menu($db,$tb,1);
+	echo $ed->form("24/$db/$tb")."<table class='a'><caption>Search</caption>";
+	$conds="";
+	foreach($cond as $cnd) $conds .= "<option value='".$cnd."'>".$cnd."</option>";
+	$fields="<option value=''>&nbsp;</option>";
+	foreach($q_se as $r_se) {
+	$fl=$r_se['Field'];
+	$fields .= "<option value='$fl'>".$fl."</option>";
+	echo "<tr><td>".$fl."</td><td><select name='cond__".$fl."'>".$conds."</select></td><td><input type='text' name='".$fl."'/></td></tr>";
+	}
+	echo "<tr class='c1'><td>ORDER</td><td><select name='order_field'>".$fields."</select></td><td><select name='order_ord'><option value='ASC'>ASC</option><option value='DESC'>DESC</option></select></td></tr>
+	<tr><td class='c1' colspan='3'><button type='submit' name='search'>Search</button></td></tr></table></form>
+	</td></tr></table></div>";
+break;
+
+case "25": //table empty
 	$ed->check(array(1,2));
 	$ed->con->query("TRUNCATE TABLE ".$ed->sg[2]);
 	$ed->redir("20/".$ed->sg[1]."/".$ed->sg[2],array('ok'=>"Table is empty"));
 break;
 
-case "25": //table drop
+case "26": //table drop
 	$ed->check(array(1,2));
 	$db= $ed->sg[1];
 	$tb= $ed->sg[2];
@@ -1424,7 +1476,7 @@ case "25": //table drop
 	$ed->redir("5/".$db,array('ok'=>"Successfully dropped"));
 break;
 
-case "26": //optimize, analyze, check, repair
+case "27": //optimize, analyze, check, repair
 	$ed->check(array(1,2));
 	$db= $ed->sg[1];
 	$tb= $ed->sg[2];
@@ -1452,7 +1504,7 @@ case "30"://import
 	set_time_limit(0);
 	if($ed->post()) {
 		$e='';
-		$rgex ="~^\xEF\xBB\xBF|DELIMITER.*?[^ ]|(\#|--).*|(\/\*).*(\*\/;*)|([\$].*[^\$])|(?-m)\(([^)]*\)*(\"*.*\"*)*('*.*'*))(*SKIP)(*F)|(?s)(BEGIN.*?END)(*SKIP)(*F)|(?<=;)(?![ ]*$)~im";
+		$rgex ="~^\xEF\xBB\xBF|DELIMITER.*?[^ ]|(\#|--).*|(\/\*).*(\*\/;*)|([\$].*[^\$])|(?-m)\(([^)]*\)*(\"*.*\")*('*.*'))(*SKIP)(*F)|(?s)(BEGIN.*?END)(*SKIP)(*F)|(?<=;)(?![ ]*$)~im";
 		if($ed->post('qtxt','!e')) {//in textarea
 			$e= preg_split($rgex, $ed->post('qtxt','',1), -1, PREG_SPLIT_NO_EMPTY);
 		} elseif($ed->post('send','i') && $ed->post('send') == "ja") {//from file
