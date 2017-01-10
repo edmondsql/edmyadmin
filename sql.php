@@ -6,7 +6,7 @@ session_name('SQL');
 session_start();
 $bg='';
 $step=20;
-$version="3.4";
+$version="3.4.1";
 $bbs= array('False','True');
 $jquery= (file_exists('jquery.js')?"/jquery.js":"http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js");
 class DBT {
@@ -171,7 +171,7 @@ class ED {
 	public function menu($db='',$tb='',$left='',$sp=array()) {
 		$srch=((!empty($_SESSION['_sqlsearch_'.$db.'_'.$tb]) && $this->sg[0]==20) ? " [<a href='{$this->path}24/$db/$tb/reset'>reset search</a>]":"");
 		$str='';
-		if($db==1 || $db!='') $str .="<div class='l2'><ul><li><a href='{$this->path}'>DBs</a></li>";
+		if($db==1 || $db!='') $str .="<div class='l2'><ul><li><a href='{$this->path}'>Databases</a></li>";
 		if($db!='' && $db!=1) $str .= "<li><a href='{$this->path}31/$db'>Export</a></li><li><a href='{$this->path}5/$db'>Tables</a></li>";
 		
 		if($tb!="") $str .="<li class='divider'>---</li><li><a href='{$this->path}10/$db/$tb'>Structure</a></li><li><a href='{$this->path}20/$db/$tb'>Browse</a></li><li><a href='{$this->path}21/$db/$tb'>Insert</a></li><li><a href='{$this->path}24/$db/$tb'>Search</a></li><li><a href='{$this->path}25/$db/$tb'>Empty</a></li><li><a class='del' href='{$this->path}26/$db/$tb'>Drop</a></li>";
@@ -438,7 +438,7 @@ html, textarea {overflow:auto}
 .active {font-weight:bold}
 ul {list-style:none}
 li {float:left}
-h3 {background:#cdf;border-top:1px solid #555;margin-top:2px;margin-bottom:3px}
+h3 {background:#cdf;border-top:1px solid #555;margin-top:1px;padding:1px 0}
 a {color:#842;text-decoration:none;background-color:transparent}
 a:hover {text-decoration:underline}
 a,a:active,a:hover {outline:0}
@@ -1089,20 +1089,20 @@ case "12": //structure change
 		if($q_tge->num_row()) {
 		foreach($q_tge->fetch(1) as $r_tge) {
 			if($r_tge[2] == $tb) {
-			$stt = preg_replace("/\b(".$fi_.")\b/i", $fi, $r_tge[3]);
+			$stt= preg_replace("/\b(".$fi_.")\b/i", $fi, $r_tge[3]);
 			$ed->con->query("DROP TRIGGER IF EXISTS ".$db.".".$r_tge[0]);
 			$ed->con->query("CREATE TRIGGER `".$r_tge[0]."` ".$r_tge[4]." ".$r_tge[1]." ON `".$r_tge[2]."` FOR EACH ROW ".$stt);
 			}
 		}
 		}
-		//replace field in routine
+		//replace field in procedure (function not depend by the table)
 		$q_pf = $ed->con->query("SELECT db,name,param_list,body FROM mysql.proc WHERE db='$db'");
 		if($q_pf->num_row()) {
 		foreach($q_pf->fetch(1) as $r_pf) {
 			if(strrpos($r_pf[3],$tb)==true) {
-			$plist = str_replace("`".$fi_."`", "`".$fi."`", $r_pf[2]);
-			$body = str_replace($fi_, $fi, $r_pf[3]);
-			$ed->con->query("UPDATE mysql.proc SET param_list='{$plist}', body='{$body}', body_utf8='{$body}' WHERE db='$db' AND name='".$r_pf[1]."'");
+			$plist= str_replace("`".$fi_."`", "`".$fi."`", $r_pf[2]);
+			$body = preg_replace("/\b".$fi_."\b/i", $fi, $r_pf[3]);
+			$ed->con->query("UPDATE mysql.proc SET `param_list`='{$plist}', `body`='{$body}', `body_utf8`='{$body}' WHERE `db`='$db' AND `name`='".$r_pf[1]."'");
 			}
 		}
 		}
@@ -1455,7 +1455,7 @@ case "26": //table drop
 		if(!$q) $ed->con->query("DROP VIEW ".$r_rw['TABLE_NAME']);
 	}
 	}
-	//drop procedure (function not depend by table)
+	//drop procedure (function not depend by the table)
 	$q_rp = $ed->con->query("SELECT name, body FROM mysql.proc WHERE `db`='$db' AND `type`='PROCEDURE'");
 	if($q_rp) {
 	foreach($q_rp->fetch(2) as $r_rp) {
@@ -1918,10 +1918,10 @@ case "40": //view
 			if($exi) $ed->redir("5/".$db,array('err'=>"This name exist"));
 			$vstat= $ed->post('uv2','',1);
 			$stat= $ed->con->query($vstat);
-			if($stat === false) $ed->redir("5/".$db,array('err'=>"Wrong statement"));
+			if(!$stat) $ed->redir("5/".$db,array('err'=>"Wrong statement"));
 			$v_cre= $ed->con->query("CREATE VIEW ".$tb." AS ".$vstat);
-			if($v_cre === false) $ed->redir("5/".$db,array('err'=>"Create view failed"));
-			else $ed->redir("5/".$db,array('ok'=>"Successfully created"));
+			if($v_cre) $ed->redir("5/".$db,array('ok'=>"Successfully created"));
+			else $ed->redir("5/".$db,array('err'=>"Create view failed"));
 		}
 		echo $head.$ed->menu($db,'',2);
 		echo $ed->form("40/$db");
@@ -1938,7 +1938,7 @@ case "40": //view
 			$vstat= $ed->post('uv2','',1);
 			$stat= $ed->con->query($vstat);
 			if(!$stat) $ed->redir("5/".$db,array('err'=>"Wrong statement"));
-			$ed->con->query("DROP EVENT ".$sp);
+			$ed->con->query("DROP VIEW IF EXISTS ".$sp);
 			$ed->con->query("CREATE VIEW ".$tb." AS ".$vstat);
 			$ed->redir("5/".$db,array('ok'=>"Successfully updated"));
 		}
@@ -1984,7 +1984,7 @@ case "41": //trigger
 			if(is_numeric(substr($utg1,0,1))) $ed->redir("5/".$db,array('err'=>"Not a valid name"));
 			$sess= $ed->con->query("SHOW CREATE ".$ty." {$db}.".$sp)->fetch();
 			$_SESSION['t_tmp']= $sess[2];
-			$ed->con->query("DROP {$ty} {$db}.".$sp);
+			$ed->con->query("DROP {$ty} IF EXISTS {$db}.".$sp);
 			$q_tgcrt= $ed->con->query("CREATE TRIGGER `".$utg1."` ".$utg2." ".$utg3." ON `".$utg4."` FOR EACH ROW ".$utg5);
 			if($q_tgcrt) {
 			unset($_SESSION["t_tmp"]);
