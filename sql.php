@@ -6,7 +6,7 @@ session_name('SQL');
 session_start();
 $bg='';
 $step=20;
-$version="3.6";
+$version="3.6.1";
 $bbs= array('False','True');
 $jquery= (file_exists('jquery.js')?"/jquery.js":"http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js");
 class DBT {
@@ -1224,7 +1224,7 @@ case "20": //table browse
 	}
 	echo "</tr>";
 	$offset = ($pg - 1) * $step;
-	$q_res= $ed->con->query("SELECT ".implode(",",$select)." FROM {$tb}{$where} LIMIT $offset, $step");
+	$q_res= $ed->con->query("SELECT `".implode("`,`",$select)."` FROM {$tb}{$where} LIMIT $offset, $step");
 	foreach($q_res->fetch(1) as $r_rw) {
 		$bg=($bg==1)?2:1;
 		$nu = $coln[0];
@@ -1306,8 +1306,7 @@ case "21": //table insert
 		if($q_rins) $ed->redir("$rr/$db/$tb",array('ok'=>"Successfully inserted"));
 		else $ed->redir("$rr/$db/$tb",array('err'=>"Insert failed"));
 	} else {
-		echo $head.$ed->menu($db, $tb, 1);
-		echo $ed->form("21/$db/$tb",1)."<table><caption>Insert Row</caption>";
+		echo $head.$ed->menu($db, $tb, 1).$ed->form("21/$db/$tb",1)."<table><caption>Insert Row</caption>";
 		$q_res= $ed->con->query("SELECT * FROM ".$tb);
 		$r_col= $q_res->num_col();
 		$j=0;
@@ -1388,8 +1387,7 @@ case "22": //table edit row
 		$q_rst = $ed->con->query("SELECT ".implode(",",$select)." FROM $tb WHERE $nu='{$id}'");
 		if($q_rst->num_row() < 1) $ed->redir("20/$db/".$tb,array('err'=>"Edit failed"));
 		$r_rx = $q_rst->fetch();
-		echo $head.$ed->menu($db, $tb, 1);
-		echo $ed->form("22/$db/$tb/$nu/".base64_encode($r_rx['0']),1)."<table><caption>Edit Row</caption>";
+		echo $head.$ed->menu($db, $tb, 1).$ed->form("22/$db/$tb/$nu/".base64_encode($r_rx['0']),1)."<table><caption>Edit Row</caption>";
 		for ($k=0;$k<$r_fnr;$k++) {
 			echo "<tr><td>".$coln[$k]."</td><td>";
 			if(stristr($colt[$k],"enum") == true OR stristr($colt[$k],"set") == true) {//enum
@@ -1469,8 +1467,7 @@ case "24": //search
 	$ed->redir("20/$db/$tb");
 	}
 
-	echo $head.$ed->menu($db,$tb,1);
-	echo $ed->form("24/$db/$tb")."<table><caption>Search</caption>";
+	echo $head.$ed->menu($db,$tb,1).$ed->form("24/$db/$tb")."<table><caption>Search</caption>";
 	$conds="";
 	foreach($cond as $cnd) $conds .= "<option value='".$cnd."'>".$cnd."</option>";
 	$fields="<option value=''>&nbsp;</option>";
@@ -1971,8 +1968,6 @@ case "32": //export
 		}
 		$fname= $db.".tar";
 		$sql= $sq.pack('a1024','');
-		} else {
-		$sql= $sql[$tbs[0].$ffext];
 		}
 		$sql = gzencode($sql, 9);
 		header('Content-Encoding: gzip');
@@ -2057,8 +2052,7 @@ case "40": //view
 			if($v_cre) $ed->redir("5/".$db,array('ok'=>"Successfully created"));
 			else $ed->redir("5/".$db,array('err'=>"Create view failed"));
 		}
-		echo $head.$ed->menu($db,'',2);
-		echo $ed->form("40/$db");
+		echo $head.$ed->menu($db,'',2).$ed->form("40/$db");
 		$b_lbl="Create";
 	} else {//edit
 		$ed->check(array(1,5));
@@ -2076,8 +2070,7 @@ case "40": //view
 			$ed->con->query("CREATE VIEW ".$tb." AS ".$vstat);
 			$ed->redir("5/".$db,array('ok'=>"Successfully updated"));
 		}
-		echo $head.$ed->menu($db,'',2,array($ty,$sp));
-		echo $ed->form("40/$db/$sp/$ty");
+		echo $head.$ed->menu($db,'',2,array($ty,$sp)).$ed->form("40/$db/$sp/$ty");
 		$b_lbl="Edit";
 	}
 	echo "<table><tr><th colspan='2'>{$b_lbl} View</th></tr>
@@ -2099,8 +2092,7 @@ case "41": //trigger
 		if($q_tgcrt) $ed->redir("5/".$db,array('ok'=>"Successfully created"));
 		else $ed->redir("5/".$db,array('err'=>"Create failed"));
 		}
-		echo $head.$ed->menu($db,'',2);
-		echo $ed->form("41/$db");
+		echo $head.$ed->menu($db,'',2).$ed->form("41/$db");
 		$t_lbl="Create";
 	} else {//edit
 		$ed->check(array(1,5));
@@ -2123,8 +2115,7 @@ case "41": //trigger
 			}
 		}
 		$r_tge= $ed->con->query("SELECT TRIGGER_NAME,EVENT_OBJECT_TABLE,ACTION_TIMING,EVENT_MANIPULATION,ACTION_STATEMENT FROM information_schema.TRIGGERS WHERE `TRIGGER_SCHEMA`='$db' AND `TRIGGER_NAME`='$sp'")->fetch();
-		echo $head.$ed->menu($db,'',2,array($ty,$sp));
-		echo $ed->form("41/$db/$sp/$ty");
+		echo $head.$ed->menu($db,'',2,array($ty,$sp)).$ed->form("41/$db/$sp/$ty");
 		$t_lbl="Edit";
 	}
 	$tgtb= array();//list tables
@@ -2161,8 +2152,7 @@ case "42": //routine
 			if($crea) $ed->redir("5/$db",array('ok'=>"Created routine"));
 			else $ed->redir("5/$db",array('err'=>"Create failed"));
 		}
-		echo $head.$ed->menu($db,'',2);
-		echo $ed->form("42/$db");
+		echo $head.$ed->menu($db,'',2).$ed->form("42/$db");
 		$t_lbl="Create";
 	} else {//edit
 		$ed->check(array(1,5));
@@ -2185,8 +2175,7 @@ case "42": //routine
 		preg_match('/^(\w+)'.$r_f1.'\s+'.$r_f2.'(.*)/', $r_rou[3], $retrn);
 		//param_list
 		$plist= preg_split("/\(.*?\)(*SKIP)(*F)|,/", $r_rou[2]);
-		echo $head.$ed->menu($db,'',2,array($ty,$sp));
-		echo $ed->form("42/$db/$sp/$ty");
+		echo $head.$ed->menu($db,'',2,array($ty,$sp)).$ed->form("42/$db/$sp/$ty");
 		$t_lbl="Edit";
 	}
 	if(empty($retrn)) $retrn= array(1=>'',2=>'',3=>'');
@@ -2263,8 +2252,7 @@ case "43": //event
 			if($q_evcrt) $ed->redir("5/".$db,array('ok'=>"Successfully created"));
 			else $ed->redir("5/".$db,array('err'=>"Create event failed"));
 		}
-		echo $head.$ed->menu($db,'',2);
-		echo $ed->form("43/$db");
+		echo $head.$ed->menu($db,'',2).$ed->form("43/$db");
 		$t_lbl="Create";
 	} else {//edit
 		$ed->check(array(1,5));
@@ -2283,8 +2271,7 @@ case "43": //event
 			$ed->redir("5/".$db,array('ok'=>"Updated event"));
 		}
 		$r_eve= $ed->con->query("SELECT EVENT_NAME,STARTS,ENDS,EVENT_TYPE,INTERVAL_VALUE,INTERVAL_FIELD,EXECUTE_AT,STATUS,EVENT_COMMENT,ON_COMPLETION,EVENT_DEFINITION FROM information_schema.EVENTS WHERE `EVENT_SCHEMA`='$db' AND `EVENT_NAME`='$sp'")->fetch();
-		echo $head.$ed->menu($db,'',2,array($ty,$sp));
-		echo $ed->form("43/$db/$sp/$ty");
+		echo $head.$ed->menu($db,'',2,array($ty,$sp)).$ed->form("43/$db/$sp/$ty");
 		$t_lbl="Edit";
 	}
 
