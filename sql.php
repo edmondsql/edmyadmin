@@ -6,7 +6,7 @@ session_name('SQL');
 session_start();
 $bg='';
 $step=20;
-$version="3.6.1";
+$version="3.6.2";
 $bbs= array('False','True');
 $jquery= (file_exists('jquery.js')?"/jquery.js":"http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js");
 class DBT {
@@ -1721,7 +1721,7 @@ case "32": //export
 					$trans = array("PRI" => "PRIMARY KEY","UNI"=>"UNIQUE KEY","MUL"=>"KEY");
 					$nul=($r_ex['Null']=='YES' ? "NULL" : "NOT NULL");
 					$def=($r_ex['Default']!='' ? " default '".$r_ex['Default']."'" : "");
-					$clls=(($r_ex['Collation']!='' && $r_ex['Collation']!='NULL') ? " COLLATE '".$r_ex['Collation']."'" : "");
+					$clls=(($r_ex['Collation']!='' && $r_ex['Collation']!='NULL' && $r_ex['Collation']!=$r_st[14]) ? " COLLATE '".$r_ex['Collation']."'" : "");
 					$xtr=($r_ex['Extra']!='' ? " ".$r_ex['Extra'] : "");
 					$sq.="\n\t`".$r_ex['Field']."` ".$r_ex['Type']." ".$nul.$clls.
 					$def.$xtr.",";
