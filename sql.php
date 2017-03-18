@@ -6,7 +6,7 @@ session_name('SQL');
 session_start();
 $bg='';
 $step=20;
-$version="3.6.2";
+$version="3.6.3";
 $bbs= array('False','True');
 $jquery= (file_exists('jquery.js')?"/jquery.js":"http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js");
 class DBT {
@@ -140,7 +140,7 @@ class ED {
 		$el= stripslashes($el);
 		}
 		if($cod==1) {
-		return trim(str_replace(array(">","<","\r\n","\r"), array("&gt;","&lt;","\n","\n"), $el));//quota
+		return trim(str_replace(array("\r\n","\r"), array("\n","\n"), $el));//quota
 		} else {
 		return trim(str_replace(array(">","<","\\","'",'"',"\r\n","\r"), array("&gt;","&lt;","\\\\","&#039;","&quot;","\n","\n"), $el));
 		}
@@ -506,7 +506,7 @@ textarea, .he {min-height:90px}
 .col1 textarea {position: relative;z-index:3}
 .col1 button {margin-bottom:1px}
 .col1 {vertical-align:top;padding-left:3px;padding-right:3px}
-.col1 {padding-bottom: 100%;margin-bottom: -100%}
+.col1 {padding-bottom: 1000%;margin-bottom: -1000%}
 .col1, .dw {width:180px}
 .col2 table {margin:3px 3px 0 3px}
 .col3 table, .dw {margin:3px auto}
@@ -1217,14 +1217,14 @@ case "20": //table browse
 	$colt= array();//type
 	$select= array();
 	foreach($q_bro->fetch(2) as $r_brw) {
-		$select[] = (stristr($r_brw['Type'],'bit')?"BIN(".$r_brw['Field']." + 0) AS ".$r_brw['Field']:$r_brw['Field']);
+		$select[] = (stristr($r_brw['Type'],'bit')?"BIN(".$r_brw['Field']." + 0) AS ".$r_brw['Field']:'`'.$r_brw['Field'].'`');
 		$coln[]= $r_brw['Field'];
 		$colt[]= $r_brw['Type'];
 		echo "<th>".$r_brw['Field']."</th>";
 	}
 	echo "</tr>";
 	$offset = ($pg - 1) * $step;
-	$q_res= $ed->con->query("SELECT `".implode("`,`",$select)."` FROM {$tb}{$where} LIMIT $offset, $step");
+	$q_res= $ed->con->query("SELECT ".implode(",",$select)." FROM {$tb}{$where} LIMIT $offset, $step");
 	foreach($q_res->fetch(1) as $r_rw) {
 		$bg=($bg==1)?2:1;
 		$nu = $coln[0];
@@ -1353,7 +1353,7 @@ case "22": //table edit row
 	$colu= array();//null
 	$select= array();
 	foreach($q_col->fetch(2) as $r_brw) {
-		$select[] = (stristr($r_brw['Type'],'bit')?"BIN(".$r_brw['Field']." + 0) AS ".$r_brw['Field']:$r_brw['Field']);
+		$select[] = (stristr($r_brw['Type'],'bit')?"BIN(".$r_brw['Field']." + 0) AS ".$r_brw['Field']:'`'.$r_brw['Field'].'`');
 		$coln[]= $r_brw['Field'];
 		$colt[]= $r_brw['Type'];
 		$colu[]= $r_brw['Null'];
@@ -1384,7 +1384,7 @@ case "22": //table edit row
 	} else {//edit form
 		$q_flds = $ed->con->query("SHOW COLUMNS FROM ".$tb);
 		$r_fnr = $q_flds->num_row();
-		$q_rst = $ed->con->query("SELECT ".implode(",",$select)." FROM $tb WHERE $nu='{$id}'");
+		$q_rst = $ed->con->query("SELECT ".implode(",",$select)." FROM `$tb` WHERE `$nu`='$id'");
 		if($q_rst->num_row() < 1) $ed->redir("20/$db/".$tb,array('err'=>"Edit failed"));
 		$r_rx = $q_rst->fetch();
 		echo $head.$ed->menu($db, $tb, 1).$ed->form("22/$db/$tb/$nu/".base64_encode($r_rx['0']),1)."<table><caption>Edit Row</caption>";
@@ -1425,7 +1425,7 @@ case "23": //table delete row
 	$tb= $ed->sg[2];
 	$nu= $ed->sg[3];
 	$id= base64_decode($ed->sg[4]);
-	$q_delro = $ed->con->query("DELETE FROM {$tb} WHERE {$nu} LIKE '".$id."' LIMIT 1");
+	$q_delro = $ed->con->query("DELETE FROM `$tb` WHERE `$nu`='$id' LIMIT 1");
 	if($q_delro->last()) $ed->redir("20/$db/".$tb,array('ok'=>"Successfully deleted"));
 	else $ed->redir("20/$db/$tb",array('err'=>"Delete row failed"));
 break;
