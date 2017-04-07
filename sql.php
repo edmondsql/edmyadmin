@@ -6,7 +6,7 @@ session_name('SQL');
 session_start();
 $bg='';
 $step=20;
-$version="3.6.3";
+$version="3.6.4";
 $bbs= array('False','True');
 $jquery= (file_exists('jquery.js')?"/jquery.js":"http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js");
 class DBT {
@@ -477,7 +477,7 @@ small {font-size:9px}
 .right, .link {float:right}
 .link {padding:3px 0}
 .pg * {padding:0 2px}
-.active {font-weight:bold}
+.active, caption {font-weight:bold}
 .l2 ul {list-style:none}
 .l2 li {float:left}
 h3 {background:#cdf;border-top:1px solid #555;margin-top:1px;padding:2px 0}
@@ -579,9 +579,9 @@ $(this).prop("id", "pty_" + (i + 1));
 });
 routine(cnt);
 }
-function routine(id){
 var ar1=["INT","TINYINT","SMALLINT","MEDIUMINT","BIGINT","DOUBLE","DECIMAL","FLOAT"];
 var ar2=["VARCHAR","CHAR","TEXT","TINYTEXT","MEDIUMTEXT","LONGTEXT"];
+function routine(id){
 //function returns
 var ej=$("#pty2"),ej1=$("#px1"),ej2=$("#px2");
 routin2();
@@ -622,7 +622,7 @@ opt[i].parentElement.style.display=(opt[0].checked ? "block":"none");
 </script>
 </head><body><noscript><h1 class="msg err">Please activate Javascript in your browser!</h1></noscript>
 <div class="l1"><div class="left"><b><a href="https://github.com/edmondsql/edmyadmin">EdMyAdmin '.$version.'</a></b></div>'.(isset($ed->sg[0]) && $ed->sg[0]==50 ? "": '<div class="right"><div class="left more"><span class="a">More <small>&#9660;</small></span><div><a href="'.$ed->path.'60">Info</a><a href="'.$ed->path.'60/var">Variables</a><a href="'.$ed->path.'60/status">Status</a><a href="'.$ed->path.'60/process">Processes</a></div></div><a href="'.$ed->path.'52">Users</a><a href="'.$ed->path.'51">Logout ['.(isset($_SESSION['user']) ? $_SESSION['user']:"").']</a></div>').'<br class="clear"/></div>';
-$stru= "<table><tr><th colspan='".(isset($ed->sg[0]) && $ed->sg[0]==11?9:8)."'>TABLE STRUCTURE</th></tr><tr><th class='dot'>FIELD</th><th class='dot'>TYPE</th><th class='dot'>VALUE</th><th class='dot'>ATTRIBUTES</th><th class='dot'>NULL</th><th class='dot'>DEFAULT</th><th class='dot'>COLLATION</th><th class='dot'>AUTO <input type='radio' name='ex[]'/></th>".(isset($ed->sg[0]) && $ed->sg[0]==11?"<th class='dot'>POSITION</th>":"")."</tr>";
+$stru= "<table><caption>TABLE STRUCTURE</caption><tr><th class='dot'>FIELD</th><th class='dot'>TYPE</th><th class='dot'>VALUE</th><th class='dot'>ATTRIBUTES</th><th class='dot'>NULL</th><th class='dot'>DEFAULT</th><th class='dot'>COLLATION</th><th class='dot'>AUTO <input type='radio' name='ex[]'/></th>".(isset($ed->sg[0]) && $ed->sg[0]==11?"<th class='dot'>POSITION</th>":"")."</tr>";
 $inttype= array(''=>'&nbsp;','UNSIGNED'=>'unsigned','ZEROFILL'=>'zerofill','UNSIGNED ZEROFILL'=>'unsigned zerofill');
 
 if(!isset($ed->sg[0])) $ed->sg[0]=0;
@@ -930,6 +930,7 @@ case "9":
 			}
 			//drop table
 			$ed->con->query("DROP TABLE ".$tb);
+			$ed->redir("5/$db",array('ok'=>"Successfully renamed"));
 		} else $ed->redir("5/$db",array('err'=>"Table already exist"));
 	}
 	if($ed->post('n1','!e') && $ed->post('n2','!e')) {//reorder
@@ -1709,21 +1710,21 @@ case "32": //export
 			$r_st= $ed->con->query("SHOW TABLE STATUS FROM {$db} like '{$tb}'")->fetch();
 			if(in_array('structure',$fopt)) {//structure
 				if(in_array('drop',$fopt)) {//check option drop
-					$sql .= "DROP TABLE IF EXISTS `$tb`;\n";
+					$sql .= "\nDROP TABLE IF EXISTS `$tb`;";
 				}
 				$q_ex= $ed->con->query("SHOW FULL FIELDS FROM ".$tb);
 				$ifnot='';
 				if(in_array('ifnot',$fopt)) {//check option if not exist
 					$ifnot .= "IF NOT EXISTS ";
 				}
-				$sq="CREATE TABLE ".$ifnot."`".$tb."` (";
+				$sq="\nCREATE TABLE ".$ifnot."`".$tb."` (";
 				foreach($q_ex->fetch(2) as $r_ex) {
 					$trans = array("PRI" => "PRIMARY KEY","UNI"=>"UNIQUE KEY","MUL"=>"KEY");
 					$nul=($r_ex['Null']=='YES' ? "NULL" : "NOT NULL");
 					$def=($r_ex['Default']!='' ? " default '".$r_ex['Default']."'" : "");
 					$clls=(($r_ex['Collation']!='' && $r_ex['Collation']!='NULL' && $r_ex['Collation']!=$r_st[14]) ? " COLLATE '".$r_ex['Collation']."'" : "");
 					$xtr=($r_ex['Extra']!='' ? " ".$r_ex['Extra'] : "");
-					$sq.="\n\t`".$r_ex['Field']."` ".$r_ex['Type']." ".$nul.$clls.
+					$sq.="\n `".$r_ex['Field']."` ".$r_ex['Type']." ".$nul.$clls.
 					$def.$xtr.",";
 				}
 				$idx1= array();$idx2= array();$idx3= array();$idx4= array();
@@ -1734,23 +1735,23 @@ case "32": //export
 				elseif($r_sidx['Non_unique']==1) $idx2[$r_sidx['Key_name']][]= $r_sidx['Column_name'];
 				elseif($r_sidx['Non_unique']==0) $idx3[$r_sidx['Key_name']][]= $r_sidx['Column_name'];
 				}
-				$sq.= (count($idx1) > 0 ? "\n\tPRIMARY KEY(`".implode("`,`",$idx1)."`),":"");
+				$sq.= (count($idx1) > 0 ? "\n PRIMARY KEY(`".implode("`,`",$idx1)."`),":"");
 				foreach($idx2 as $k2=>$q2) {
-				if(is_array($q2)) $sq.="\n\tKEY `".$k2."` (`".implode("`,`",$q2)."`),";
-				else $sq.="\n\tKEY `".$k2."` (`".$q2."`),";
+				if(is_array($q2)) $sq.="\n KEY `".$k2."` (`".implode("`,`",$q2)."`),";
+				else $sq.="\n KEY `".$k2."` (`".$q2."`),";
 				}
 				foreach($idx3 as $k3=>$q3) {
-				if(is_array($q3)) $sq.="\n\tUNIQUE KEY `".$k3."` (`".implode("`,`",$q3)."`),";
-				else $sq.="\n\tUNIQUE KEY `".$k3."` (`".$q3."`),";
+				if(is_array($q3)) $sq.="\n UNIQUE KEY `".$k3."` (`".implode("`,`",$q3)."`),";
+				else $sq.="\n UNIQUE KEY `".$k3."` (`".$q3."`),";
 				}
 				foreach($idx4 as $k4=>$q4) {
-				if(is_array($q4)) $sq.="\n\tFULLTEXT INDEX `".$k4."` (`".implode("`,`",$q4)."`),";
-				else $sq.="\n\tFULLTEXT INDEX `".$k4."` (`".$q4."`),";
+				if(is_array($q4)) $sq.="\n FULLTEXT INDEX `".$k4."` (`".implode("`,`",$q4)."`),";
+				else $sq.="\n FULLTEXT INDEX `".$k4."` (`".$q4."`),";
 				}
 				$sql.= substr($sq,0,-1)."\n)";
 				$co = ($r_st[17]=='' ? "":" COMMENT='".$r_st[17]."'");
 				$auto = (in_array('auto',$fopt) ? " AUTO_INCREMENT=".$r_st[10] : "");//check auto option
-				$sql.= ($r_st[17]!='VIEW' ? " ENGINE=".$r_st[1]." DEFAULT CHARSET=".strtok($r_st[14],'_').$co.$auto:"").";\n\n";
+				$sql.= ($r_st[17]!='VIEW' ? " ENGINE=".$r_st[1]." DEFAULT CHARSET=".strtok($r_st[14],'_').$co.$auto:"").";\n";
 			}//end structure
 
 			if(in_array('data',$fopt)) {//check option data
@@ -1760,6 +1761,7 @@ case "32": //export
 				$q_rx= $ed->con->query("SELECT * FROM ".$tb);
 				if($q_rx->num_row()) {
 					if($r_st[17] != 'VIEW') {
+					$sql.="\n";
 					foreach($q_rx->fetch(1) as $r_rx) {
 						$ins="INSERT INTO `".$tb."` VALUES (";
 						$inn="";
@@ -1782,7 +1784,7 @@ case "32": //export
 						$ins.=substr($inn,0,-2);
 						$sql.=$ins.");\n";
 					}
-					$sql.= "\n\n";
+					$sql.= "\n";
 					}
 				}
 			}//end option data
@@ -1793,12 +1795,12 @@ case "32": //export
 			$q_rw = $ed->con->query("SHOW CREATE VIEW ".$vw);
 			if($q_rw->num_row()) {
 			if(in_array('drop',$fopt)) {//check option drop
-			$sql .= "DROP VIEW IF EXISTS `$vw`;\n";
+			$sql .= "\nDROP VIEW IF EXISTS `$vw`;\n";
 			}
 			foreach($q_rw->fetch(1) as $r_rr) {
-			$sql .= $r_rr[1].";\n\r";
+			$sql .= $r_rr[1].";\n";
 			}
-			$sql .= "\n\r";
+			$sql .= "\n";
 			}
 		}
 		}
@@ -1806,12 +1808,13 @@ case "32": //export
 		if(in_array('trigger',$fopt)) {//check option trigger
 			$q_trg=$ed->con->query("SELECT TRIGGER_NAME,ACTION_TIMING,EVENT_MANIPULATION,EVENT_OBJECT_TABLE,ACTION_STATEMENT FROM information_schema.triggers WHERE TRIGGER_SCHEMA='".$db."'");
 			if($q_trg->num_row()) {
+			$sqs.="\n";
 			foreach($q_trg->fetch(1)as $r_row) {
 				if(in_array($r_row[3], $tbs)) {
 				if(in_array('drop',$fopt)) {//check option drop
 				$sqs .= "DROP TRIGGER IF EXISTS `".$r_row[0]."`;\n";
 				}
-				$sqs .= "CREATE TRIGGER `".$r_row[0]."` ".$r_row[1]." ".$r_row[2]." ON `".$r_row[3]."` FOR EACH ROW\n".$r_row[4]."$$\n\r";
+				$sqs .= "CREATE TRIGGER `".$r_row[0]."` ".$r_row[1]." ".$r_row[2]." ON `".$r_row[3]."` FOR EACH ROW\n".$r_row[4]."$$\n\n";
 				}
 			}
 			}
@@ -1819,13 +1822,14 @@ case "32": //export
 		if(in_array('procfunc',$fopt)) {//check option proc
 			$q_pr = $ed->con->query("SELECT ROUTINE_TYPE, ROUTINE_NAME FROM information_schema.routines WHERE ROUTINE_SCHEMA='".$db."'");
 			if($q_pr->num_row()) {
+			$sqs.="\n";
 			foreach($q_pr->fetch(1) as $r_px) {
 				if(in_array('drop',$fopt)) {//check option drop
 				$sqs .= "DROP ".$r_px[0]." IF EXISTS `".$r_px[1]."`;\n";
 				}
 				$q_rs = $ed->con->query("SHOW CREATE ".$r_px[0]." ".$r_px[1]);
 				foreach($q_rs->fetch(1) as $r_rs) {
-				$sqs .= $r_rs[2]."$$\n\r";
+				$sqs .= $r_rs[2]."$$\n\n";
 				}
 			}
 			}
@@ -1833,18 +1837,19 @@ case "32": //export
 		if(in_array('event',$fopt)) {//check option event
 			$q_eev= $ed->con->query("SELECT EVENT_NAME FROM information_schema.EVENTS WHERE `EVENT_SCHEMA`='$db'");
 			if($q_eev->num_row()) {
+			$sqs.="\n";
 			foreach($q_eev->fetch(1) as $r_eev) {
 				if(in_array('drop',$fopt)) {//check option drop
 				$sqs .= "DROP EVENT IF EXISTS `".$r_eev[0]."`;\n";
 				}
 				$q_rev = $ed->con->query("SHOW CREATE EVENT ".$r_eev[0])->fetch(1);
 				foreach($q_rev as $r_rev) {
-				$sqs .= $r_rev[3]."$$\n\r";
+				$sqs .= $r_rev[3]."$$\n\n";
 				}
 			}
 			}
 		}
-		$sql .= (trim($sqs)!=''?"DELIMITER $$\n\r".$sqs."DELIMITER ;\n\r":"");
+		$sql .= (trim($sqs)!=''?"\nDELIMITER $$\n".$sqs."DELIMITER ;\n":"");
 	} elseif($ffmt[0]=='csv1' || $ffmt[0]=='csv2') {//csv format
 		$tbs= array_merge($tbs, $vws);
 		$ffty= "text/csv"; $ffext= ".csv"; $fname= $db.$ffext;
