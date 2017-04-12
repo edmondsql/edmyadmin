@@ -6,7 +6,7 @@ session_name('SQL');
 session_start();
 $bg='';
 $step=20;
-$version="3.6.4";
+$version="3.6.5";
 $bbs= array('False','True');
 $jquery= (file_exists('jquery.js')?"/jquery.js":"http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js");
 class DBT {
@@ -749,9 +749,11 @@ case "5": //Show Tables
 			$lnk="10".$_vl;
 			$dro="26".$_vl;
 		}
+		$q_rows[0]=0;
 		if($r_cm['Engine'] || $r_cm['Comment']=='VIEW') {
-		$q_rows = $ed->con->query("SELECT COUNT(*) FROM ".$tables[$ofset])->fetch();
-		} else $q_rows=0;
+		$q_t = $ed->con->query("SELECT COUNT(*) FROM ".$tables[$ofset]);
+		if($q_t) $q_rows = $q_t->fetch();
+		}
 		echo "<tr class='r c$bg'><td>".$tables[$ofset]."</td><td>".$q_rows[0]."</td><td>".$r_cm['Engine']."</td><td>".$r_cm['Collation']."</td><td>".$r_cm['Comment']."</td><td><a href='".$ed->path.$lnk."'>Structure</a><a class='del' href='".$ed->path.$dro."'>Drop</a><a href='".$ed->path."20/$db/".$tables[$ofset]."'>Browse</a></td></tr>";
 		}
 		}
