@@ -6,7 +6,7 @@ session_name('SQL');
 session_start();
 $bg='';
 $step=20;
-$version="3.6.5";
+$version="3.6.6";
 $bbs= array('False','True');
 $jquery= (file_exists('jquery.js')?"/jquery.js":"http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js");
 class DBT {
@@ -489,7 +489,7 @@ table {border-collapse: collapse;border-spacing:0;border-bottom:1px solid #555}
 td, th {padding:4px;vertical-align:top}
 .dot {border: 1px dotted #842}
 input[type=checkbox],input[type=radio]{position: relative;vertical-align: middle;bottom: 1px}
-input[type=text],input[type=password],input[type=file],textarea,button,select {width:100%;padding:2px 0;border:1px solid #bbb;outline:none;-webkit-border-radius: 4px;-moz-border-radius: 4px;border-radius: 4px;-webkit-box-sizing: border-box;-moz-box-sizing: border-box;box-sizing: border-box}
+input[type=text],input[type=password],input[type=file],textarea,button,select {width:100%;padding:2px 0;border:1px solid #bbb;outline:none;-webkit-border-radius: 3px;-moz-border-radius: 3px;border-radius: 3px;-webkit-box-sizing: border-box;-moz-box-sizing: border-box;box-sizing: border-box}
 input[type=text],select {min-width:98px !important}
 select {padding:1px 0}
 optgroup option {padding-left:8px}
@@ -2527,12 +2527,9 @@ case "60": //info
 	$ed->check();
 	echo $head.$ed->menu(1,'',2)."<table>";
 	if(empty($ed->sg[1])) {
-		$v1= @file_get_contents("https://raw.githubusercontent.com/edmondsql/edmondsql.github.io/master/sql.txt");
-		if($v1 === FALSE) $v2='(offline)';
-		else $v2="<a href='https://github.com/edmondsql/edmyadmin/archive/".trim($v1).".zip'>{$v1}</a>";
 		$use=(extension_loaded('mysqli')?'mysqli':'pdo_mysql');
 		echo "<tr><th colspan='2'>INFO</th></tr>";
-		$q_var= array('Latest version'=>$v2,'Use extension'=>$use,'PHP'=>PHP_VERSION,'Software'=>$_SERVER['SERVER_SOFTWARE']);
+		$q_var= array('Use extension'=>$use,'PHP'=>PHP_VERSION,'Software'=>$_SERVER['SERVER_SOFTWARE']);
 		foreach($q_var as $r_k=>$r_var) {
 		$bg=($bg==1)?2:1;
 		echo "<tr class='r c$bg'><td class='dot'>$r_k</td><td class='dot'>$r_var</td></tr>";
