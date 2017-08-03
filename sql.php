@@ -6,7 +6,7 @@ session_name('SQL');
 session_start();
 $bg='';
 $step=20;
-$version="3.6.6";
+$version="3.6.7";
 $bbs= array('False','True');
 $jquery= (file_exists('jquery.js')?"/jquery.js":"http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js");
 class DBT {
@@ -1780,7 +1780,7 @@ case "32": //export
 							} elseif(is_numeric($r_rx[$e])){
 							$inn .= $r_rx[$e].", ";
 							} else {
-							$inn .= "'".$r_rx[$e]."', ";
+							$inn .= "'".addslashes($r_rx[$e])."', ";
 							}
 						}
 						$ins.=substr($inn,0,-2);
