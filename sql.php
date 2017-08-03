@@ -6,7 +6,7 @@ session_name('SQL');
 session_start();
 $bg='';
 $step=20;
-$version="3.6.7";
+$version="3.6.8";
 $bbs= array('False','True');
 $jquery= (file_exists('jquery.js')?"/jquery.js":"http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js");
 class DBT {
@@ -1250,7 +1250,7 @@ case "20": //table browse
 			} elseif(strlen($val) > 100) {
 				echo substr($val,0,100)."(...)";
 			} else {
-				echo $val;
+				echo stripslashes($val);
 			}
 			echo "</td>";
 		}
@@ -1414,7 +1414,7 @@ case "22": //table edit row
 			} elseif(stristr($colt[$k],"text") == true) {//text
 			echo "<textarea name='te{$k}'>".html_entity_decode($r_rx[$k])."</textarea>";
 			} else {
-			echo "<input type='text' name='te{$k}' value='".stripslashes($r_rx[$k])."' />";
+			echo "<input type='text' name='te{$k}' value='".stripslashes($ed->clean($r_rx[$k]))."' />";
 			}
 			echo "</td></tr>";
 		}
@@ -1780,7 +1780,7 @@ case "32": //export
 							} elseif(is_numeric($r_rx[$e])){
 							$inn .= $r_rx[$e].", ";
 							} else {
-							$inn .= "'".addslashes($r_rx[$e])."', ";
+							$inn .= "'".($r_rx[$e])."', ";
 							}
 						}
 						$ins.=substr($inn,0,-2);
