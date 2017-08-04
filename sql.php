@@ -6,7 +6,7 @@ session_name('SQL');
 session_start();
 $bg='';
 $step=20;
-$version="3.6.8";
+$version="3.6.9";
 $bbs= array('False','True');
 $jquery= (file_exists('jquery.js')?"/jquery.js":"http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js");
 class DBT {
@@ -1250,7 +1250,7 @@ case "20": //table browse
 			} elseif(strlen($val) > 100) {
 				echo substr($val,0,100)."(...)";
 			} else {
-				echo stripslashes($val);
+				echo $val;
 			}
 			echo "</td>";
 		}
@@ -1296,7 +1296,7 @@ case "21": //table insert
 				$blb = addslashes(file_get_contents($_FILES['r'.$n]['tmp_name']));
 				$qr4.= "'{$blb}',";
 				} else {
-				$qr4.= (($ed->post('r'.$n,'e') && $colu[$n]=='YES')? "NULL":"'".html_entity_decode($ed->post('r'.$n))."'").",";
+				$qr4.= (($ed->post('r'.$n,'e') && $colu[$n]=='YES')? "NULL":"'".stripslashes($ed->post('r'.$n))."'").",";
 				}
 			}
 			++$n;
@@ -1376,7 +1376,7 @@ case "22": //table edit row
 				preg_match("/\((.*)\)/", $colt[$p], $mat);
 				$qr2.= $coln[$p]."=b'".(($mat[1] > 1)?$ed->post("te".$p):$ed->post("te".$p,0))."',";
 			} else {
-				$qr2.= $coln[$p]."=".(($ed->post('te'.$p,'e') && $colu[$p]=='YES')? "NULL":"'".html_entity_decode($ed->post('te'.$p))."'").",";
+				$qr2.= $coln[$p]."=".(($ed->post('te'.$p,'e') && $colu[$p]=='YES')? "NULL":"'".stripslashes($ed->post('te'.$p))."'").",";
 			}
 		}
 		$qr2=substr($qr2,0,-1);
@@ -1414,7 +1414,7 @@ case "22": //table edit row
 			} elseif(stristr($colt[$k],"text") == true) {//text
 			echo "<textarea name='te{$k}'>".html_entity_decode($r_rx[$k])."</textarea>";
 			} else {
-			echo "<input type='text' name='te{$k}' value='".stripslashes($ed->clean($r_rx[$k]))."' />";
+			echo "<input type='text' name='te{$k}' value='".addslashes($r_rx[$k])."' />";
 			}
 			echo "</td></tr>";
 		}
@@ -1780,7 +1780,7 @@ case "32": //export
 							} elseif(is_numeric($r_rx[$e])){
 							$inn .= $r_rx[$e].", ";
 							} else {
-							$inn .= "'".($r_rx[$e])."', ";
+							$inn .= "'".addslashes($r_rx[$e])."', ";
 							}
 						}
 						$ins.=substr($inn,0,-2);
