@@ -6,7 +6,7 @@ session_name('SQL');
 session_start();
 $bg='';
 $step=20;
-$version="3.6.9";
+$version="3.6.10";
 $bbs= array('False','True');
 $jquery= (file_exists('jquery.js')?"/jquery.js":"http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js");
 class DBT {
@@ -1412,7 +1412,7 @@ case "22": //table edit row
 			} elseif(stristr($colt[$k],"blob") == true && !in_array($db,$ed->deny)) {//blob
 			echo "[blob] ".number_format((strlen($r_rx[$k])/1024),2)." KB<br/><input type='file' name='te{$k}'/>";
 			} elseif(stristr($colt[$k],"text") == true) {//text
-			echo "<textarea name='te{$k}'>".html_entity_decode($r_rx[$k])."</textarea>";
+			echo "<textarea name='te{$k}'>".addslashes($r_rx[$k])."</textarea>";
 			} else {
 			echo "<input type='text' name='te{$k}' value='".addslashes($r_rx[$k])."' />";
 			}
