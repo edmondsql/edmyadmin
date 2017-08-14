@@ -6,7 +6,7 @@ session_name('SQL');
 session_start();
 $bg='';
 $step=20;
-$version="3.6.10";
+$version="3.7";
 $bbs= array('False','True');
 $jquery= (file_exists('jquery.js')?"/jquery.js":"http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js");
 class DBT {
@@ -459,7 +459,7 @@ class ED {
 $ed= new ED;
 $head= '<!DOCTYPE html><html><head>
 <title>EdMyAdmin</title><meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-<!--[if IE]><meta http-equiv="X-UA-Compatible" content="IE=edge" /><![endif]-->
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
 <style type="text/css">
 * {margin:0;padding:0;font-size: 12px;color:#333;font-family:Arial}
 html {-ms-text-size-adjust:100%;-webkit-text-size-adjust:100%}
@@ -1230,11 +1230,10 @@ case "20": //table browse
 	$q_res= $ed->con->query("SELECT ".implode(",",$select)." FROM {$tb}{$where} LIMIT $offset, $step");
 	foreach($q_res->fetch(1) as $r_rw) {
 		$bg=($bg==1)?2:1;
-		$nu = $coln[0];
-		$rw0= base64_encode($r_rw[0]);
+		$nu = $coln[0]."/".base64_encode($r_rw[0]).((stristr($colt[1],"int") || stristr($colt[1],"varchar")) && stristr($colt[1],"blob") == false && !empty($coln[1]) && !empty($r_rw[1]) ? "/".$coln[1]."/".base64_encode($r_rw[1]):"");
 		echo "<tr class='r c$bg'>";
 		if($q_vic[17]!='VIEW'){
-		echo "<td><a href='".$ed->path."22/$db/$tb/$nu/$rw0'>Edit</a><a class='del' href='".$ed->path."23/$db/$tb/$nu/$rw0'>Delete</a></td>";
+		echo "<td><a href='".$ed->path."22/$db/$tb/$nu'>Edit</a><a class='del' href='".$ed->path."23/$db/$tb/$nu'>Delete</a></td>";
 		}
 		for($i=0;$i<$r_cl;$i++) {
 			$val= $ed->clean($r_rw[$i]);
@@ -1243,12 +1242,12 @@ case "20": //table browse
 				$le= strlen($r_rw[$i]);
 				echo "[blob] ";
 				if($le > 4) {
-				echo "<a href='".$ed->path."33/$db/$tb/$nu/$rw0/".$coln[$i]."'>".number_format(($le/1024),2)." KB</a>";
+				echo "<a href='".$ed->path."33/$db/$tb/$nu/".$coln[$i]."'>".number_format(($le/1024),2)." KB</a>";
 				} else {
 				echo number_format(($le/1024),2)." KB";
 				}
-			} elseif(strlen($val) > 100) {
-				echo substr($val,0,100)."(...)";
+			} elseif(strlen($val) > 80) {
+				echo substr($val,0,80)."[...]";
 			} else {
 				echo $val;
 			}
@@ -1348,8 +1347,8 @@ case "22": //table edit row
 	$ed->check(array(1,2,3),array('redir'=>'20'));
 	$db= $ed->sg[1];
 	$tb= $ed->sg[2];
-	$nu= $ed->sg[3];
-	$id= base64_decode($ed->sg[4]);
+	$nu= $ed->sg[3]; $id= base64_decode($ed->sg[4]);
+	$nu1= empty($ed->sg[5])?"":$ed->sg[5]; $id1= empty($ed->sg[6])?"":base64_decode($ed->sg[6]);
 	$q_col= $ed->con->query("SHOW COLUMNS FROM ".$tb);
 	$coln= array();//field
 	$colt= array();//type
@@ -1380,17 +1379,17 @@ case "22": //table edit row
 			}
 		}
 		$qr2=substr($qr2,0,-1);
-		$qr3=" WHERE $nu='$id' LIMIT 1";
+		$qr3=" WHERE `$nu`='".addslashes($id)."'".(!empty($nu1) && !empty($id1)?" AND `$nu1`='".addslashes($id1)."'":"")." LIMIT 1";
 		$q_upd = $ed->con->query($qr1.$qr2.$qr3);
 		if($q_upd) $ed->redir("20/{$db}/".$tb,array('ok'=>"Successfully updated"));
 		else $ed->redir("20/{$db}/".$tb,array('err'=>"Update failed"));
 	} else {//edit form
 		$q_flds = $ed->con->query("SHOW COLUMNS FROM ".$tb);
 		$r_fnr = $q_flds->num_row();
-		$q_rst = $ed->con->query("SELECT ".implode(",",$select)." FROM `$tb` WHERE `$nu`='$id'");
+		$q_rst = $ed->con->query("SELECT ".implode(",",$select)." FROM `$tb` WHERE `$nu`='".addslashes($id)."'".(stristr($colt[1],"blob") == false && !empty($nu1) && !empty($id1)?" AND `$nu1`='".addslashes($id1)."'":""));
 		if($q_rst->num_row() < 1) $ed->redir("20/$db/".$tb,array('err'=>"Edit failed"));
 		$r_rx = $q_rst->fetch();
-		echo $head.$ed->menu($db, $tb, 1).$ed->form("22/$db/$tb/$nu/".base64_encode($r_rx['0']),1)."<table><caption>Edit Row</caption>";
+		echo $head.$ed->menu($db, $tb, 1).$ed->form("22/$db/$tb/$nu/".base64_encode($r_rx['0']).(stristr($colt[1],"blob") == false && !empty($nu1) && !empty($id1)?"/$nu1/".base64_encode($r_rx['1']):""),1)."<table><caption>Edit Row</caption>";
 		for ($k=0;$k<$r_fnr;$k++) {
 			echo "<tr><td>".$coln[$k]."</td><td>";
 			if(stristr($colt[$k],"enum") == true OR stristr($colt[$k],"set") == true) {//enum
@@ -1418,7 +1417,7 @@ case "22": //table edit row
 			}
 			echo "</td></tr>";
 		}
-	echo "<tr class='c1'><td><a class='del link' href='".$ed->path."23/$db/$tb/$nu/".$ed->sg[4]."'>Delete</a></td><td><button type='submit' name='edit'>Update</button></td></tr></table></form>";
+	echo "<tr class='c1'><td><a class='del link' href='".$ed->path."23/$db/$tb/$nu/".$ed->sg[4].(!empty($nu1) && !empty($id1)?"/$nu1/".base64_encode($id1):"")."'>Delete</a></td><td><button type='submit' name='edit'>Update</button></td></tr></table></form>";
 	}
 break;
 
@@ -1428,7 +1427,7 @@ case "23": //table delete row
 	$tb= $ed->sg[2];
 	$nu= $ed->sg[3];
 	$id= base64_decode($ed->sg[4]);
-	$q_delro = $ed->con->query("DELETE FROM `$tb` WHERE `$nu`='$id' LIMIT 1");
+	$q_delro = $ed->con->query("DELETE FROM `$tb` WHERE `$nu`='".addslashes($id)."'".(!empty($ed->sg[5]) && !empty($ed->sg[6])?" AND `".$ed->sg[5]."`='".addslashes(base64_decode($ed->sg[6]))."'":"")." LIMIT 1");
 	if($q_delro->last()) $ed->redir("20/$db/".$tb,array('ok'=>"Successfully deleted"));
 	else $ed->redir("20/$db/$tb",array('err'=>"Delete row failed"));
 break;
@@ -1772,7 +1771,7 @@ case "32": //export
 							if(stristr($bi,"blob") == true) {
 								if(empty($r_rx[$e])) {
 								$inn .= "'', ";
-								} elseif(strpos($r_rx[$e], "\0")===true) {
+								} elseif(strpos($r_rx[$e], "\0")==true) {
 								$inn .= "0x".bin2hex($r_rx[$e]).", ";
 								} else {
 								$inn .= "'".addslashes($r_rx[$e])."', ";
@@ -2030,16 +2029,20 @@ case "33": //blob download
 	$tb= $ed->sg[2];
 	$nu= $ed->sg[3];
 	$id= base64_decode($ed->sg[4]);
-	$ph= $ed->sg[5];
-	$q_ph = $ed->con->query("SELECT {$ph} FROM {$tb} WHERE {$nu} LIKE '".$id."' LIMIT 1")->fetch();
+	if(empty($ed->sg[7])){
+	$ph= $ed->sg[5];$nu1="";
+	} else {
+	$ph= $ed->sg[7];$nu1=" AND `".$ed->sg[5]."`='".base64_decode($ed->sg[6])."'";
+	}
+	$q_ph = $ed->con->query("SELECT $ph FROM $tb WHERE `$nu`='$id'$nu1 LIMIT 1")->fetch();
 	$len= strlen($q_ph[0]);
 	if($len >= 2 && $q_ph[0][0] == chr(0xff) && $q_ph[0][1] == chr(0xd8)) {$tp= 'image/jpeg';$xt='.jpg';}
 	elseif($len >= 3 && substr($q_ph[0], 0, 3) == 'GIF') {$tp= 'image/gif';$xt='.gif';}
 	elseif($len >= 4 && substr($q_ph[0], 0, 4) == "\x89PNG") {$tp= 'image/png';$xt='.png';}
-	else {$tp= 'application/octet-stream';$xt='.bin';}
+	else {$tp= 'application/octet-stream';$xt='.bin';$q_ph[0]=addslashes($q_ph[0]);}
 	header("Content-type: ".$tp);
 	header("Content-Length: ".$len);
-	header("Content-Disposition: attachment; filename=".$tb."-data".$xt);
+	header("Content-Disposition: attachment; filename=".$tb."-blob".$xt);
 	die($q_ph[0]);
 break;
 
