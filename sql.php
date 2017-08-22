@@ -6,7 +6,7 @@ session_name('SQL');
 session_start();
 $bg='';
 $step=20;
-$version="3.7";
+$version="3.7.1";
 $bbs= array('False','True');
 $jquery= (file_exists('jquery.js')?"/jquery.js":"http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js");
 class DBT {
@@ -760,6 +760,7 @@ case "5": //Show Tables
 		++$ofset;
 	}
 	echo "</table>".$ed->pg_number($pg, $ttalpg);
+	}//end rows
 	//spp
 	$tsp ='';
 	$spps = array('procedure','function');
@@ -808,7 +809,6 @@ case "5": //Show Tables
 	echo "</table>";
 	}
 	}
-	}//end rows
 break;
 
 case "6": //Create table
@@ -1968,7 +1968,7 @@ case "32": //export
 			$ctxt .= str_repeat("\0", 511 - ($len + 511) % 512);
 			fwrite($tmpf, $ctxt);
 			fseek($tmpf, 0);
-			$fs = fstat($tmpf); 
+			$fs = fstat($tmpf);
 			$sq.= fread($tmpf, $fs['size']);
 			fclose($tmpf);
 		}
