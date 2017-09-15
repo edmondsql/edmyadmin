@@ -6,7 +6,7 @@ session_name('SQL');
 session_start();
 $bg=2;
 $step=20;
-$version="3.8";
+$version="3.8.1";
 $bbs= array('False','True');
 $jquery= (file_exists('jquery.js')?"/jquery.js":"http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js");
 class DBT {
@@ -112,7 +112,7 @@ class DBT {
 }
 class ED {
 	public $con, $path, $sg, $u_db, $fieldtype, $ver, $sqlda, $pg_lr=8, $salt="#a1b2c3#";
-	public $deny= array('mysql','information_schema','performance_schema', 'sys');
+	public $deny= array('mysql','information_schema','performance_schema','sys');
 	public function __construct() {
 	$pi= (isset($_SERVER['PATH_INFO']) ? $_SERVER['PATH_INFO'] : @getenv('PATH_INFO'));
 	$this->sg= preg_split('!/!', $pi,-1,PREG_SPLIT_NO_EMPTY);
@@ -210,9 +210,9 @@ class ED {
 		$x=0; $y=0;
 		$eStr="";
 		while($x < $count) {
-			$char = ord($str[$x]);
-			$keyS = is_numeric($salt[$y]) ? $salt[$y] : ord($salt[$y]);
-			$encS = $char + $keyS;
+			$char= ord($str[$x]);
+			$keyS= is_numeric($salt[$y]) ? $salt[$y] : ord($salt[$y]);
+			$encS= $char + $keyS;
 			$eStr .= chr($encS);
 			++$x;++$y;
 			if($y == $kount) $y=0;
@@ -228,9 +228,9 @@ class ED {
 		$x=0; $y=0;
 		$eStr="";
 		while($x < $count) {
-			$char = ord($str[$x]);
-			$keyS = is_numeric($salt[$y]) ? $salt[$y] : ord($salt[$y]);
-			$decS = $char - $keyS;
+			$char= ord($str[$x]);
+			$keyS= is_numeric($salt[$y]) ? $salt[$y] : ord($salt[$y]);
+			$decS= $char - $keyS;
 			$eStr .= chr($decS);
 			++$x;++$y;
 			if($y == $kount) $y=0;
@@ -369,20 +369,31 @@ class ED {
 		if(@is_file($fbody)) $fbody= file_get_contents($fbody);
 		$fbody= $this->utf($fbody);
 		$fbody= preg_replace('/^\xEF\xBB\xBF|^\xFE\xFF|^\xFF\xFE/','', $fbody);
-		$lines= array();
-		foreach(preg_split("/((\r?\n)|(\r\n?))/", $fbody) as $line) {
-		if(trim($line)!='') $lines[] = $line;
+		//delimiter
+		$delims= array(';'=> 0,','=> 0,"\t"=> 0);
+		foreach($delims as $dl => &$cnt) $cnt= count(str_getcsv($fbody, $dl));
+		$mark= array_search(max($delims), $delims);
+		//data
+		$data = explode("\n", str_replace(array("\r\n","\n\r","\r"),"\n", $fbody));
+		$row = null;
+		foreach($data as $item) {
+			$row .= $item;
+			if(trim($row) === '') {
+			$row = null;
+			continue;
+			} else if (substr_count($row,'"') % 2 !== 0) {
+			$row .= PHP_EOL;
+			continue;
+			}
+			$rows[] = str_getcsv($row,$mark,'"','"');
+			$row = null;
 		}
-		preg_match("/\"[\"]?+\"|[;,]/", $lines[0], $mark);
-		$i=1;
-		while($i < count($lines)) {
-			$e1='';
-			$li=array();
-			foreach(str_getcsv($lines[$i],$mark[0]) as $lin) $li[] = preg_replace("/^\"*|\"*$/u", "", $lin);
-			$e1.="INSERT INTO ".$fname."(".implode(',',str_getcsv($lines[0],$mark[0])).") VALUES(";
-			foreach($li as $l) $e1 .= (is_numeric($l)?$l:"'".$l."'").',';
-			$e[]= substr($e1,0,-1).");";
-			++$i;
+		foreach($rows as $k=>$rw) {
+		if($k>0) {
+		$e1= "INSERT INTO ".$fname."(".implode(',',$rows[0]).") VALUES(";
+		foreach($rw as $r) $e1 .= (is_numeric($r)?$r:"'".str_replace("'","''",$r)."'").',';
+		$e[]=substr($e1,0,-1).");";
+		}
 		}
 		if(empty($e)) $this->redir("5/".$this->sg[1],array('err'=>"Query failed"));
 		return $e;
@@ -1664,9 +1675,9 @@ case "30"://import
 	$out="";
 	$q=0;
 	set_time_limit(7200);
-	if($ed->post()) {//\([^)]*\)(*SKIP)(*F)|;
+	if($ed->post()) {
 		$e='';
-		$rgex ="~^\xEF\xBB\xBF|^\xFE\xFF|^\xFF\xFE|DELIMITER.*?[^ ]|(\#|--).*|(\/\*).*(\*\/;*)|([\$$|//].*[^\$$|//])|(?-m)\(([^)]*\)*(\"*.*\")*('*.*'))(*SKIP)(*F)|(?s)(BEGIN.*?END)(*SKIP)(*F)|(?<=;)(?![ ]*$)~im";
+		$rgex ="~^\xEF\xBB\xBF|^\xFE\xFF|^\xFF\xFE|DELIMITER.*?[^ ]|(\#|--).*|(\/\*).*(\*\/;*)|([\$$|//].*[^\$$|//])|((?is)(BEGIN.*?END)|\"[^\"]*\"|'[^']*')(*SKIP)(*F)|;~";
 		if($ed->post('qtxt','!e')) {//in textarea
 			$e= preg_split($rgex, $ed->post('qtxt'), -1, PREG_SPLIT_NO_EMPTY);
 		} elseif($ed->post('send','i') && $ed->post('send') == "ja") {//from file
