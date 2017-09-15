@@ -6,7 +6,7 @@ session_name('SQL');
 session_start();
 $bg=2;
 $step=20;
-$version="3.8.1";
+$version="3.8.2";
 $bbs= array('False','True');
 $jquery= (file_exists('jquery.js')?"/jquery.js":"http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js");
 class DBT {
@@ -370,7 +370,7 @@ class ED {
 		$fbody= $this->utf($fbody);
 		$fbody= preg_replace('/^\xEF\xBB\xBF|^\xFE\xFF|^\xFF\xFE/','', $fbody);
 		//delimiter
-		$delims= array(';'=> 0,','=> 0,"\t"=> 0);
+		$delims= array(';'=> 0,','=> 0);
 		foreach($delims as $dl => &$cnt) $cnt= count(str_getcsv($fbody, $dl));
 		$mark= array_search(max($delims), $delims);
 		//data
@@ -1677,7 +1677,7 @@ case "30"://import
 	set_time_limit(7200);
 	if($ed->post()) {
 		$e='';
-		$rgex ="~^\xEF\xBB\xBF|^\xFE\xFF|^\xFF\xFE|DELIMITER.*?[^ ]|(\#|--).*|(\/\*).*(\*\/;*)|([\$$|//].*[^\$$|//])|((?is)(BEGIN.*?END)|\"[^\"]*\"|'[^']*')(*SKIP)(*F)|;~";
+		$rgex ="~^\xEF\xBB\xBF|^\xFE\xFF|^\xFF\xFE|((?is)DELIMITER).*?[^ ]|(\#|--).*|(\/\*).*(\*\/;*)|([\$$|//].*[^\$$|//])|((?is)(BEGIN.*?END)|\"[^\"]*\"|'[^']*')(*SKIP)(*F)|;~";
 		if($ed->post('qtxt','!e')) {//in textarea
 			$e= preg_split($rgex, $ed->post('qtxt'), -1, PREG_SPLIT_NO_EMPTY);
 		} elseif($ed->post('send','i') && $ed->post('send') == "ja") {//from file
