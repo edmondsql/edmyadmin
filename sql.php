@@ -6,7 +6,7 @@ session_name('SQL');
 session_start();
 $bg=2;
 $step=20;
-$version="3.8.3";
+$version="3.9";
 $bbs= array('False','True');
 $jquery= (file_exists('jquery.js')?"/jquery.js":"http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js");
 class DBT {
@@ -253,7 +253,7 @@ class ED {
 			$p=array();
 			foreach($u_pr as $u_p) $p[] = $u_p[0];
 		}
-		
+
 		if((is_array($pr) && count(array_intersect($pr,$p))<1) || !in_array($pr,$p)) {
 		if($redir !== NULL) $this->redir($redir,$no);
 		return false;
@@ -602,8 +602,9 @@ textarea, .he {min-height:90px}
 .auto button, .auto input, .auto select {width:auto}
 .l1,.l2,.l3,.wi {width:100%}
 .move,.bb,.msg,.a {cursor:pointer}
-#tdbs,#privs,[class^=pa],[id^=px],.rou2 {display:none}
+[class^=pa],[id^=px],.rou2 {display:none}
 .bb * {font: 22px/18px Arial}
+.upr {list-style:none;overflow:auto;overflow-x:hidden;height:90px}
 </style>
 <script src="'.$jquery.'" type="text/javascript"></script>
 <script type="text/javascript">
@@ -644,8 +645,6 @@ row.insertAfter(row.next());obj1=row.prop("id");obj2=row.prev().prop("id");
 }
 $.ajax({type: "POST", url:"'.$ed->path.'9/'.(empty($ed->sg[1])?"":$ed->sg[1]).'/'.(empty($ed->sg[2])?"":$ed->sg[2]).'", data:"n1="+obj1+"&n2="+obj2, success:function(){location.reload();}});
 });
-if($("#seldb:checked").length == 1){$("#tdbs").fadeIn();}else{$("#tdbs").hide();}
-if($("#selpriv:checked").length == 1){$("#privs").fadeIn();}else{$("#privs").hide();}
 });//end
 function minus(el){//routine remove row
 var crr=$("[id^=\"rr_\"]").length;
@@ -704,9 +703,7 @@ for(var k=0;k<from;k++) opt[k].parentElement.style.display="block";
 for(var l=from;l<to;l++){
 if(opt[0].checked == false) opt[l].checked=false;
 opt[l].parentElement.style.display=(opt[0].checked ? "block":"none");
-}
-}
-}
+}}}
 </script>
 </head><body><noscript><h1 class="msg err">Please activate Javascript in your browser!</h1></noscript>
 <div class="l1"><div class="left"><b><a href="https://github.com/edmondsql/edmyadmin">EdMyAdmin '.$version.'</a></b></div>'.(isset($ed->sg[0]) && $ed->sg[0]==50 ? "": '<div class="right"><div class="left more"><span class="a">More <small>&#9660;</small></span><div><a href="'.$ed->path.'60">Info</a><a href="'.$ed->path.'60/var">Variables</a><a href="'.$ed->path.'60/status">Status</a><a href="'.$ed->path.'60/process">Processes</a></div></div><a href="'.$ed->path.'52">Users</a><a href="'.$ed->path.'51">Logout ['.(isset($_SESSION['user']) ? $_SESSION['user']:"").']</a></div>').'<br class="clear"/></div>';
@@ -1783,7 +1780,7 @@ case "31": //export form
 	$q_tables= $ed->con->query("SHOW TABLES FROM ".$db);
 	if($q_tables->num_row()) {
 	echo $head.$ed->menu($db,'',2).$ed->form("32/$db")."<div class='dw'><h3 class='l1'>Export</h3><div><h3>Select table(s)</h3>
-	<p><input type='checkbox' onclick='selectall(this,\"tables\")' /> (De)Select All</p>
+	<p><input type='checkbox' onclick='selectall(this,\"tables\")' /> All/None</p>
 	<select class='he' id='tables' name='tables[]' multiple='multiple'>";
 	foreach($q_tables->fetch(1) as $r_tts) {
 	echo "<option value='".$r_tts[0]."'>".$r_tts[0]."</option>";
@@ -2053,9 +2050,7 @@ case "32": //export
 	} elseif($ffmt[0]=='xml') {//xml format
 		$tbs= array_merge($tbs, $vws);
 		$ffty= "application/xml"; $ffext= ".xml"; $fname=$db.$ffext;
-		$sql ='<?xml version="1.0" encoding="utf-8"?>';
-		$sql .="\n<!-- EdMyAdmin $version XML Dump -->\n";
-		$sql .="<export version=\"1.0\" xmlns:ed=\"https://github.com/edmondsql\">";
+		$sql ="<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<!-- EdMyAdmin $version XML Dump -->\n<export version=\"1.0\" xmlns:ed=\"https://github.com/edmondsql\">";
 		if(in_array('structure',$fopt)) {
 		$sql .="\n\t<ed:structure_schemas>";
 		$sql .="\n\t\t<ed:database name=\"$db\">";
@@ -2477,177 +2472,276 @@ break;
 case "52": //users
 	$ed->check();
 	echo $head.$ed->menu(1,'',2)."<table><tr><th>USER</th><th>HOST</th><th><a href='{$ed->path}53'>ADD</a></th></tr>";
-	$q_usr = $ed->con->query("SELECT DISTINCT GRANTEE FROM information_schema.USER_PRIVILEGES")->fetch(1);
+	$q_usr = $ed->con->query("SELECT DISTINCT GRANTEE FROM information_schema.USER_PRIVILEGES ORDER BY GRANTEE")->fetch(1);
 	foreach($q_usr as $r_usr) {
 	$bg=($bg==1)?2:1;
 	preg_match("/'(.*)'@'(.*)'/", $r_usr[0], $r_us);
-	echo "<tr class='r c$bg'><td class='dot'>".$r_us[1]."</td><td class='dot'>".$r_us[2]."</td><td><a class='del' href='{$ed->path}55/".$r_us[1]."/".base64_encode($r_us[2])."'>Drop</a><a href='{$ed->path}54/".$r_us[1]."/".base64_encode($r_us[2])."'>Edit</a></td></tr>";
+	echo "<tr class='r c$bg'><td class='dot'>".$r_us[1]."</td><td class='dot'>".$r_us[2]."</td><td><a class='del' href='{$ed->path}59/".$r_us[1]."/".base64_encode($r_us[2])."'>Drop</a><a href='{$ed->path}53/".$r_us[1]."/".base64_encode($r_us[2])."'>Edit</a></td></tr>";
 	}
 	echo "</table>";
 break;
 
-case "53": //add user
+case "53": //add,edit,update user
 	$ed->check();
 	$ed->priv("CREATE USER","52");
-	if($ed->post('username','i') && $ed->post('host','!e')) {
-	$user = $ed->sanitize($ed->post('username'));
-	$passwd = ($ed->post('password','e') ? "":" IDENTIFIED BY '".$ed->post('password')."'");
-	$host = $ed->post('host');
-	$q_exist = $ed->con->query("SELECT EXISTS(SELECT 1 FROM information_schema.USER_PRIVILEGES WHERE `GRANTEE`='\'$user\'@\'$host\'');")->fetch();
-	if($q_exist[0]) $ed->redir("52",array('err'=>"Username already exist"));
-	$ed->con->query("CREATE USER '{$user}'@'{$host}'{$passwd}");
-	$alldb = $ed->post('dbs');
-	$allpri = $ed->post('pri');
-	$grant = ($ed->post('ogrant','!e') ? " GRANT OPTION":"");
-	$with = " WITH".$grant." MAX_QUERIES_PER_HOUR 0 MAX_UPDATES_PER_HOUR 0 MAX_CONNECTIONS_PER_HOUR 0 MAX_USER_CONNECTIONS 0";
-	if($allpri[0] == 'on') {//selected priv
-		array_shift($allpri);
-		$allprivs = implode(", ",$allpri);
+	if(empty($ed->sg[2])) {
+	$hst= (empty($ed->sg[1])?"":base64_decode($ed->sg[1])); $usr='';
+	} else {
+	$hst= (empty($ed->sg[2])?"":base64_decode($ed->sg[2])); $usr= $ed->sg[1];
 	}
-	if($alldb[0] == 'all' && $allpri[0] == 'all') {//all priv, all db
-		$ed->con->query("GRANT USAGE ON *.* TO '{$user}'@'{$host}'".$passwd.$with);
-		$ed->con->query("GRANT ALL PRIVILEGES ON *.* TO '{$user}'@'{$host}'");
-	}
-	if($alldb[0] == 'all' && $allpri[0] != 'all') {
-		$ed->con->query("GRANT $allprivs ON *.* TO '{$user}'@'{$host}'".$passwd.$with);
-	}
-	if($alldb[0] == 'on') {//selected db
-	array_shift($alldb);
-	foreach($alldb as $adb) {
-		if($allpri[0] == 'all') {//all priv
-		$ed->con->query("GRANT USAGE ON {$adb}.* TO '{$user}'@'{$host}'".$passwd.$with);
-		$ed->con->query("GRANT ALL PRIVILEGES ON {$adb}.* TO '{$user}'@'{$host}'");
-		} else {//selected priv
-		$ed->con->query("GRANT $allprivs ON {$adb}.* TO '{$user}'@'{$host}'".$passwd.$with);
+	$hst2= base64_encode($hst);
+	if($ed->post('savepri','i') || $ed->post('savepric','i')) {
+	if(empty($hst)) {
+		if($ed->post('username','i') && $ed->post('host','!e')) {
+		$usr= $ed->sanitize($ed->post('username'));
+		$hst= $ed->post('host');
+		$passwd= ($ed->post('password','e') ? "":" IDENTIFIED BY '".$ed->post('password')."'");
+		$q_exist = $ed->con->query("SELECT EXISTS(SELECT 1 FROM information_schema.USER_PRIVILEGES WHERE `GRANTEE`='\'$usr\'@\'$hst\'');")->fetch();
+		if($q_exist[0]) $ed->redir("52",array('err'=>"Username already exist"));
+		$ed->con->query("CREATE USER '{$usr}'@'{$hst}'{$passwd}");
 		}
+	} else {
+		$ed->check(array(6));
+		$ed->con->query("REVOKE ALL PRIVILEGES ON *.* FROM '$usr'@'$hst'");
+		$ed->con->query("REVOKE GRANT OPTION ON *.* FROM '$usr'@'$hst'");
 	}
+	$priall= ($ed->post('priall','e')?"":$ed->post('priall'));
+	$prialls= ($ed->post('prialls','e')?"":$ed->post('prialls'));
+	$grant= ($ed->post('agrant','!e')?" GRANT OPTION":"");
+	$max1=($ed->post('MAX_QUERIES_PER_HOUR','e')?0:$ed->post('MAX_QUERIES_PER_HOUR'));
+	$max2=($ed->post('MAX_UPDATES_PER_HOUR','e')?0:$ed->post('MAX_UPDATES_PER_HOUR'));
+	$max3=($ed->post('MAX_CONNECTIONS_PER_HOUR','e')?0:$ed->post('MAX_CONNECTIONS_PER_HOUR'));
+	$max4=($ed->post('MAX_USER_CONNECTIONS','e')?0:$ed->post('MAX_USER_CONNECTIONS'));
+	$with= " WITH{$grant} MAX_QUERIES_PER_HOUR $max1 MAX_UPDATES_PER_HOUR $max2 MAX_CONNECTIONS_PER_HOUR $max3 MAX_USER_CONNECTIONS $max4";
+	$passwd= ($ed->post('password','e') ? "":" IDENTIFIED BY '".$ed->post('password')."'");
+	if($priall == 'on') $prs="ALL PRIVILEGES";
+	if($priall != 'on' && !empty($prialls)) $prs= implode(",",$prialls);
+	if($prs!='') $ed->con->query("GRANT ".$prs." ON *.* TO '{$usr}'@'{$hst}'".$passwd.$with);
+	if($prs=='') $ed->con->query("GRANT USAGE ON *.* TO '{$usr}'@'{$hst}'".$passwd.$with);
+	if($ed->post('password','!e')) {
+	$ed->con->query("SET PASSWORD FOR '$usr'@'$hst' = PASSWORD('".$ed->post('password')."')");
+	}
+	if($ed->post('host','!e') || $ed->post('username','!e')) {
+	$comma= (($ed->post('host','e') && $ed->post('username','e'))?"":",");
+	$ed->con->query("UPDATE mysql.user SET ".($ed->post('host','e')?"":"host='".$ed->post('host')."'").$comma.($ed->post('username','e')?"":"user='".$ed->post('username')."'")." WHERE host='$hst' AND user='$usr'");
 	}
 	$ed->con->query("FLUSH PRIVILEGES");
-	$ed->redir("52",array('ok'=>"Added user"));
+	$ed->con->query("FLUSH USER_RESOURCES");
+	if($ed->post('savepric','i')) $ed->redir("53/".$ed->post('username')."/".base64_encode($ed->post('host')));
+	$ed->redir("52",array("ok"=>"Added user / privileges"));
 	}
 
-	echo $head.$ed->menu(1,'',2).$ed->form("53")."<table><tr><th colspan='2'>Add User</th></tr>
-	<tr><td>Host </td><td><input type='text' name='host' value='localhost' /></td></tr>
-	<tr><td>Name </td><td><input type='text' name='username' /></td></tr>
-	<tr><td>Password </td><td><input type='password' name='password' /></td></tr>
-	<tr><td>Allow access to </td><td><input type='radio' onclick='hide(\"tdbs\")' name='dbs[]' value='all' checked /> All Databases</td></tr>
-	<tr><td></td><td><input type='radio' onclick='show(\"tdbs\")' name='dbs[]' /> Selected Databases</td></tr>
-	<tr><td></td><td id='tdbs' class='c1'>
-	<p><input type='checkbox' onclick='selectall(\"dbs\",\"sel2\")' id='sel2' /> Select/Deselect</p>
-	<select class='he' id='dbs' name='dbs[]' multiple='multiple'>";
+	//global priv
+	$q_pri= $ed->con->query("SELECT PRIVILEGE_TYPE,IS_GRANTABLE FROM information_schema.USER_PRIVILEGES WHERE `GRANTEE`='\'$usr\'@\'$hst\''")->fetch(1);
+	$a_pri= array();
+	if($q_pri) {
+	$a_gr= $q_pri[0][1];
+	if($q_pri[0][0]!="USAGE") foreach($q_pri as $r_pri) $a_pri[]= $r_pri[0];
+	} else $a_gr='';
+	//dbs priv
+	$q_dbpri= $ed->con->query("SELECT TABLE_SCHEMA,PRIVILEGE_TYPE,IS_GRANTABLE FROM information_schema.SCHEMA_PRIVILEGES WHERE `GRANTEE`='\'$usr\'@\'$hst\'' ORDER BY TABLE_SCHEMA")->fetch(1);
+	$db_pri= array();$usg='';
+	if($q_dbpri) {
+	foreach($q_dbpri as $r_dbpri) $db_pri[$r_dbpri[0]][$r_dbpri[1]]= $r_dbpri[2];
+	}
+	//usage
+	$q_tbpri= $ed->con->query("SELECT DISTINCT TABLE_SCHEMA FROM information_schema.TABLE_PRIVILEGES WHERE `GRANTEE`='\'$usr\'@\'$hst\'' UNION
+	SELECT DISTINCT TABLE_SCHEMA FROM information_schema.COLUMN_PRIVILEGES WHERE `GRANTEE`='\'$usr\'@\'$hst\''")->fetch(1);
+	if($q_tbpri) {
+	foreach($q_tbpri as $r_tbpri) $usg.= "<tr><td><b>".$r_tbpri[0]."</b></td><td>USAGE</td></tr>";
+	}
+	//max
+	if(!empty($hst)) {
+	$mx= $ed->con->query("SELECT max_questions,max_updates,max_connections,max_user_connections FROM mysql.user WHERE `User`='$usr' AND `Host`='$hst'")->fetch();
+	}
+	$mx1=(empty($mx[0])?0:$mx[0]);$mx2=(empty($mx[1])?0:$mx[1]);$mx3=(empty($mx[2])?0:$mx[2]);$mx4=(empty($mx[3])?0:$mx[3]);
+	//form
+	$q_prs= $ed->con->query("SHOW PRIVILEGES")->fetch(1);
+	echo $head.$ed->menu(1,'',2).$ed->form("53/$usr/$hst2")."<table><tr><th colspan='2'>User Privileges</th></tr>
+	<tr><td>Host </td><td><input type='text' name='host' value='{$hst}' /></td></tr>
+	<tr><td>Name </td><td><input type='text' name='username' value='{$usr}' /></td></tr>
+	<tr><td>Password </td><td><input type='password' name='password' /></td></tr>";
+	echo "<tr><td>Global Privileges</td><td><input type='checkbox' name='priall' onclick='toggle(this,\"prialls[]\")'".(count($a_pri)>=18?' checked':"")." /> All privileges</td></tr>
+	<tr><td></td><td class='c1'><ul class='upr'>";
+	foreach($q_prs as $r_prs) {
+	if($r_prs[0]!='Grant option' && $r_prs[0]!='Usage' && $r_prs[0]!='Proxy')
+	echo "<li><input type='checkbox' name='prialls[]' value='".$r_prs[0]."'".(in_array(strtoupper($r_prs[0]),$a_pri)? " checked":"")." /> ".$r_prs[0]."</li>";
+	}
+	echo "</ul></td></tr>
+	<tr><td>Options</td><td><input type='checkbox' name='agrant' value='GRANT OPTION'".($a_gr=="YES" ? " checked":"")." /> Grant Option</td></tr>
+	<tr><td>Max queries/hour</td><td><input type='text' name='MAX_QUERIES_PER_HOUR' value='$mx1' /></td></tr>
+	<tr><td>Max updates/hour</td><td><input type='text' name='MAX_UPDATES_PER_HOUR' value='$mx2' /></td></tr>
+	<tr><td>Max connections/hour</td><td><input type='text' name='MAX_CONNECTIONS_PER_HOUR' value='$mx3' /></td></tr>
+	<tr><td>Max user connections</td><td><input type='text' name='MAX_USER_CONNECTIONS' value='$mx4' /></td></tr>
+	<tr><td class='c1'><button type='submit' name='savepri'>Save</button></td><td class='c1'><button type='submit' name='savepric'>Save &amp; Continue</button></td></tr></table></form>";
+	if(!empty($hst)) {
+	echo $ed->form("54/$usr/$hst2")."<table><tr><td class='c1'>Select DB</td><td class='c1'><select name='dbn'><option value=''>--select--</option>";
 	foreach($ed->u_db as $r_dbs) {
 	if(!in_array($r_dbs[0],$ed->deny)) {
 	echo "<option value='".$r_dbs[0]."'>".$r_dbs[0]."</option>";
 	}
 	}
-	echo "</select></td></tr>
-	<tr><td>Privileges</td><td><input type='radio' onclick='hide(\"privs\")' name='pri[]' value='all' checked /> All Privileges</td></tr>
-	<tr><td></td><td><input type='radio' onclick='show(\"privs\")' name='pri[]' /> Selected Privileges</td></tr>
-	<tr><td></td><td id='privs' class='c1'>";
-	$q_prvs= $ed->con->query("SHOW PRIVILEGES")->fetch(1);
-	foreach($q_prvs as $r_prvs) {
-	if($r_prvs[0]!='Grant option' && $r_prvs[0]!='Usage')
-	echo "<p><input type='checkbox' name='pri[]' value='".$r_prvs[0]."' /> ".$r_prvs[0]."</p>";
+	echo "</select></td></tr><tr><td class='c1' colspan='2'><button type='submit' name='adddbpri'>Add</button></td></tr>".$usg;
+	if(!empty($db_pri)) {
+	foreach($db_pri as $k=>$_pri) {
+	$gr= array_values(array_unique($_pri));
+	echo "<tr><td><b>$k</b>".($gr[0]=="YES"?" [GRANT]":"")."</td><td>".(count($_pri)>=18?"ALL PRIVILEGES":implode(" ",array_keys($_pri)))."</td></tr>";
 	}
-	echo "</td></tr>
-	<tr><td>Options</td><td><input type='checkbox' name='ogrant' value='GRANT OPTION' /> Grant Option</td></tr>
-	<tr><td class='c1' colspan='2'><button type='submit'>Create</button></td></tr></table></form>";
+	}
+	}
+	echo "</table></form>";
 break;
 
-case "54": //edit-update user
+case "54": //db priv
 	$ed->check(array(6));
+	$ed->priv("CREATE USER","52");
 	if(empty($ed->sg[2])) {
-	$hst= base64_decode($ed->sg[1]); $usr='';
+	$hh= base64_decode($ed->sg[1]); $uu='';
 	} else {
-	$hst= base64_decode($ed->sg[2]); $usr= $ed->sg[1];
+	$hh= base64_decode($ed->sg[2]); $uu= $ed->sg[1];
 	}
-	if($ed->post('userupd','i')) {
-		if($_SESSION['user']!=$usr) {//no owner
-		$ed->con->query("REVOKE ALL PRIVILEGES ON *.* FROM '$usr'@'$hst'");
-		$ed->con->query("REVOKE GRANT OPTION ON *.* FROM '$usr'@'$hst'");
-		$ed->con->query("DELETE FROM mysql.db WHERE `User`='$usr' AND `Host`='$hst'");
-		$alldb= $ed->post('dbs');
-		$allpri= $ed->post('pri');
-		$grant= ($ed->post('ogrant','!e') ? " GRANT OPTION":"");
-		$with= " WITH".$grant." MAX_QUERIES_PER_HOUR 0 MAX_UPDATES_PER_HOUR 0 MAX_CONNECTIONS_PER_HOUR 0 MAX_USER_CONNECTIONS 0";
-		$passwd= ($ed->post('password','e') ? "":" IDENTIFIED BY '".$ed->post('password')."'");
-		if($allpri[0] == 'on') {//selected priv
-			array_shift($allpri);
-			$allprivs = implode(",",$allpri);
-		}
-		if($alldb[0] == 'all' && $allpri[0] == 'all') {//all db, all priv
-			$ed->con->query("GRANT ALL PRIVILEGES ON *.* TO '{$usr}'@'{$hst}'".$passwd.$with);
-		}
-		if($alldb[0] == 'all' && $allpri[0] != 'all') {//all db, select priv
-			$ed->con->query("GRANT $allprivs ON *.* TO '{$usr}'@'{$hst}'".$passwd.$with);
-		}
-		if($alldb[0] == 'on') {//selected db
-		array_shift($alldb);
-		foreach($alldb as $adb) {
-			$ed->con->query("GRANT USAGE ON `{$adb}`.* TO '$usr'@'$hst'".$passwd.$with);
-			if($allpri[0] == 'all') {//all priv
-			$ed->con->query("GRANT ALL PRIVILEGES ON `{$adb}`.* TO '$usr'@'$hst'");
-			} else {//selected priv
-			$ed->con->query("GRANT $allprivs ON `{$adb}`.* TO '$usr'@'$hst'");
-			}
-		}
-		}
-		}
-		if($ed->post('password','!e')) {
-		$ed->con->query("SET PASSWORD FOR '$usr'@'$hst' = PASSWORD('".$ed->post('password')."')");
-		}
-		if($ed->post('host','!e') || $ed->post('username','!e')) {
-		$comma= (($ed->post('host','e') && $ed->post('username','e'))?"":",");
-		$ed->con->query("UPDATE mysql.user SET ".($ed->post('host','e')?"":"host='".$ed->post('host')."'").$comma.($ed->post('username','e')?"":"user='".$ed->post('username')."'")." WHERE host='$hst' AND user='$usr'");
-		}
+	$hh2= base64_encode($hh);
+	if($ed->post('dbn','e') && empty($_SESSION['_dbn'])) $ed->redir("53/$uu/$hh2",array('err'=>"DB not exist"));
+	elseif($ed->post('dbn','!e')) $dbn= $_SESSION['_dbn']= $ed->post('dbn');
+	else $dbn= $_SESSION['_dbn'];
+	if($ed->post('savedb','i') || $ed->post('savedbc','i')) {
+		$ed->con->query("REVOKE ALL PRIVILEGES ON $dbn.* FROM '$uu'@'$hh'");
+		$ed->con->query("REVOKE GRANT OPTION ON $dbn.* FROM '$uu'@'$hh'");
+		$ed->con->query("DELETE FROM mysql.db WHERE `User`='$uu' AND `Host`='$hh' AND `Db`='$dbn'");
+		$ed->con->query("GRANT ".implode(", ",$ed->post("pridbs"))." ON $dbn.* TO '$uu'@'$hh'".($ed->post('dbgrant','!e')?" WITH GRANT OPTION":""));
 		$ed->con->query("FLUSH PRIVILEGES");
-		$ed->redir("52",array("ok"=>"Changed user privileges"));
+		$ed->con->query("FLUSH USER_RESOURCES");
+		if($ed->post('savedbc','i')) $ed->redir("54/$uu/$hh2");
+		$ed->redir("53/$uu/$hh2",array('ok'=>"Added DB privileges"));
 	}
+	//db priv
+	$q_dbpri= $ed->con->query("SELECT PRIVILEGE_TYPE,IS_GRANTABLE FROM information_schema.SCHEMA_PRIVILEGES WHERE `GRANTEE`='\'$uu\'@\'$hh\'' AND TABLE_SCHEMA='$dbn' ORDER BY TABLE_SCHEMA")->fetch(1);
+	$db_pri= array();$dbgr='';
+	if($q_dbpri) {
+	$dbgr= $q_dbpri[0][1];
+	foreach($q_dbpri as $r_dbpri) $db_pri[]= $r_dbpri[0];
+	}
+	//tb priv
+	$slct= "SELECT TABLE_NAME,PRIVILEGE_TYPE,IS_GRANTABLE FROM";
+	$wher= "WHERE `TABLE_SCHEMA`='$dbn' AND `GRANTEE`='\'$uu\'@\'$hh\''";
+	$q_tbpri= $ed->con->query($slct." information_schema.TABLE_PRIVILEGES $wher UNION $slct information_schema.COLUMN_PRIVILEGES ".$wher)->fetch(1);
+	$tbpri=array();
+	if($q_tbpri) {
+	foreach($q_tbpri as $r_tbpri) $tbpri[$r_tbpri[0]][$r_tbpri[1]]=$r_tbpri[2];
+	}
+	
+	$q_db= call_user_func_array('array_merge',$ed->u_db);
+	if(!in_array($dbn,$q_db)) $ed->redir("52",array('err'=>"DB not exist"));
+	$q_tb= $ed->con->query("SHOW TABLES FROM ".$dbn)->fetch(1);
+	$q_prs= $ed->con->query("SHOW PRIVILEGES")->fetch(1);
+	echo $head.$ed->menu(1,'',2).$ed->form("54/$uu/$hh2").
+	"<table><tr><th colspan='2'>Database Privileges</th></tr>
+	<tr><td>Selected DB</td><td><select name='dbs'><option value='$dbn'>$dbn</option></select></td></tr>
+	<tr><td>DB Privileges</td><td><input type='checkbox' onclick='toggle(this,\"pridbs[]\")' /> All privileges</td></tr>
+	<tr><td></td><td class='c1'><ul class='upr'>";
+	foreach($q_prs as $r_prs) {
+	if($r_prs[0]=='Event' || stripos($r_prs[1],'Server')===false && $r_prs[0]!='Grant option' && $r_prs[0]!='Usage' && $r_prs[0]!='Proxy')
+	echo "<li><input type='checkbox' name='pridbs[]' value='".$r_prs[0]."'".(in_array(strtoupper($r_prs[0]),$db_pri)?" checked":"")." /> ".$r_prs[0]."</li>";
+	}
+	echo "</ul></td></tr>
+	<tr><td>DB Options</td><td><input type='checkbox' name='dbgrant' value='GRANT OPTION'".($dbgr=="YES"?" checked":"")." /> Grant Option</td></tr>
+	<tr><td class='c1'><button type='submit' name='savedb'>Save</button></td><td class='c1'><button type='submit' name='savedbc'>Save &amp; Continue</button></td></tr></table></form>";
 
-	$q_pri= $ed->con->query("SELECT PRIVILEGE_TYPE,IS_GRANTABLE FROM information_schema.USER_PRIVILEGES WHERE `GRANTEE`='\'$usr\'@\'$hst\''")->fetch(1);
-	$dbpri= array();
-	$dbarr= array();
-	if($q_pri[0][0]=="USAGE") {
-	$q_dbpri= $ed->con->query("SELECT DISTINCT TABLE_SCHEMA,PRIVILEGE_TYPE,IS_GRANTABLE FROM information_schema.SCHEMA_PRIVILEGES WHERE `GRANTEE`='\'$usr\'@\'$hst\''")->fetch(1);
-	$showgr= $q_dbpri[0][2];
-	foreach($q_dbpri as $r_dbpri) {
-	$dbpri[]= $r_dbpri[1];
-	$dbarr[]= $r_dbpri[0];
-	}
-	} else {
-	$showgr= $q_pri[0][1];
-	foreach($q_pri as $r_pri) $dbpri[]= $r_pri[0];
-	}
-	echo $head.$ed->menu(1,'',2).$ed->form("54/$usr/".base64_encode($hst))."<table><tr><th colspan='2'>Edit User</th></tr>
-	<tr><td>Host </td><td><input type='text' name='host' value='{$hst}' /></td></tr>
-	<tr><td>Name </td><td><input type='text' name='username' value='{$usr}' /></td></tr>
-	<tr><td>Password </td><td><input type='password' name='password' /></td></tr>
-	<tr><td>Allow access to </td><td><input type='radio' onclick='hide(\"tdbs\")' name='dbs[]' value='all'".(empty($dbarr)?" checked":"")." /> All Databases</td></tr>
-	<tr><td></td><td><input type='radio' id='seldb' onclick='show(\"tdbs\")' name='dbs[]'".(!empty($dbarr)?" checked":"")." /> Selected Databases</td></tr>
-	<tr><td></td><td id='tdbs' class='c1'>
-	<p><input type='checkbox' onclick='selectall(\"dbs\",\"sel2\")' id='sel2' /> Select/Deselect</p>
-	<select class='he' id='dbs' name='dbs[]' multiple='multiple'>";
-	foreach($ed->u_db as $r_dbs) {
-	if(!in_array($r_dbs[0],$ed->deny)) {
-	echo "<option value='".$r_dbs[0]."'".(in_array($r_dbs[0],$dbarr)?" selected ":"").">".$r_dbs[0]."</option>";
-	}
+	echo $ed->form("55/$uu/$hh2")."<input type='hidden' name='dbn' value='$dbn'/><table>
+	<tr><td class='c1'>Select Table</td><td class='c1'><select name='tbn'><option value=''>--select--</option>";
+	foreach($q_tb as $r_tb) {
+	echo "<option value='".$r_tb[0]."'>".$r_tb[0]."</option>";
 	}
 	echo "</select></td></tr>
-	<tr><td>Privileges</td><td><input type='radio' onclick='hide(\"privs\")' name='pri[]' value='all'".($grprivs=="ALL PRIVILEGES"?" checked":"")." /> All Privileges</td></tr>
-	<tr><td></td><td><input type='radio' id='selpriv' onclick='show(\"privs\")' name='pri[]'".($grprivs!="ALL PRIVILEGES"?" checked":"")." /> Selected Privileges</td></tr>
-	<tr><td></td><td id='privs' class='c1'>";
-	$q_prs= $ed->con->query("SHOW PRIVILEGES")->fetch(1);
-	foreach($q_prs as $r_prs) {
-	if($r_prs[0]!='Grant option' && $r_prs[0]!='Usage' && $r_prs[0]!='Proxy')
-	echo "<p><input type='checkbox' name='pri[]' value='".$r_prs[0]."'".(in_array(strtoupper($r_prs[0]),$dbpri)? " checked":"")." /> ".$r_prs[0]."</p>";
+	<tr><td class='c1' colspan='2'><button type='submit' name='addtbpri'>Add</button></td></tr>";
+	if(!empty($tbpri)) {
+	foreach($tbpri as $k=>$_tpr) {
+	$gr= array_values(array_unique($_tpr));
+	echo "<tr><td><b>$k</b>".($gr[0]=="YES"?" [GRANT]":"")."</td><td>".
+	(count($_tpr)>=12?"ALL PRIVILEGES":implode(" ",array_keys($_tpr))).
+	"</td></tr>";
 	}
-	echo "</td></tr>
-	<tr><td>Options</td><td><input type='checkbox' name='ogrant' value='GRANT OPTION'".($showgr=="YES" ? " checked":"")." /> Grant Option</td></tr>
-	<tr><td class='c1' colspan='2'><button type='submit' name='userupd'>Save</button></td></tr></table></form>";
+	}
+	echo "</table></form>";
 break;
 
-case "55": //drop user
+case "55": //tb priv
 	$ed->check(array(6));
+	$ed->priv("CREATE USER","52");
+	if(empty($ed->sg[2])) {
+	$hh= base64_decode($ed->sg[1]); $uu='';
+	} else {
+	$hh= base64_decode($ed->sg[2]); $uu= $ed->sg[1];
+	}
+	$hh2= base64_encode($hh);
+	if($ed->post('dbn','e') && empty($_SESSION['_dbn'])) $ed->redir("53/$uu/$hh2",array('err'=>"DB not exist"));
+	elseif($ed->post('dbn','!e')) $dbn= $_SESSION['_dbn']= $ed->post('dbn');
+	else $dbn= $_SESSION['_dbn'];
+	$q_db= call_user_func_array('array_merge',$ed->u_db);
+	if(!in_array($dbn,$q_db)) $ed->redir("53/$uu/$hh2",array('err'=>"DB not exist"));
+	if($ed->post('tbn','e')) $ed->redir("54/$uu/$hh2",array('err'=>"Table not exist"));
+	$tbn= $ed->post('tbn');
+	if($ed->post("savetb","i")) {
+		$ed->con->query("REVOKE ALL PRIVILEGES ON $dbn.$tbn FROM '$uu'@'$hh'");
+		$ed->con->query("REVOKE GRANT OPTION ON $dbn.$tbn FROM '$uu'@'$hh'");
+		$ed->con->query("DELETE FROM mysql.tables_priv WHERE `User`='$uu' AND `Host`='$hh' AND `Db`='$dbn' AND `Table_name`='$tbn'");
+		$ed->con->query("DELETE FROM mysql.columns_priv WHERE `User`='$uu' AND `Host`='$hh' AND `Db`='$dbn' AND `Table_name`='$tbn'");
+		$f1=($ed->post('fi1','!e')?" SELECT(`".implode("`,`",$ed->post('fi1'))."`),":"");
+		$f2=($ed->post('fi2','!e')?" INSERT(`".implode("`,`",$ed->post('fi2'))."`),":"");
+		$f3=($ed->post('fi3','!e')?" UPDATE(`".implode("`,`",$ed->post('fi3'))."`),":"");
+		$f4=($ed->post('fi4','!e')?" REFERENCES(`".implode("`,`",$ed->post('fi4'))."`),":"");
+		$f5=($ed->post('tbpr','!e')?" ".implode(",",$ed->post('tbpr')).",":"");
+		$ed->con->query("GRANT".substr($f1.$f2.$f3.$f4.$f5,0,-1)." ON `$dbn`.`$tbn` TO '$uu'@'$hh'".($ed->post('tbgr','!e')?" WITH GRANT OPTION":""));
+		$ed->con->query("FLUSH PRIVILEGES");
+		$ed->con->query("FLUSH USER_RESOURCES");
+		$ed->redir("54/$uu/$hh2",array('ok'=>"Added Table privileges"));
+	}
+	$tblistpr= array('ALTER','CREATE','DELETE','DROP','INDEX','CREATE VIEW','SHOW VIEW','TRIGGER');
+	$q_fi= $ed->con->query("SHOW COLUMNS FROM $dbn.$tbn")->fetch(2);
+	//tb priv
+	$q_tbpr= $ed->con->query("SELECT PRIVILEGE_TYPE,IS_GRANTABLE FROM information_schema.TABLE_PRIVILEGES WHERE `TABLE_SCHEMA`='$dbn' AND `TABLE_NAME`='$tbn' AND `GRANTEE`='\'$uu\'@\'$hh\''")->fetch(1);
+	$r_tpr=array();$gr=array(0=>'');
+	if($q_tbpr) {
+	foreach($q_tbpr as $r_tbpr) $r_tpr[$r_tbpr[0]]= $r_tbpr[1];
+	$gr=array_values(array_unique($r_tpr));
+	}
+	//col priv
+	$q_colpr= $ed->con->query("SELECT PRIVILEGE_TYPE,COLUMN_NAME,IS_GRANTABLE FROM information_schema.COLUMN_PRIVILEGES WHERE `TABLE_SCHEMA`='$dbn' AND `TABLE_NAME`='$tbn' AND `GRANTEE`='\'$uu\'@\'$hh\''")->fetch(1);
+	$r_cpr=array();$gr2='';
+	if($q_colpr) {
+	foreach($q_colpr as $r_colpr) $r_cpr[$r_colpr[0]][$r_colpr[1]]= $r_colpr[2];
+	$gr2=$q_colpr[0][2];
+	}
+
+	echo $head.$ed->menu(1,'',2).$ed->form("55/$uu/$hh2").
+	"<input type='hidden' name='tbn' value='$tbn'/><table><table><tr><th colspan='5'>Table Privileges</th></tr>
+	<tr><td class='c1'>SELECT</td><td class='c1'>INSERT</td><td class='c1'>UPDATE</td><td class='c1'>REFERENCES</td>
+	<td class='c1'><input type='checkbox' name='tbgr'".(($gr[0]=="YES" || $gr2=="YES")?" checked":"")." /> GRANT</td></tr>
+	<tr><td><input type='checkbox' onclick='selectall(this,\"fi1\")' /> All/None<br/>
+	<select class='he' id='fi1' name='fi1[]' multiple='multiple'>";
+	foreach($q_fi as $r_fi) echo "<option value='".$r_fi['Field']."'".(in_array($r_fi['Field'],array_keys($r_cpr['SELECT']))?" selected":"").">".$r_fi['Field']."</option>";
+	echo "</select></td>
+	<td><input type='checkbox' onclick='selectall(this,\"fi2\")' /> All/None<br/>
+	<select class='he' id='fi2' name='fi2[]' multiple='multiple'>";
+	foreach($q_fi as $r_fi) echo "<option value='".$r_fi['Field']."'".(in_array($r_fi['Field'],array_keys($r_cpr['INSERT']))?" selected":"").">".$r_fi['Field']."</option>";
+	echo "</select></td>
+	<td><input type='checkbox' onclick='selectall(this,\"fi3\")' /> All/None<br/>
+	<select class='he' id='fi3' name='fi3[]' multiple='multiple'>";
+	foreach($q_fi as $r_fi) echo "<option value='".$r_fi['Field']."'".(in_array($r_fi['Field'],array_keys($r_cpr['UPDATE']))?" selected":"").">".$r_fi['Field']."</option>";
+	echo "</select></td>
+	<td><input type='checkbox' onclick='selectall(this,\"fi4\")' /> All/None<br/>
+	<select class='he' id='fi4' name='fi4[]' multiple='multiple'>";
+	foreach($q_fi as $r_fi) echo "<option value='".$r_fi['Field']."'".(in_array($r_fi['Field'],array_keys($r_cpr['REFERENCES']))?" selected":"").">".$r_fi['Field']."</option>";
+	echo "</select></td><td>";
+	foreach($tblistpr as $tblpr) {
+	echo "<input type='checkbox' name='tbpr[]' value='$tblpr'".(in_array($tblpr,array_keys($r_tpr))?" checked":"")." /> $tblpr<br/>";
+	}
+	echo "</td></tr><tr><td class='c1' colspan='5'><button type='submit' name='savetb'>Save</button></td></tr></table></form>";
+break;
+
+case "59": //drop user
+	$ed->check(array(6));
+	$ed->priv("CREATE USER","52");
 	if(empty($ed->sg[2])) {
 	$hh= base64_decode($ed->sg[1]); $uu='';
 	} else {
@@ -2655,6 +2749,9 @@ case "55": //drop user
 	}
 	$ed->con->query("REVOKE ALL PRIVILEGES ON *.* FROM '$uu'@'$hh'");
 	$ed->con->query("REVOKE GRANT OPTION ON *.* FROM '$uu'@'$hh'");
+	$ed->con->query("DELETE FROM mysql.db WHERE `User`='$uu' AND `Host`='$hh'");
+	$ed->con->query("DELETE FROM mysql.tables_priv WHERE `User`='$uu' AND `Host`='$hh'");
+	$ed->con->query("DELETE FROM mysql.columns_priv WHERE `User`='$uu' AND `Host`='$hh'");
 	$ed->con->query("DROP USER '$uu'@'$hh'");
 	$ed->con->query("FLUSH PRIVILEGES");
 	$ed->redir("52",array('ok'=>"Successfully deleted"));
