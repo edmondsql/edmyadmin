@@ -6,7 +6,7 @@ session_name('SQL');
 session_start();
 $bg=2;
 $step=20;
-$version="3.9";
+$version="3.10";
 $bbs= array('False','True');
 $jquery= (file_exists('jquery.js')?"/jquery.js":"http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js");
 class DBT {
@@ -878,7 +878,7 @@ case "5": //Show Tables
 		foreach($q_sp as $r_sp){
 			$bg=($bg==1)?2:1;
 			if($r_sp[0]==$db) {
-			echo "<tr class='r c$bg'><td>".$r_sp[1]."</td><td>".$r_sp[2]."</td><td>".$r_sp[7]."</td><td><a href='{$ed->path}42/".$r_sp[0]."/".$r_sp[1]."/".strtolower($r_sp[2])."'>Edit</a><a class='del' href='{$ed->path}49/".$r_sp[0]."/".$r_sp[1]."/".strtolower($r_sp[2])."'>Drop</a></td></tr>";
+			echo "<tr class='r c$bg'><td>".$r_sp[1]."</td><td>".$r_sp[2]."</td><td>".$r_sp[7]."</td><td><a href='{$ed->path}42/".$r_sp[0]."/".$r_sp[1]."/".strtolower($r_sp[2])."'>Edit</a><a href='{$ed->path}48/".$r_sp[0]."/".$r_sp[1]."/".strtolower($r_sp[2])."'>Execute</a><a class='del' href='{$ed->path}49/".$r_sp[0]."/".$r_sp[1]."/".strtolower($r_sp[2])."'>Drop</a></td></tr>";
 			}
 		}
 		echo "</table>";
@@ -1792,7 +1792,7 @@ case "31": //export form
 	echo "<p><input type='checkbox' name='fopt[]' value='{$k}'".($k=='structure' ? ' onclick="opt()" checked':'')." /> ".$opt."</p>";
 	}
 	echo "</div><div><h3>File format</h3>";
-	$ffo = array('sql'=>'SQL','csv1'=>'CSV,','csv2'=>'CSV;','json'=>'JSON','xls'=>'Excel Spreadsheet','doc'=>'Word 2000','xml'=>'XML');
+	$ffo = array('sql'=>'SQL','csv1'=>'CSV,','csv2'=>'CSV;','json'=>'JSON','xls'=>'Excel Spreadsheet','doc'=>'Word Web','xml'=>'XML');
 	foreach($ffo as $k => $ff) {
 	echo "<p><input type='radio' name='ffmt[]' onclick='opt()' value='{$k}'".($k=='sql' ? ' checked':'')." /> {$ff}</p>";
 	}
@@ -2441,9 +2441,57 @@ case "43": //event
 	<tr><td class='c1' colspan='2'><button type='submit'>Save</button></td></tr></table></form>";
 break;
 
+case "48": //execute
+	$ed->check(array(1,5));
+	$db= $ed->sg[1];$sp= $ed->sg[2];$ty= $ed->sg[3];
+	$ed->priv("EXECUTE","5/$db");
+	echo $head.$ed->menu($db,'',1,array($ty,$sp)).$ed->form("48/$db/$sp/$ty");
+	$q_plist= $ed->con->query("SHOW CREATE $ty $db.$sp")->fetch();
+	preg_match('#\((([^()]*|(?R))*)\)#',$q_plist[2],$r_plist);
+	$plist= preg_split("/\(.*?\)(*SKIP)(*F)|,/", $r_plist[1]);
+	echo "<table><tr><th colspan='2'>Execute Routine</th></tr>";
+	$fi=array();$out='';$i=0;
+	foreach($plist as $lst) {
+	preg_match('/(.*)`(.*?)`/',$lst,$ls);
+	$rr= "<tr><td>".$ls[2]."</td><td><input type='text' name='".$ls[2]."' /></td></tr>";
+	if($ty=='procedure' && trim($ls[1])=='IN') {
+	$fi[]= $ls[2];echo $rr;
+	} elseif($ty=='procedure' && trim($ls[1])=='OUT') {
+	$out.="@'".$ls[2]."',"; ++$i;
+	} elseif($ty=='function') {
+	$fi[]= $ls[2];echo $rr;
+	}
+	}
+	echo "<tr><td class='c1' colspan='2'><button type='submit' name='run'>Call</button></td></tr></table></form>";
+	if($ed->post('run','i')) {
+	echo "<table><tr><th colspan='2'>Executed `$sp`</th></tr>";
+	$re='';
+	foreach($fi as $f) $re.= "'".$ed->post($f)."',";
+	$re= substr($re,0,-1);
+	$out=substr($out,0,-1);
+	if($ty=='function') {
+		$q_ex= $ed->con->query("SELECT ".$sp.(empty($fi)?"":"($re)"))->fetch();
+		echo "<tr><td><input type='text' value='".$q_ex[0]."' /></td></tr>";
+	} elseif($ty=='procedure') {
+		if($re!='' && $out!='') $c="($re,$out)";
+		elseif($re!='') $c="($re)";
+		elseif($out!='') $c="($out)";
+		else $c="";
+		$ed->con->query("CALL `".$sp."`".$c);
+		$q_ex= $ed->con->query("SELECT $out")->fetch();
+		$j=0;
+		while($j<$i) {
+		echo "<tr><td><input type='text' value='".$q_ex[$j]."' /></td></tr>";
+		++$j;
+		}
+	}
+	echo "</table>";
+	}
+break;
+
 case "49": //drop sp
 	$ed->check(array(1,5));
-	$q_drosp = $ed->con->query("DROP ".$ed->sg[3]." ".$ed->sg[1].".".$ed->sg[2]);
+	$q_drosp= $ed->con->query("DROP ".$ed->sg[3]." ".$ed->sg[1].".".$ed->sg[2]);
 	if($q_drosp) $ed->redir("5/".$ed->sg[1],array('ok'=>"Successfully dropped"));
 break;
 
@@ -2624,12 +2672,12 @@ case "54": //db priv
 	//tb priv
 	$slct= "SELECT TABLE_NAME,PRIVILEGE_TYPE,IS_GRANTABLE FROM";
 	$wher= "WHERE `TABLE_SCHEMA`='$dbn' AND `GRANTEE`='\'$uu\'@\'$hh\''";
-	$q_tbpri= $ed->con->query($slct." information_schema.TABLE_PRIVILEGES $wher UNION $slct information_schema.COLUMN_PRIVILEGES ".$wher)->fetch(1);
+	$q_tbpri= $ed->con->query($slct." information_schema.TABLE_PRIVILEGES $wher UNION $slct information_schema.COLUMN_PRIVILEGES ".$wher." ORDER BY PRIVILEGE_TYPE")->fetch(1);
 	$tbpri=array();
 	if($q_tbpri) {
 	foreach($q_tbpri as $r_tbpri) $tbpri[$r_tbpri[0]][$r_tbpri[1]]=$r_tbpri[2];
 	}
-	
+
 	$q_db= call_user_func_array('array_merge',$ed->u_db);
 	if(!in_array($dbn,$q_db)) $ed->redir("52",array('err'=>"DB not exist"));
 	$q_tb= $ed->con->query("SHOW TABLES FROM ".$dbn)->fetch(1);
@@ -2637,7 +2685,7 @@ case "54": //db priv
 	echo $head.$ed->menu(1,'',2).$ed->form("54/$uu/$hh2").
 	"<table><tr><th colspan='2'>Database Privileges</th></tr>
 	<tr><td>Selected DB</td><td><select name='dbs'><option value='$dbn'>$dbn</option></select></td></tr>
-	<tr><td>DB Privileges</td><td><input type='checkbox' onclick='toggle(this,\"pridbs[]\")' /> All privileges</td></tr>
+	<tr><td>DB Privileges</td><td><input type='checkbox' onclick='toggle(this,\"pridbs[]\")'".(count($db_pri)>=18?' checked':"")." /> All privileges</td></tr>
 	<tr><td></td><td class='c1'><ul class='upr'>";
 	foreach($q_prs as $r_prs) {
 	if($r_prs[0]=='Event' || stripos($r_prs[1],'Server')===false && $r_prs[0]!='Grant option' && $r_prs[0]!='Usage' && $r_prs[0]!='Proxy')
@@ -2714,24 +2762,24 @@ case "55": //tb priv
 	}
 
 	echo $head.$ed->menu(1,'',2).$ed->form("55/$uu/$hh2").
-	"<input type='hidden' name='tbn' value='$tbn'/><table><table><tr><th colspan='5'>Table Privileges</th></tr>
+	"<input type='hidden' name='tbn' value='$tbn'/><table><tr><th colspan='5'>Table Privileges</th></tr>
 	<tr><td class='c1'>SELECT</td><td class='c1'>INSERT</td><td class='c1'>UPDATE</td><td class='c1'>REFERENCES</td>
 	<td class='c1'><input type='checkbox' name='tbgr'".(($gr[0]=="YES" || $gr2=="YES")?" checked":"")." /> GRANT</td></tr>
 	<tr><td><input type='checkbox' onclick='selectall(this,\"fi1\")' /> All/None<br/>
 	<select class='he' id='fi1' name='fi1[]' multiple='multiple'>";
-	foreach($q_fi as $r_fi) echo "<option value='".$r_fi['Field']."'".(in_array($r_fi['Field'],array_keys($r_cpr['SELECT']))?" selected":"").">".$r_fi['Field']."</option>";
+	foreach($q_fi as $r_fi) echo "<option value='".$r_fi['Field']."'".(isset($r_cpr['SELECT']) && in_array($r_fi['Field'],array_keys($r_cpr['SELECT']))?" selected":"").">".$r_fi['Field']."</option>";
 	echo "</select></td>
 	<td><input type='checkbox' onclick='selectall(this,\"fi2\")' /> All/None<br/>
 	<select class='he' id='fi2' name='fi2[]' multiple='multiple'>";
-	foreach($q_fi as $r_fi) echo "<option value='".$r_fi['Field']."'".(in_array($r_fi['Field'],array_keys($r_cpr['INSERT']))?" selected":"").">".$r_fi['Field']."</option>";
+	foreach($q_fi as $r_fi) echo "<option value='".$r_fi['Field']."'".(isset($r_cpr['INSERT']) && in_array($r_fi['Field'],array_keys($r_cpr['INSERT']))?" selected":"").">".$r_fi['Field']."</option>";
 	echo "</select></td>
 	<td><input type='checkbox' onclick='selectall(this,\"fi3\")' /> All/None<br/>
 	<select class='he' id='fi3' name='fi3[]' multiple='multiple'>";
-	foreach($q_fi as $r_fi) echo "<option value='".$r_fi['Field']."'".(in_array($r_fi['Field'],array_keys($r_cpr['UPDATE']))?" selected":"").">".$r_fi['Field']."</option>";
+	foreach($q_fi as $r_fi) echo "<option value='".$r_fi['Field']."'".(isset($r_cpr['UPDATE']) && in_array($r_fi['Field'],array_keys($r_cpr['UPDATE']))?" selected":"").">".$r_fi['Field']."</option>";
 	echo "</select></td>
 	<td><input type='checkbox' onclick='selectall(this,\"fi4\")' /> All/None<br/>
 	<select class='he' id='fi4' name='fi4[]' multiple='multiple'>";
-	foreach($q_fi as $r_fi) echo "<option value='".$r_fi['Field']."'".(in_array($r_fi['Field'],array_keys($r_cpr['REFERENCES']))?" selected":"").">".$r_fi['Field']."</option>";
+	foreach($q_fi as $r_fi) echo "<option value='".$r_fi['Field']."'".(isset($r_cpr['REFERENCES']) && in_array($r_fi['Field'],array_keys($r_cpr['REFERENCES']))?" selected":"").">".$r_fi['Field']."</option>";
 	echo "</select></td><td>";
 	foreach($tblistpr as $tblpr) {
 	echo "<input type='checkbox' name='tbpr[]' value='$tblpr'".(in_array($tblpr,array_keys($r_tpr))?" checked":"")." /> $tblpr<br/>";
