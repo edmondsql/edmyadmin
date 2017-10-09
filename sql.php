@@ -6,7 +6,7 @@ session_name('SQL');
 session_start();
 $bg=2;
 $step=20;
-$version="3.10";
+$version="3.10.1";
 $bbs= array('False','True');
 $jquery= (file_exists('jquery.js')?"/jquery.js":"http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js");
 class DBT {
@@ -243,7 +243,7 @@ class ED {
 		$ho= $_SESSION['host'];
 		$u_pr= $this->con->query("SELECT PRIVILEGE_TYPE FROM information_schema.USER_PRIVILEGES WHERE `GRANTEE`='\'$usr\'@\'$ho\''")->fetch(1);
 		$p=array();
-		if($u_pr[0][0]=="USAGE") {
+		if(!empty($u_pr[0][0]) && $u_pr[0][0]=="USAGE") {
 			if(isset($this->sg[1])) {
 			$db= $this->sg[1];
 			$s_pr= $this->con->query("SELECT PRIVILEGE_TYPE FROM information_schema.SCHEMA_PRIVILEGES WHERE `GRANTEE`='\'$usr\'@\'$ho\'' AND `TABLE_SCHEMA`='$db'")->fetch(1);
@@ -645,6 +645,11 @@ row.insertAfter(row.next());obj1=row.prop("id");obj2=row.prev().prop("id");
 }
 $.ajax({type: "POST", url:"'.$ed->path.'9/'.(empty($ed->sg[1])?"":$ed->sg[1]).'/'.(empty($ed->sg[2])?"":$ed->sg[2]).'", data:"n1="+obj1+"&n2="+obj2, success:function(){location.reload();}});
 });
+//privs
+for(var a=1;a<5;a++){
+var fc=$("#fi"+a+" > option").length,fs=$("#fi"+a+" :selected").length;
+if(fc==fs) $("#fi"+a).prevAll(":checkbox").prop("checked","checked");
+}
 });//end
 function minus(el){//routine remove row
 var crr=$("[id^=\"rr_\"]").length;
@@ -2588,7 +2593,7 @@ case "53": //add,edit,update user
 	} else $a_gr='';
 	//dbs priv
 	$q_dbpri= $ed->con->query("SELECT TABLE_SCHEMA,PRIVILEGE_TYPE,IS_GRANTABLE FROM information_schema.SCHEMA_PRIVILEGES WHERE `GRANTEE`='\'$usr\'@\'$hst\'' ORDER BY TABLE_SCHEMA")->fetch(1);
-	$db_pri= array();$usg='';
+	$db_pri= array();
 	if($q_dbpri) {
 	foreach($q_dbpri as $r_dbpri) $db_pri[$r_dbpri[0]][$r_dbpri[1]]= $r_dbpri[2];
 	}
@@ -2596,7 +2601,7 @@ case "53": //add,edit,update user
 	$q_tbpri= $ed->con->query("SELECT DISTINCT TABLE_SCHEMA FROM information_schema.TABLE_PRIVILEGES WHERE `GRANTEE`='\'$usr\'@\'$hst\'' UNION
 	SELECT DISTINCT TABLE_SCHEMA FROM information_schema.COLUMN_PRIVILEGES WHERE `GRANTEE`='\'$usr\'@\'$hst\''")->fetch(1);
 	if($q_tbpri) {
-	foreach($q_tbpri as $r_tbpri) $usg.= "<tr><td><b>".$r_tbpri[0]."</b></td><td>USAGE</td></tr>";
+	foreach($q_tbpri as $ke=>$r_tbpri) $db_pri[$r_tbpri[0]]['USAGE']= 'NO';
 	}
 	//max
 	if(!empty($hst)) {
@@ -2629,7 +2634,7 @@ case "53": //add,edit,update user
 	echo "<option value='".$r_dbs[0]."'>".$r_dbs[0]."</option>";
 	}
 	}
-	echo "</select></td></tr><tr><td class='c1' colspan='2'><button type='submit' name='adddbpri'>Add</button></td></tr>".$usg;
+	echo "</select></td></tr><tr><td class='c1' colspan='2'><button type='submit' name='adddbpri'>Add</button></td></tr>";
 	if(!empty($db_pri)) {
 	foreach($db_pri as $k=>$_pri) {
 	$gr= array_values(array_unique($_pri));
