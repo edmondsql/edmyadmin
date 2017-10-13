@@ -6,7 +6,7 @@ session_name('SQL');
 session_start();
 $bg=2;
 $step=20;
-$version="3.10.1";
+$version="3.10.2";
 $bbs= array('False','True');
 $jquery= (file_exists('jquery.js')?"/jquery.js":"http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js");
 class DBT {
@@ -1356,7 +1356,7 @@ case "20": //table browse
 	$q_res= $ed->con->query("SELECT ".implode(",",$select)." FROM {$tb}{$where} LIMIT $offset, $step");
 	foreach($q_res->fetch(1) as $r_rw) {
 		$bg=($bg==1)?2:1;
-		$nu = $coln[0]."/".(empty($r_rw[0])?"isnull":base64_encode($r_rw[0])).(isset($colt[1]) && (stristr($colt[1],"int") || stristr($colt[1],"varchar")) && stristr($colt[1],"blob") == false && !empty($coln[1]) && !empty($r_rw[1]) ? "/".$coln[1]."/".base64_encode($r_rw[1]):"");
+		$nu = $coln[0]."/".($r_rw[0]==""?"isnull":base64_encode($r_rw[0])).(isset($colt[1]) && (stristr($colt[1],"int") || stristr($colt[1],"varchar")) && stristr($colt[1],"blob") == false && !empty($coln[1]) && !empty($r_rw[1]) ? "/".$coln[1]."/".base64_encode($r_rw[1]):"");
 		echo "<tr class='r c$bg'>";
 		if($q_vic[17]!='VIEW'){
 		echo "<td><a href='".$ed->path."22/$db/$tb/$nu'>Edit</a><a class='del' href='".$ed->path."23/$db/$tb/$nu'>Delete</a></td>";
@@ -1490,6 +1490,7 @@ case "22": //table edit row
 		$colt[]= $r_brw['Type'];
 		$colu[]= $r_brw['Null'];
 	}
+	$nul= ("(".$nu." IS NULL OR ".$nu."='')");
 	if($ed->post('edit','i')) {//update
 	$q_re2= $ed->con->query("SELECT * FROM ".$tb);
 	$r_co= $q_re2->num_col();
@@ -1506,19 +1507,19 @@ case "22": //table edit row
 				preg_match("/\((.*)\)/", $colt[$p], $mat);
 				$qr2.= $coln[$p]."=b'".(($mat[1] > 1)?$ed->post("te".$p):$ed->post("te".$p,0))."',";
 			} else {
-				$qr2.= $coln[$p]."=".(($ed->post('te'.$p,'e') && $colu[$p]=='YES')? "NULL":"'".addslashes($ed->post('te'.$p))."'").",";
+				$qr2.= $coln[$p]."=".(($ed->post('te'.$p,'e') && !is_numeric($ed->post('te'.$p)) && $colu[$p]=='YES')? "NULL":"'".addslashes($ed->post('te'.$p))."'").",";
 			}
 			++$p;
 		}
 		$qr2=substr($qr2,0,-1);
-		$qr3=" WHERE ".$nu.($id==""?" IS NULL":"='".addslashes($id)."'").(!empty($nu1) && !empty($id1)?" AND $nu1='".addslashes($id1)."'":"")." LIMIT 1";
+		$qr3=" WHERE ".($id==""?$nul:$nu."='".addslashes($id)."'").(!empty($nu1) && !empty($id1)?" AND $nu1='".addslashes($id1)."'":"")." LIMIT 1";
 		$q_upd = $ed->con->query($qr1.$qr2.$qr3);
 		if($q_upd) $ed->redir("20/{$db}/".$tb,array('ok'=>"Successfully updated"));
 		else $ed->redir("20/{$db}/".$tb,array('err'=>"Update failed"));
 	} else {//edit form
 		$q_flds= $ed->con->query("SHOW COLUMNS FROM ".$tb);
 		$r_fnr= $q_flds->num_row();
-		$q_rst= $ed->con->query("SELECT ".implode(",",$select)." FROM `$tb` WHERE ".$nu.($id==""?" IS NULL":"='".addslashes($id)."'").(stristr($colt[1],"blob") == false && !empty($nu1) && !empty($id1)?" AND $nu1='".addslashes($id1)."'":""));
+		$q_rst= $ed->con->query("SELECT ".implode(",",$select)." FROM `$tb` WHERE ".($id==""?$nul:$nu."='".addslashes($id)."'").(stristr($colt[1],"blob") == false && !empty($nu1) && !empty($id1)?" AND $nu1='".addslashes($id1)."'":""));
 		if($q_rst->num_row() < 1) $ed->redir("20/$db/".$tb,array('err'=>"Edit failed"));
 		$r_rx = $q_rst->fetch();
 		echo $head.$ed->menu($db, $tb, 1).$ed->form("22/$db/$tb/$nu/".($id==""?"isnull":base64_encode($id)).(stristr($colt[1],"blob") == false && !empty($nu1) && !empty($id1)?"/$nu1/".base64_encode($r_rx['1']):""),1)."<table><caption>Edit Row</caption>";
@@ -1561,7 +1562,8 @@ case "23": //table delete row
 	$tb= $ed->sg[2];
 	$nu= $ed->sg[3];
 	$id= $ed->sg[4];
-	$q_delro = $ed->con->query("DELETE FROM $tb WHERE ".$nu.($id=="isnull"?" IS NULL":"='".addslashes(base64_decode($id))."'").(!empty($ed->sg[5]) && !empty($ed->sg[6])?" AND ".$ed->sg[5]."='".addslashes(base64_decode($ed->sg[6]))."'":"")." LIMIT 1");
+	$nul= ("(".$nu." IS NULL OR ".$nu."='')");
+	$q_delro = $ed->con->query("DELETE FROM $tb WHERE ".($id=="isnull"?$nul:$nu."='".addslashes(base64_decode($id))."'").(!empty($ed->sg[5]) && !empty($ed->sg[6])?" AND ".$ed->sg[5]."='".addslashes(base64_decode($ed->sg[6]))."'":"")." LIMIT 1");
 	if($q_delro && $q_delro->last()) $ed->redir("20/$db/".$tb,array('ok'=>"Successfully deleted"));
 	else $ed->redir("20/$db/$tb",array('err'=>"Delete row failed"));
 break;
