@@ -6,7 +6,7 @@ session_name('SQL');
 session_start();
 $bg=2;
 $step=20;
-$version="3.10.3";
+$version="3.10.4";
 $bbs= array('False','True');
 $jquery= (file_exists('jquery.js')?"/jquery.js":"http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js");
 class DBT {
@@ -704,11 +704,9 @@ for(var i=0;i<to;i++) opt[i].parentElement.style.display="none";
 for(var k=0;k<from;k++) opt[k].parentElement.style.display="block";
 for(var k=2;k<to;k++) opt[k].parentElement.style.display="none";
 } else if(ch=="sql") {
-for(var k=0;k<from;k++) opt[k].parentElement.style.display="block";
-for(var l=from;l<to;l++){
-if(opt[0].checked == false) opt[l].checked=false;
-opt[l].parentElement.style.display=(opt[0].checked ? "block":"none");
-}}}
+for(var k=0;k<to;k++) opt[k].parentElement.style.display="block";
+}
+}
 </script>
 </head><body><noscript><h1 class="msg err">Please activate Javascript in your browser!</h1></noscript>
 <div class="l1"><div class="left"><b><a href="https://github.com/edmondsql/edmyadmin">EdMyAdmin '.$version.'</a></b></div>'.(isset($ed->sg[0]) && $ed->sg[0]==50 ? "": '<div class="right"><div class="left more"><span class="a">More <small>&#9660;</small></span><div><a href="'.$ed->path.'60">Info</a><a href="'.$ed->path.'60/var">Variables</a><a href="'.$ed->path.'60/status">Status</a><a href="'.$ed->path.'60/process">Processes</a></div></div><a href="'.$ed->path.'52">Users</a><a href="'.$ed->path.'51">Logout ['.(isset($_SESSION['user']) ? $_SESSION['user']:"").']</a></div>').'<br class="clear"/></div>';
@@ -883,7 +881,8 @@ case "5": //Show Tables
 		foreach($q_sp as $r_sp){
 			$bg=($bg==1)?2:1;
 			if($r_sp[0]==$db) {
-			echo "<tr class='r c$bg'><td>".$r_sp[1]."</td><td>".$r_sp[2]."</td><td>".$r_sp[7]."</td><td><a href='{$ed->path}42/".$r_sp[0]."/".$r_sp[1]."/".strtolower($r_sp[2])."'>Edit</a><a href='{$ed->path}48/".$r_sp[0]."/".$r_sp[1]."/".strtolower($r_sp[2])."'>Execute</a><a class='del' href='{$ed->path}49/".$r_sp[0]."/".$r_sp[1]."/".strtolower($r_sp[2])."'>Drop</a></td></tr>";
+			echo "<tr class='r c$bg'><td>".$r_sp[1]."</td><td>".$r_sp[2]."</td><td>".(strlen($r_sp[7]) > 70 ? substr($r_sp[7],0,70)."[...]":$r_sp[7])
+			."</td><td><a href='{$ed->path}42/".$r_sp[0]."/".$r_sp[1]."/".strtolower($r_sp[2])."'>Edit</a><a href='{$ed->path}48/".$r_sp[0]."/".$r_sp[1]."/".strtolower($r_sp[2])."'>Execute</a><a class='del' href='{$ed->path}49/".$r_sp[0]."/".$r_sp[1]."/".strtolower($r_sp[2])."'>Drop</a></td></tr>";
 			}
 		}
 		echo "</table>";
@@ -1683,7 +1682,7 @@ case "30"://import
 	set_time_limit(7200);
 	if($ed->post()) {
 		$e='';
-		$rgex ="~^\xEF\xBB\xBF|^\xFE\xFF|^\xFF\xFE|((?is)DELIMITER).*?[^ ]|(\#|--).*|(\/\*).*(\*\/;*)|([\$$|//].*[^\$$|//])|((?is)(BEGIN.*?END)|\"[^\"]*\"|'[^\\\'|^']*')(*SKIP)(*F)|;~";
+		$rgex ="~^\xEF\xBB\xBF|^\xFE\xFF|^\xFF\xFE|((?is)DELIMITER).*?[^ ]|(\#|--).*|(\/\*).*(\*\/;*)|([\$$|//].*[^\$$|//])|((?is)(BEGIN.*?END)|\"[^\"]*\"|'[^'|\\\']*')(*SKIP)(*F)|;~";
 		if($ed->post('qtxt','!e')) {//in textarea
 			$e= preg_split($rgex, $ed->post('qtxt'), -1, PREG_SPLIT_NO_EMPTY);
 		} elseif($ed->post('send','i') && $ed->post('send') == "ja") {//from file
@@ -1796,7 +1795,7 @@ case "31": //export form
 	<h3><input type='checkbox' onclick='toggle(this,\"fopt[]\")' /> Options</h3>";
 	$opts = array('structure'=>'Structure','data'=>'Data','cdb'=>'Create DB','auto'=>'Auto Increment','drop'=>'Drop if exist','ifnot'=>'If not exist','trigger'=>'Triggers','procfunc'=>'Routines','event'=>'Events');
 	foreach($opts as $k => $opt) {
-	echo "<p><input type='checkbox' name='fopt[]' value='{$k}'".($k=='structure' ? ' onclick="opt()" checked':'')." /> ".$opt."</p>";
+	echo "<p><input type='checkbox' name='fopt[]' value='{$k}'".($k=='structure' ? ' checked':'')." /> ".$opt."</p>";
 	}
 	echo "</div><div><h3>File format</h3>";
 	$ffo = array('sql'=>'SQL','csv1'=>'CSV,','csv2'=>'CSV;','json'=>'JSON','xls'=>'Excel Spreadsheet','doc'=>'Word Web','xml'=>'XML');
@@ -1820,9 +1819,10 @@ case "32": //export
 	$db= $ed->sg[1];
 	$tbs= array();
 	$vws= array();
-	if($ed->post('tables')=='') {
+	$ffmt= $ed->post('ffmt');
+	if($ed->post('tables')=='' && $ffmt[0]!='sql') {
 		$ed->redir("31/".$db,array('err'=>"You didn't select any table"));
-	} else {//selected tables
+	} elseif($ed->post('tables','!e')) {//selected tables
 		$tabs = $ed->post('tables');
 		foreach($tabs as $tab) {
 			$r_com = $ed->con->query("SHOW TABLE STATUS FROM {$db} like '{$tab}'")->fetch();
@@ -1840,7 +1840,6 @@ case "32": //export
 		$fopt=$ed->post('fopt');
 	}
 	$ftype= $ed->post('ftype');
-	$ffmt= $ed->post('ffmt');
 	if($ffmt[0]=='sql') {//sql format
 		$ffty= "text/plain"; $ffext= ".sql"; $fname= $db.$ffext;
 		$sql="-- EdMyAdmin $version SQL Dump\n\n";
@@ -1895,7 +1894,7 @@ case "32": //export
 			}//end option data
 		}
 
-		if($vws != '') {//export views
+		if($vws != '' && in_array('structure',$fopt)) {//export views
 		foreach($vws as $vw) {
 			$q_rw = $ed->con->query("SHOW CREATE VIEW ".$vw);
 			if($q_rw->num_row()) {
@@ -1914,13 +1913,11 @@ case "32": //export
 			$q_trg=$ed->con->query("SELECT TRIGGER_NAME,ACTION_TIMING,EVENT_MANIPULATION,EVENT_OBJECT_TABLE,ACTION_STATEMENT FROM information_schema.triggers WHERE TRIGGER_SCHEMA='".$db."'");
 			if($q_trg->num_row()) {
 			$sqs.="\n";
-			foreach($q_trg->fetch(1)as $r_row) {
-				if(in_array($r_row[3], $tbs)) {
+			foreach($q_trg->fetch(1) as $r_row) {
 				if(in_array('drop',$fopt)) {//check option drop
 				$sqs .= "DROP TRIGGER IF EXISTS `".$r_row[0]."`;\n";
 				}
 				$sqs .= "CREATE TRIGGER `".$r_row[0]."` ".$r_row[1]." ".$r_row[2]." ON `".$r_row[3]."` FOR EACH ROW\n".$r_row[4]."$$\n\n";
-				}
 			}
 			}
 		}
