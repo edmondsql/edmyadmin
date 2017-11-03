@@ -6,7 +6,7 @@ session_name('SQL');
 session_start();
 $bg=2;
 $step=20;
-$version="3.10.4";
+$version="3.10.5";
 $bbs= array('False','True');
 $jquery= (file_exists('jquery.js')?"/jquery.js":"http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js");
 class DBT {
@@ -111,7 +111,7 @@ class DBT {
 	}
 }
 class ED {
-	public $con, $path, $sg, $u_db, $fieldtype, $ver, $sqlda, $pg_lr=8, $salt="#a1b2c3#";
+	public $con, $path, $sg, $u_db, $fieldtype, $ver, $sqlda, $salt="#a1b2c3#";
 	public $deny= array('mysql','information_schema','performance_schema','sys');
 	public function __construct() {
 	$pi= (isset($_SERVER['PATH_INFO']) ? $_SERVER['PATH_INFO'] : @getenv('PATH_INFO'));
@@ -193,13 +193,13 @@ class ED {
 		$nrf_op.= "<option value='$f'>$f</option>";
 		++$f;
 		}
-		if($left==1) $str .= "<div class='col1'><h3>SQL Query</h3>".$this->form("30/$db")."<textarea name='qtxt'></textarea><br/><button type='submit'>Run</button></form>
-		<h3>Import</h3><small>sql, csv, json, xml, gz, zip</small>".$this->form("30/$db",1)."<input type='file' name='importfile' />
+		if($left==1) $str .= "<div class='col1'><p class='h3'>SQL Query</p>".$this->form("30/$db")."<textarea name='qtxt'></textarea><br/><button type='submit'>Run</button></form>
+		<p class='h3'>Import</p><small>sql, csv, json, xml, gz, zip</small>".$this->form("30/$db",1)."<input type='file' name='importfile' />
 		<input type='hidden' name='send' value='ja' /><br/><button type='submit'>Upload (&lt;".ini_get("upload_max_filesize")."B)</button></form>
-		<h3>Create Table</h3>".$this->form("6/$db")."Table Name<br/><input type='text' name='ctab' /><br/>
+		<p class='h3'>Create Table</p>".$this->form("6/$db")."Table Name<br/><input type='text' name='ctab' /><br/>
 		Number of fields<br/><select name='nrf'>".$nrf_op."</select><br/><button type='submit'>Create</button></form>
-		<h3>Rename DB</h3>".$this->form("3/$db")."<input type='text' name='rdb' /><br/><button type='submit'>Rename</button></form>
-		<h3>Create</h3><a href='{$this->path}40/$db'>View</a><a href='{$this->path}41/$db'>Trigger</a><a href='{$this->path}42/$db'>Routine</a><a href='{$this->path}43/$db'>Event</a></div><div class='col2'>";
+		<p class='h3'>Rename DB</p>".$this->form("3/$db")."<input type='text' name='rdb' /><br/><button type='submit'>Rename</button></form>
+		<p class='h3'>Create</p><a href='{$this->path}40/$db'>View</a><a href='{$this->path}41/$db'>Trigger</a><a href='{$this->path}42/$db'>Routine</a><a href='{$this->path}43/$db'>Event</a></div><div class='col2'>";
 		return $str;
 	}
 	public function enco($str) {
@@ -347,18 +347,16 @@ class ED {
 	}
 	public function pg_number($pg, $totalpg) {
 		if($totalpg > 1) {
-		$kl= ($pg > $this->pg_lr ? $pg-$this->pg_lr:1);//left pg
-		$kr= (($pg > $totalpg-$this->pg_lr) ? $totalpg:$pg+$this->pg_lr);//right pg
 		if($this->sg[0]==20) $link= $this->path."20/".$this->sg[1]."/".$this->sg[2];
 		elseif($this->sg[0]==5) $link= $this->path."5/".$this->sg[1];
-		$pgs='';
-		while($kl <= $kr) {
-			$pgs .= (($kl == $pg) ? "<span class='active'>".$kl."</span>":"<a href='$link/$kl'>$kl</a>");
-			++$kl;
+		$pgs='';$k=1;
+		while($k <= $totalpg) {
+			$pgs .= "<option ".(($k == $pg) ? "selected='selected'>":"value='$link/$k'>")."$k</option>";
+			++$k;
 		}
 		$lft= ($pg>1?"<a href='$link/1'>First</a><a href='$link/".($pg-1)."'>Prev</a>":"");
 		$rgt= ($pg < $totalpg?"<a href='$link/".($pg+1)."'>Next</a><a href='$link/$totalpg'>Last</a>":"");
-		return "<div class='pg'>".$lft.$pgs.$rgt."</div>";
+		return "<div class='pg'>".$lft."<select onchange='location=this.value;'>$pgs</select>".$rgt."</div>";
 		}
 	}
 	public function imp_csv($fname, $fbody) {
@@ -562,19 +560,18 @@ small {font-size:9px}
 .cntr {text-align:center}
 .right, .link {float:right}
 .link {padding:3px 0}
-.pg * {padding:0 2px}
-.active, caption {font-weight:bold}
+.pg * {padding:0 2px;width:auto}
+caption {font-weight:bold;text-decoration:underline}
 .l2 ul {list-style:none}
 .l2 li,.left {float:left}
 .left button {margin:0 1px}
-h3 {background:#cdf;border-top:1px solid #555;margin-top:1px;padding:2px 0}
+.h3 {background:#cdf;text-decoration:overline;margin-top:1px;padding:2px 0}
 a {color:#842;text-decoration:none;background-color:transparent}
 a:hover {text-decoration:underline}
 a,a:active,a:hover {outline:0}
 table a,.l1 a,.l2 a,.col1 a {padding:0 3px}
 table {border-collapse: collapse;border-spacing:0;border-bottom:1px solid #555}
 td, th {padding:4px;vertical-align:top}
-.dot {border: 1px dotted #842}
 input[type=checkbox],input[type=radio]{position: relative;vertical-align: middle;bottom: 1px}
 input[type=text],input[type=password],input[type=file],textarea,button,select {width:100%;padding:2px 0;border:1px solid #bbb;outline:none;-webkit-border-radius: 3px;-moz-border-radius: 3px;border-radius: 3px;-webkit-box-sizing: border-box;-moz-box-sizing: border-box;box-sizing: border-box}
 input[type=text],select {min-width:98px !important}
@@ -702,7 +699,7 @@ if(ch=="csv1" || ch=="csv2" || ch=="json" || ch=="xls"){
 for(var i=0;i<to;i++) opt[i].parentElement.style.display="none";
 }else if(ch=="doc" || ch=="xml") {
 for(var k=0;k<from;k++) opt[k].parentElement.style.display="block";
-for(var k=2;k<to;k++) opt[k].parentElement.style.display="none";
+for(var k=2;k<to;k++) {opt[k].parentElement.style.display="none";opt[k].checked=false;}
 } else if(ch=="sql") {
 for(var k=0;k<to;k++) opt[k].parentElement.style.display="block";
 }
@@ -710,7 +707,7 @@ for(var k=0;k<to;k++) opt[k].parentElement.style.display="block";
 </script>
 </head><body><noscript><h1 class="msg err">Please activate Javascript in your browser!</h1></noscript>
 <div class="l1"><div class="left"><b><a href="https://github.com/edmondsql/edmyadmin">EdMyAdmin '.$version.'</a></b></div>'.(isset($ed->sg[0]) && $ed->sg[0]==50 ? "": '<div class="right"><div class="left more"><span class="a">More <small>&#9660;</small></span><div><a href="'.$ed->path.'60">Info</a><a href="'.$ed->path.'60/var">Variables</a><a href="'.$ed->path.'60/status">Status</a><a href="'.$ed->path.'60/process">Processes</a></div></div><a href="'.$ed->path.'52">Users</a><a href="'.$ed->path.'51">Logout ['.(isset($_SESSION['user']) ? $_SESSION['user']:"").']</a></div>').'<br class="clear"/></div>';
-$stru= "<table><caption>TABLE STRUCTURE</caption><tr><th class='dot'>FIELD</th><th class='dot'>TYPE</th><th class='dot'>VALUE</th><th class='dot'>ATTRIBUTES</th><th class='dot'>NULL</th><th class='dot'>DEFAULT</th><th class='dot'>COLLATION</th><th class='dot'>AUTO <input type='radio' name='ex[]'/></th>".(isset($ed->sg[0]) && $ed->sg[0]==11?"<th class='dot'>POSITION</th>":"")."</tr>";
+$stru= "<table><caption>TABLE STRUCTURE</caption><tr><th>FIELD</th><th>TYPE</th><th>VALUE</th><th>ATTRIBUTES</th><th>NULL</th><th>DEFAULT</th><th>COLLATION</th><th>AUTO <input type='radio' name='ex[]'/></th>".(isset($ed->sg[0]) && $ed->sg[0]==11?"<th>POSITION</th>":"")."</tr>";
 $inttype= array(''=>'&nbsp;','UNSIGNED'=>'unsigned','ZEROFILL'=>'zerofill','UNSIGNED ZEROFILL'=>'unsigned zerofill');
 
 if(!isset($ed->sg[0])) $ed->sg[0]=0;
@@ -1097,15 +1094,15 @@ case "10": //table structure
 	$db= $ed->sg[1];
 	$tb= $ed->sg[2];
 	echo $head.$ed->menu($db, $tb, 1);
-	echo $ed->form("9/$db/$tb")."<table><tr><th colspan='8'>TABLE STRUCTURE</th></tr><tr><th><input type='checkbox' onclick='toggle(this,\"idx[]\")' /></th><th class='dot'>FIELD</th><th class='dot'>TYPE</th><th class='dot'>NULL</th><th class='dot'>COLLATION</th><th class='dot'>DEFAULT</th><th class='dot'>EXTRA</th><th class='dot'>ACTIONS</th></tr><tbody id='allord'>";
+	echo $ed->form("9/$db/$tb")."<table><caption>TABLE STRUCTURE</caption><tr><th><input type='checkbox' onclick='toggle(this,\"idx[]\")' /></th><th>FIELD</th><th>TYPE</th><th>NULL</th><th>COLLATION</th><th>DEFAULT</th><th>EXTRA</th><th>ACTIONS</th></tr><tbody id='allord'>";
 	$q_fi= $ed->con->query("SHOW FULL FIELDS FROM ".$tb);
 	$r_filds= $q_fi->num_row();
 	$h=1;
 	foreach($q_fi->fetch(2) as $r_fi) {
 		$bg=($bg==1)?2:1;
-		echo "<tr class='r c$bg' id='".$r_fi['Field']."'><td><input type='checkbox' name='idx[]' value='".$r_fi['Field']."' /></td><td class='dot'>".$r_fi['Field']."</td><td class='dot'>".$r_fi['Type']."</td><td class='dot'>".$r_fi['Null']."</td>";
-		echo "<td class='dot'>".($r_fi['Collation']!='NULL' ? $r_fi['Collation']:'')."</td>";
-		echo "<td class='dot'>".$r_fi['Default']."</td><td class='dot'>".$r_fi['Extra']."</td><td class='dot'><a href='{$ed->path}12/$db/$tb/".$r_fi['Field']."'>change</a><a class='del' href='{$ed->path}13/$db/$tb/".$r_fi['Field']."'>drop</a><a href='{$ed->path}11/$db/$tb/".$r_fi['Field']."'>add</a>";
+		echo "<tr class='r c$bg' id='".$r_fi['Field']."'><td><input type='checkbox' name='idx[]' value='".$r_fi['Field']."' /></td><td>".$r_fi['Field']."</td><td>".$r_fi['Type']."</td><td>".$r_fi['Null']."</td>";
+		echo "<td>".($r_fi['Collation']!='NULL' ? $r_fi['Collation']:'')."</td>";
+		echo "<td>".$r_fi['Default']."</td><td>".$r_fi['Extra']."</td><td><a href='{$ed->path}12/$db/$tb/".$r_fi['Field']."'>change</a><a class='del' href='{$ed->path}13/$db/$tb/".$r_fi['Field']."'>drop</a><a href='{$ed->path}11/$db/$tb/".$r_fi['Field']."'>add</a>";
 		if($r_filds>1){
 		$up= "<a class='move up' title='Up'>&#9650;</a>";
 		$down= "<a class='move down' title='Down'>&#9660;</a>";
@@ -1117,7 +1114,7 @@ case "10": //table structure
 		++$h;
 	}
 	echo "</tbody><tr><td class='auto' colspan='8'><div class='left'><button type='submit' name='primary'>Primary</button><button type='submit' name='index'>Index</button><button type='submit' name='unique'>Unique</button><button type='submit' name='fulltext'>Fulltext</button></div><div class='link'><a href='{$ed->path}27/$db/$tb/analyze'>Analyze</a><a href='{$ed->path}27/$db/$tb/optimize'>Optimize</a><a href='{$ed->path}27/$db/$tb/check'>Check</a><a href='{$ed->path}27/$db/$tb/repair'>Repair</a></div></td></tr></table></form>
-	<table><tr><th colspan='4'>TABLE INDEX</th></tr><tr><th class='dot'>KEY NAME</th><th class='dot'>FIELD</th><th class='dot'>TYPE</th><th class='dot'>ACTIONS</th></tr>";
+	<table><caption>TABLE INDEX</caption><tr><th>KEY NAME</th><th>FIELD</th><th>TYPE</th><th>ACTIONS</th></tr>";
 	$q_idx= $ed->con->query("SHOW KEYS FROM ".$tb);
 	if($q_idx->num_row()) {
 	foreach($q_idx->fetch(2) as $r_idx) {
@@ -1134,10 +1131,10 @@ case "10": //table structure
 	if(count($idxs) > 0) {
 	foreach($idxs as $idxnam=>$idxcol) {
 	$bg=($bg==1)?2:1;
-	echo "<tr class='r c$bg'><td class='dot'>".$idxnam."</td><td class='dot'>";
+	echo "<tr class='r c$bg'><td>".$idxnam."</td><td>";
 	foreach($idxcol['column'] as $col) echo $col."<br/>";
-	echo "</td><td class='dot'>".$idxcol['type'];
-	echo "</td><td class='dot'><a class='del' href='{$ed->path}9/$db/$tb/".$idxnam."'>drop</a></td></tr>";
+	echo "</td><td>".$idxcol['type'];
+	echo "</td><td><a class='del' href='{$ed->path}9/$db/$tb/".$idxnam."'>drop</a></td></tr>";
 	}
 	}
 	}
@@ -1363,7 +1360,7 @@ case "20": //table browse
 		$i=0;
 		while($i<$r_cl) {
 			$val= htmlentities($r_rw[$i]);
-			echo "<td class='dot'>";
+			echo "<td>";
 			if(stristr($colt[$i],"blob") == true && !in_array($db,$ed->deny)) {
 				$le= strlen($r_rw[$i]);
 				echo "[blob] ";
@@ -1518,10 +1515,10 @@ case "22": //table edit row
 	} else {//edit form
 		$q_flds= $ed->con->query("SHOW COLUMNS FROM ".$tb);
 		$r_fnr= $q_flds->num_row();
-		$q_rst= $ed->con->query("SELECT ".implode(",",$select)." FROM `$tb` WHERE ".($id==""?$nul:$nu."='".addslashes($id)."'").(stristr($colt[1],"blob") == false && !empty($nu1) && !empty($id1)?" AND $nu1='".addslashes($id1)."'":""));
+		$q_rst= $ed->con->query("SELECT ".implode(",",$select)." FROM `$tb` WHERE ".($id==""?$nul:$nu."='".addslashes($id)."'").(!empty($colt[1]) && stristr($colt[1],"blob") == false && !empty($nu1) && !empty($id1)?" AND $nu1='".addslashes($id1)."'":""));
 		if($q_rst->num_row() < 1) $ed->redir("20/$db/".$tb,array('err'=>"Edit failed"));
 		$r_rx = $q_rst->fetch();
-		echo $head.$ed->menu($db, $tb, 1).$ed->form("22/$db/$tb/$nu/".($id==""?"isnull":base64_encode($id)).(stristr($colt[1],"blob") == false && !empty($nu1) && !empty($id1)?"/$nu1/".base64_encode($r_rx['1']):""),1)."<table><caption>Edit Row</caption>";
+		echo $head.$ed->menu($db, $tb, 1).$ed->form("22/$db/$tb/$nu/".($id==""?"isnull":base64_encode($id)).(!empty($colt[1]) && stristr($colt[1],"blob") == false && !empty($nu1) && !empty($id1)?"/$nu1/".base64_encode($r_rx['1']):""),1)."<table><caption>Edit Row</caption>";
 		$k=0;
 		while($k<$r_fnr) {
 			echo "<tr><td>".$coln[$k]."</td><td>";
@@ -1785,24 +1782,24 @@ case "31": //export form
 	$db= $ed->sg[1];
 	$q_tables= $ed->con->query("SHOW TABLES FROM ".$db);
 	if($q_tables->num_row()) {
-	echo $head.$ed->menu($db,'',2).$ed->form("32/$db")."<div class='dw'><h3 class='l1'>Export</h3><div><h3>Select table(s)</h3>
+	echo $head.$ed->menu($db,'',2).$ed->form("32/$db")."<div class='dw'><p class='h3 l1'>Export</p><div><p class='h3'>Select table(s)</p>
 	<p><input type='checkbox' onclick='selectall(this,\"tables\")' /> All/None</p>
 	<select class='he' id='tables' name='tables[]' multiple='multiple'>";
 	foreach($q_tables->fetch(1) as $r_tts) {
 	echo "<option value='".$r_tts[0]."'>".$r_tts[0]."</option>";
 	}
 	echo "</select></div><div>
-	<h3><input type='checkbox' onclick='toggle(this,\"fopt[]\")' /> Options</h3>";
+	<p class='h3'><input type='checkbox' onclick='toggle(this,\"fopt[]\")' /> Options</p>";
 	$opts = array('structure'=>'Structure','data'=>'Data','cdb'=>'Create DB','auto'=>'Auto Increment','drop'=>'Drop if exist','ifnot'=>'If not exist','trigger'=>'Triggers','procfunc'=>'Routines','event'=>'Events');
 	foreach($opts as $k => $opt) {
 	echo "<p><input type='checkbox' name='fopt[]' value='{$k}'".($k=='structure' ? ' checked':'')." /> ".$opt."</p>";
 	}
-	echo "</div><div><h3>File format</h3>";
+	echo "</div><div><p class='h3'>File format</p>";
 	$ffo = array('sql'=>'SQL','csv1'=>'CSV,','csv2'=>'CSV;','json'=>'JSON','xls'=>'Excel Spreadsheet','doc'=>'Word Web','xml'=>'XML');
 	foreach($ffo as $k => $ff) {
 	echo "<p><input type='radio' name='ffmt[]' onclick='opt()' value='{$k}'".($k=='sql' ? ' checked':'')." /> {$ff}</p>";
 	}
-	echo "</div><div><h3>File compression</h3><p><select name='ftype'>";
+	echo "</div><div><p class='h3'>File compression</p><p><select name='ftype'>";
 	$fty = array('plain'=>'None','gzip'=>'GZ','zip'=>'Zip');
 	foreach($fty as $k => $ft) {
 	echo "<option value='{$k}'>{$ft}</option>";
@@ -1843,12 +1840,12 @@ case "32": //export
 	if($ffmt[0]=='sql') {//sql format
 		$ffty= "text/plain"; $ffext= ".sql"; $fname= $db.$ffext;
 		$sql="-- EdMyAdmin $version SQL Dump\n\n";
-		if(in_array('cdb',$fopt) && in_array('structure',$fopt)) {//check option create db
+		if(in_array('cdb',$fopt)) {//check option create db
 			$sql .= "CREATE DATABASE ";
 			if(in_array('ifnot',$fopt)) {//check option if not exist
 			$sql .= "IF NOT EXISTS ";
 			}
-			$sql .= $db.";\nUse $db;\n\n";
+			$sql .= $db.";\nUSE $db;\n\n";
 		}
 		foreach($tbs as $tb) {
 			$r_st= $ed->con->query("SHOW TABLE STATUS FROM {$db} like '{$tb}'")->fetch();
@@ -2052,38 +2049,43 @@ case "32": //export
 		}
 		$sql .='</Workbook>';
 	} elseif($ffmt[0]=='xml') {//xml format
-		$tbs= array_merge($tbs, $vws);
 		$ffty= "application/xml"; $ffext= ".xml"; $fname=$db.$ffext;
 		$sql ="<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<!-- EdMyAdmin $version XML Dump -->\n<export version=\"1.0\" xmlns:ed=\"https://github.com/edmondsql\">";
 		if(in_array('structure',$fopt)) {
 		$sql .="\n\t<ed:structure_schemas>";
 		$sql .="\n\t\t<ed:database name=\"$db\">";
 		foreach($tbs as $tb) {
-		$sql .="\n\t\t\t<ed:table name=\"$tb\">";
-		$r_st= $ed->con->query("SHOW TABLE STATUS FROM {$db} like '{$tb}'")->fetch();
-		$sql .=	$ed->tb_structure($tb,$fopt,$tab="\t\t\t",$r_st);
-		$sql .="\n\t\t\t</ed:table>";
+			$sql .="\n\t\t\t<ed:table name=\"$tb\">";
+			$r_st= $ed->con->query("SHOW TABLE STATUS FROM {$db} like '{$tb}'")->fetch();
+			$sql .=	$ed->tb_structure($tb,$fopt,$tab="\t\t\t",$r_st);
+			$sql .="\n\t\t\t</ed:table>";
+		}
+		foreach($vws as $vw) {
+			$sql .="\n\t\t\t<ed:table name=\"$vw\">";
+			$r_vi= $ed->con->query("SELECT VIEW_DEFINITION FROM information_schema.VIEWS WHERE `TABLE_SCHEMA`='$db' AND `TABLE_NAME`='$vw'")->fetch();
+			$sql .="\n\t\t\tCREATE VIEW `$vw` AS ".$r_vi[0];
+			$sql .="\n\t\t\t</ed:table>";
 		}
 		$sql .="\n\t\t</ed:database>\n\t</ed:structure_schemas>";
 		}
 		if(in_array('data',$fopt)) {
-		$sql .="\n\t<database name=\"$db\">";
+		$sq="\n\t<database name=\"$db\">";
 		foreach($tbs as $tb) {
 		$q_xm1 = $ed->con->query("SHOW FIELDS FROM ".$tb)->fetch(1);
 		$q_xm2 = $ed->con->query("SELECT * FROM ".$tb)->fetch(1);
 		foreach($q_xm2 as $r_=>$r_xm2) {
-			$sql .="\n\t\t<table name=\"$tb\">";
+			$sq .="\n\t\t<table name=\"$tb\">";
 			$x=0;
 			foreach($r_xm2 as $r_x2) {
-			$sql .="\n\t\t\t<column name=\"".$q_xm1[$x][0]."\">".addslashes(htmlspecialchars($r_x2))."</column>";
+			$sq .="\n\t\t\t<column name=\"".$q_xm1[$x][0]."\">".addslashes(htmlspecialchars($r_x2))."</column>";
 			++$x;
 			}
-			$sql .="\n\t\t</table>";
+			$sq .="\n\t\t</table>";
 		}
 		}
-		$sql .="\n\t</database>";
+		$sq .="\n\t</database>";
 		}
-		$sql .="\n</export>";
+		$sql .=(empty($tbs)?'':$sq)."\n</export>";
 	}
 
 	if($ftype=="gzip") {//gzip
@@ -2508,7 +2510,7 @@ case "50": //login
 	}
 	session_unset();
 	session_destroy();
-	echo $head.$ed->menu('','',2).$ed->form("50")."<div class='dw'><h3>LOGIN</h3>
+	echo $head.$ed->menu('','',2).$ed->form("50")."<div class='dw'><p class='h3'>LOGIN</p>
 	<div>Host<br/><input type='text' id='host' name='lhost' value='localhost' /></div>
 	<div>Username<br/><input type='text' name='username' value='root' /></div>
 	<div>Password<br/><input type='password' name='password' /></div>
@@ -2528,7 +2530,7 @@ case "52": //users
 	foreach($q_usr as $r_usr) {
 	$bg=($bg==1)?2:1;
 	preg_match("/'(.*)'@'(.*)'/", $r_usr[0], $r_us);
-	echo "<tr class='r c$bg'><td class='dot'>".$r_us[1]."</td><td class='dot'>".$r_us[2]."</td><td><a class='del' href='{$ed->path}59/".$r_us[1]."/".base64_encode($r_us[2])."'>Drop</a><a href='{$ed->path}53/".$r_us[1]."/".base64_encode($r_us[2])."'>Edit</a></td></tr>";
+	echo "<tr class='r c$bg'><td>".$r_us[1]."</td><td>".$r_us[2]."</td><td><a class='del' href='{$ed->path}59/".$r_us[1]."/".base64_encode($r_us[2])."'>Drop</a><a href='{$ed->path}53/".$r_us[1]."/".base64_encode($r_us[2])."'>Edit</a></td></tr>";
 	}
 	echo "</table>";
 break;
@@ -2818,21 +2820,21 @@ case "60": //info
 		$q_var= array('Use extension'=>$use,'PHP'=>PHP_VERSION,'Software'=>$_SERVER['SERVER_SOFTWARE']);
 		foreach($q_var as $r_k=>$r_var) {
 		$bg=($bg==1)?2:1;
-		echo "<tr class='r c$bg'><td class='dot'>$r_k</td><td class='dot'>$r_var</td></tr>";
+		echo "<tr class='r c$bg'><td>$r_k</td><td>$r_var</td></tr>";
 		}
 	} elseif($ed->sg[1]=='var') {
 		echo "<tr><th>VARIABLE</th><th>VALUE</th></tr>";
 		$q_var = $ed->con->query("SHOW VARIABLES")->fetch(1);
 		foreach($q_var as $r_var) {
 		$bg=($bg==1)?2:1;
-		echo "<tr class='r c$bg'><td class='dot'>".$r_var[0]."</td><td class='dot'>".htmlspecialchars($r_var[1])."</td></tr>";
+		echo "<tr class='r c$bg'><td>".$r_var[0]."</td><td>".htmlspecialchars($r_var[1])."</td></tr>";
 		}
 	} elseif($ed->sg[1]=='status') {
 		echo "<tr><th>VARIABLE</th><th>VALUE</th></tr>";
 		$q_sts = $ed->con->query("SHOW STATUS")->fetch(1);
 		foreach($q_sts as $r_sts) {
 		$bg=($bg==1)?2:1;
-		echo "<tr class='r c$bg'><td class='dot'>".$r_sts[0]."</td><td class='dot'>".$r_sts[1]."</td></tr>";
+		echo "<tr class='r c$bg'><td>".$r_sts[0]."</td><td>".$r_sts[1]."</td></tr>";
 		}
 	} elseif($ed->sg[1]=='process') {
 		if($ed->post('killp','i')) $ed->con->query("KILL ".$ed->post('pid'));
