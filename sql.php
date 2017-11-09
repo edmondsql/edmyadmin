@@ -6,7 +6,7 @@ session_name('SQL');
 session_start();
 $bg=2;
 $step=20;
-$version="3.11";
+$version="3.11.1";
 $bbs= array('False','True');
 $jquery= (file_exists('jquery.js')?"/jquery.js":"http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js");
 class DBT {
@@ -338,20 +338,20 @@ class ED {
 
 		if($tb!="") $str .="<li class='divider'>---</li><li><a href='{$this->path}10/$db/$tb'>Structure</a></li><li><a href='{$this->path}20/$db/$tb'>Browse</a></li><li><a href='{$this->path}21/$db/$tb'>Insert</a></li><li><a href='{$this->path}24/$db/$tb'>Search</a></li><li><a class='del' href='{$this->path}25/$db/$tb'>Empty</a></li><li><a class='del' href='{$this->path}26/$db/$tb'>Drop</a></li>";
 		$str.=($db==""?"":"</ul><br class='clear'/></div>");
-		
+
 		if($db!="" && $db!=1) {//db select
 		$str.="<div class='l3 auto2'>&nbsp;Database: <select onchange='location=this.value;'>";
 		foreach($this->u_db as $udb) $str.="<option value='{$this->path}5/".$udb[0]."'".($udb[0]==$db?" selected":"").">".$udb[0]."</option>";
 		$str.="</select>";
 		//table select
-		$q_tbs=array();
-		if($tb!="" || count($sp) >1) {
+		$q_tbs=array(); $c_sp= count($sp);
+		if($tb!="" || $c_sp >1) {
 		$q_tbs= $this->con->query("SHOW TABLES FROM ".$db)->fetch(1);
 		$sl2="<select onchange='location=this.value;'>";
-		foreach($q_tbs as $r_tbs) $sl2.="<option value='{$this->path}20/$db/".$r_tbs[0]."'".($r_tbs[0]==$tb || (count($sp) >1 && $r_tbs[0]==$sp[1])?" selected":"").">".$r_tbs[0]."</option>";
+		foreach($q_tbs as $r_tbs) $sl2.="<option value='{$this->path}20/$db/".$r_tbs[0]."'".($r_tbs[0]==$tb || ($c_sp >1 && $r_tbs[0]==$sp[1])?" selected":"").">".$r_tbs[0]."</option>";
 		$sl2.="</select>";
 		if($tb!="") $str.=" Table: ".$sl2.$srch;
-		if(count($sp) >1) $str.=" ".$sp[0].": ".$sl2;
+		if($c_sp >1) $str.=" ".$sp[0].": ".($sp[0]=='view'?$sl2:$sp[1]);
 		}
 		$str.="</div>";
 		}
@@ -365,7 +365,7 @@ class ED {
 		if($left==1) $str .= "<div class='col1'><h3>SQL Query</h3>".$this->form("30/$db")."<textarea name='qtxt'></textarea><br/><button type='submit'>Run</button></form>
 		<h3>Import</h3><small>sql, csv, json, xml, gz, zip</small>".$this->form("30/$db",1)."<input type='file' name='importfile'/>
 		<input type='hidden' name='send' value='ja'/><br/><button type='submit'>Upload (&lt;".ini_get("upload_max_filesize")."B)</button></form>
-		<h3>Create Table</h3>".$this->form("6/$db")."Table Name<br/><input type='text' name='ctab'/><br/>
+		<h3>Create Table</h3>".$this->form("6/$db")."<input type='text' name='ctab'/><br/>
 		Number of fields<br/><select name='nrf'>".$nrf_op."</select><br/><button type='submit'>Create</button></form>
 		<h3>Rename DB</h3>".$this->form("3/$db")."<input type='text' name='rdb'/><br/>Collation<br/>".$this->collate("rdbcll")."<br/><button type='submit'>Rename</button></form>
 		<h3>Create</h3><a href='{$this->path}40/$db'>View</a><a href='{$this->path}41/$db'>Trigger</a><a href='{$this->path}42/$db'>Routine</a><a href='{$this->path}43/$db'>Event</a></div><div class='col2'>";
@@ -625,7 +625,7 @@ textarea, .he {min-height:90px}
 .auto2 select {width:auto;border:0;padding:0;background:#fe3}
 
 .l1,.l2,.l3,.wi {width:100%}
-.move,.bb,.msg,.a {cursor:pointer}
+.msg,.a,.move,.bb {cursor:pointer}
 [class^=pa],[id^=px],.rou2 {display:none}
 .bb * {font: 22px/18px Arial}
 .upr {list-style:none;overflow:auto;overflow-x:hidden;height:90px}
@@ -722,14 +722,14 @@ if(el="fopt[]") opt();
 function opt(){
 var opt=document.getElementsByName("fopt[]"),ft=document.getElementsByName("ffmt[]"),from=2,to=opt.length,ch="";
 for(var j=0; ft[j]; ++j){if(ft[j].checked) ch=ft[j].value;}
-if(ch=="csv1" || ch=="csv2" || ch=="json" || ch=="xls"){
-for(var i=0;i<to;i++) opt[i].parentElement.style.display="none";
-}else if(ch=="doc" || ch=="xml") {
+if(ch=="sql"){
+for(var k=0;k<to;k++) opt[k].parentElement.style.display="block";
+}else if(ch=="doc" || ch=="xml"){
 for(var k=0;k<from;k++) opt[k].parentElement.style.display="block";
 for(var k=2;k<to;k++) {opt[k].parentElement.style.display="none";opt[k].checked=false;}
-} else if(ch=="sql") {
-for(var k=0;k<to;k++) opt[k].parentElement.style.display="block";
-}
+}else{
+for(var i=0;i<to;i++) opt[i].parentElement.style.display="none";
+}  
 }
 </script>
 </head><body><noscript><h1 class="msg err">Please activate Javascript in your browser!</h1></noscript>
@@ -777,17 +777,20 @@ case "3": //rename DB
 	if($ed->post('rdb','!e')) {
 	$ndb = $ed->sanitize($ed->post('rdb'));
 	$q_db= call_user_func_array('array_merge',$ed->u_db);
-	if(in_array($ndb,$q_db)) $ed->redir("",array('err'=>"Cannot rename, DB already exist"));
+	if(in_array($ndb,$q_db)) {
+	$ed->con->query("ALTER DATABASE `$db` COLLATE ".$ed->post('rdbcll'));
+	$ed->redir("",array('ok'=>"Changed collation"));
+	}
 	$q_ren = $ed->con->query("CREATE DATABASE ".$ndb.($ed->post('rdbcll','!e')?" COLLATE '".$ed->post('rdbcll')."'":""));//create DB
 	if(!$q_ren) $ed->redir("",array('err'=>"Don't have privilege to create the DB"));
 	//table
 	$q_tb = $ed->con->query("SELECT TABLE_NAME,TABLE_TYPE FROM information_schema.TABLES WHERE `TABLE_SCHEMA`='$db'");
 	if($q_tb->num_row()) {
 	foreach($q_tb->fetch(1) as $r_tb) {
-		if($r_tb[1] != 'VIEW') {
-		$ed->con->query("CREATE TABLE ".$ndb.".".$r_tb[0]." LIKE ".$db.".".$r_tb[0]);
-		$ed->con->query("INSERT ".$ndb.".".$r_tb[0]." SELECT * FROM ".$db.".".$r_tb[0]);
-		}
+	if($r_tb[1] != 'VIEW') {
+	$ed->con->query("CREATE TABLE ".$ndb.".".$r_tb[0]." LIKE ".$db.".".$r_tb[0]);
+	$ed->con->query("INSERT ".$ndb.".".$r_tb[0]." SELECT * FROM ".$db.".".$r_tb[0]);
+	}
 	}
 	}
 	//view
@@ -795,7 +798,7 @@ case "3": //rename DB
 	$q_viv = $ed->con->query("SELECT TABLE_NAME,VIEW_DEFINITION FROM information_schema.VIEWS WHERE `TABLE_SCHEMA`='$db'");
 	if($q_viv->num_row()) {
 	foreach($q_viv->fetch(1) as $r_vi) {
-		$ed->con->query("CREATE VIEW `$ndb`.`".$r_vi[0]."` AS ".str_replace("`".$db."`", "`".$ndb."`", $r_vi[1]));
+	$ed->con->query("CREATE VIEW `$ndb`.`".$r_vi[0]."` AS ".str_replace("`".$db."`", "`".$ndb."`", $r_vi[1]));
 	}
 	}
 	}
@@ -804,9 +807,9 @@ case "3": //rename DB
 	$q_aro= $ed->con->query("SELECT ROUTINE_NAME,ROUTINE_TYPE FROM information_schema.ROUTINES WHERE `ROUTINE_SCHEMA`='$db'");
 	if($q_aro->num_row()) {
 	foreach($q_aro->fetch(1) as $r_aro) {
-		$q_ros= $ed->con->query("SHOW CREATE ".$r_aro[1]." $db.".$r_aro[0])->fetch();
-		$ed->con->query("USE ".$ndb);
-		$ed->con->query($q_ros[2]);
+	$q_ros= $ed->con->query("SHOW CREATE ".$r_aro[1]." $db.".$r_aro[0])->fetch();
+	$ed->con->query("USE ".$ndb);
+	$ed->con->query($q_ros[2]);
 	}
 	}
 	}
@@ -851,9 +854,7 @@ case "5": //Show Tables
 	$ttalr= $q_tbs->num_row();
 	$tables= array();
 	if($ttalr >0) {
-	foreach($q_tbs->fetch(1) as $r_tbs) {
-		$tables[]= array(0=>$r_tbs[0],1=>$r_tbs[1],2=>$r_tbs[2],3=>$r_tbs[3],4=>$r_tbs[4]);
-	}
+	foreach($q_tbs->fetch(1) as $r_tbs) $tables[]= array(0=>$r_tbs[0],1=>$r_tbs[1],2=>$r_tbs[2],3=>$r_tbs[3],4=>$r_tbs[4]);
 	}
 	//paginate
 	if($ttalr > 0) {
@@ -875,11 +876,9 @@ case "5": //Show Tables
 		$bg=($bg==1)?2:1;
 		$_vl= "/$db/".$tables[$ofset][0];
 		if($tables[$ofset][1]=='VIEW') {
-			$lnk="40{$_vl}/view";
-			$dro="49{$_vl}/view";
+			$lnk="40{$_vl}/view";$dro="49{$_vl}/view";
 		} else {
-			$lnk="10".$_vl;
-			$dro="26".$_vl;
+			$lnk="10".$_vl;$dro="26".$_vl;
 		}
 		$q_rows[0]=0;
 		$q_t= $ed->con->query("SELECT COUNT(*) FROM ".$tables[$ofset][0]);
@@ -906,15 +905,15 @@ case "5": //Show Tables
 		}
 	}
 	if($tsp==1) {
-		echo "<table><tr><th>ROUTINE</th><th>TYPE</th><th>COMMENTS</th><th>ACTIONS</th></tr>";
-		foreach($q_sp as $r_sp){
-			$bg=($bg==1)?2:1;
-			if($r_sp[0]==$db) {
-			echo "<tr class='r c$bg'><td>".$r_sp[1]."</td><td>".$r_sp[2]."</td><td>".(strlen($r_sp[7]) > 70 ? substr($r_sp[7],0,70)."[...]":$r_sp[7])
-			."</td><td><a href='{$ed->path}42/".$r_sp[0]."/".$r_sp[1]."/".strtolower($r_sp[2])."'>Edit</a><a href='{$ed->path}48/".$r_sp[0]."/".$r_sp[1]."/".strtolower($r_sp[2])."'>Execute</a><a class='del' href='{$ed->path}49/".$r_sp[0]."/".$r_sp[1]."/".strtolower($r_sp[2])."'>Drop</a></td></tr>";
-			}
+	echo "<table><tr><th>ROUTINE</th><th>TYPE</th><th>COMMENTS</th><th>ACTIONS</th></tr>";
+	foreach($q_sp as $r_sp){
+		$bg=($bg==1)?2:1;
+		if($r_sp[0]==$db) {
+		echo "<tr class='r c$bg'><td>".$r_sp[1]."</td><td>".$r_sp[2]."</td><td>".(strlen($r_sp[7]) > 70 ? substr($r_sp[7],0,70)."[...]":$r_sp[7])
+		."</td><td><a href='{$ed->path}42/".$r_sp[0]."/".$r_sp[1]."/".strtolower($r_sp[2])."'>Edit</a><a href='{$ed->path}48/".$r_sp[0]."/".$r_sp[1]."/".strtolower($r_sp[2])."'>Execute</a><a class='del' href='{$ed->path}49/".$r_sp[0]."/".$r_sp[1]."/".strtolower($r_sp[2])."'>Drop</a></td></tr>";
 		}
-		echo "</table>";
+	}
+	echo "</table>";
 	}
 	//show triggers
 	$q_trg=$ed->con->query("SHOW TRIGGERS FROM ".$db);
@@ -946,51 +945,51 @@ case "6": //Create table
 	$ed->check(array(1));
 	$db= $ed->sg[1];
 	if($ed->post('ctab','!e') && !is_numeric(substr($ed->post('ctab'),0,1)) && $ed->post('nrf','!e') && is_numeric($ed->post('nrf')) && $ed->post('nrf')>0 ) {
-		echo $head.$ed->menu($db,'',2);
-		if($ed->post('crtb','i')) {
-			$qry1 = "Create TABLE ".$ed->sanitize($ed->post('ctab'))."(";
-			$nf=0;
-			while($nf<$ed->post('nrf')) {
-				$c1=$ed->post('fi'.$nf); $c2=$ed->post('ty'.$nf);
-				$c3=($ed->post('va'.$nf,'!e') ? "(".$ed->post('va'.$nf).")" : "");
-				$c4=($ed->post('at'.$nf,'!e') ? " ".$ed->post('at'.$nf):"");
-				$c5=$ed->post('nc'.$nf);
-				$c6=($ed->post('de'.$nf,'!e') ? " default '".$ed->post('de'.$nf)."'":"");
-				$c7=($ed->post('ex','!e') && $ed->post('ex',0)!='on' && $ed->post('ex',0)==$nf ? " AUTO_INCREMENT PRIMARY KEY":"");
-				$c8=($ed->post('clls'.$nf,'!e') ? " collate ".$ed->post('clls'.$nf):"");
-				$qry1 .= $c1." ".$c2.$c3.$c4." ".$c5.$c6.$c7.$c8.",";
-				++$nf;
-			}
-			$qry2 = substr($qry1,0,-1);
-			$qry= $qry2.")".($ed->post('engs')==""?"":" ENGINE=".$ed->post('engs')).($ed->post('tcomm')!=""?" COMMENT='".$ed->post('tcomm')."'":"").";";
-			echo "<p>".($ed->con->query($qry) ? "<b>OK!</b> $qry" : "<b>FAILED!</b> $qry")."</p>";
-		} else {
-			echo $ed->form("6/$db")."
-			<input type='hidden' name='ctab' value='".$ed->sanitize($ed->post('ctab'))."'/>
-			<input type='hidden' name='nrf' value='".$ed->post('nrf')."'/>".$stru;
-			$nf=0;
-			while($nf<$ed->post('nrf')) {
-				$bg=($bg==1)?2:1;
-				echo "<tr class='c$bg'><td><input type='text' name='fi".$nf."'/></td>
-				<td><select name='ty".$nf."'>".$ed->fieldtypes()."</select></td>
-				<td><input type='text' name='va".$nf."'/></td><td><select name='at".$nf."'>";
-				foreach($inttype as $intk=>$intt) {
-				echo "<option value='$intk'>$intt</option>";
-				}
-				echo "</select></td>
-				<td><select name='nc".$nf."'><option value='NOT NULL'>NOT NULL</option><option value='NULL'>NULL</option></select></td>
-				<td><input type='text' name='de".$nf."'/></td><td>".
-				$ed->collate("clls".$nf)."</td><td><input type='radio' name='ex[]' value='$nf'/></td></tr>";
-				++$nf;
-			}
-			echo "<tr><td colspan='1'>Engine<br/><select name='engs'><option value=''>&nbsp;</option>";
-			$q_eng= $ed->con->query("SELECT ENGINE FROM information_schema.ENGINES WHERE ENGINE IS NOT NULL AND SUPPORT<>'NO'")->fetch(1);
-			foreach($q_eng as $r_eng) {
-				echo "<option value='".$r_eng[0]."'>".$r_eng[0]."</option>";
-			}
-			echo "</select></td><td colspan='7'>Table Comment:<br/><input type='text' name='tcomm'/></td></tr>
-			<tr><td colspan='8'><button type='submit' name='crtb'>Create Table</button></td></tr></table></form>";
+	echo $head.$ed->menu($db,'',2);
+	if($ed->post('crtb','i')) {
+		$qry1 = "Create TABLE ".$ed->sanitize($ed->post('ctab'))."(";
+		$nf=0;
+		while($nf<$ed->post('nrf')) {
+			$c1=$ed->post('fi'.$nf); $c2=$ed->post('ty'.$nf);
+			$c3=($ed->post('va'.$nf,'!e') ? "(".$ed->post('va'.$nf).")" : "");
+			$c4=($ed->post('at'.$nf,'!e') ? " ".$ed->post('at'.$nf):"");
+			$c5=$ed->post('nc'.$nf);
+			$c6=($ed->post('de'.$nf,'!e') ? " default '".$ed->post('de'.$nf)."'":"");
+			$c7=($ed->post('ex','!e') && $ed->post('ex',0)!='on' && $ed->post('ex',0)==$nf ? " AUTO_INCREMENT PRIMARY KEY":"");
+			$c8=($ed->post('clls'.$nf,'!e') ? " collate ".$ed->post('clls'.$nf):"");
+			$qry1 .= $c1." ".$c2.$c3.$c4." ".$c5.$c6.$c7.$c8.",";
+			++$nf;
 		}
+		$qry2 = substr($qry1,0,-1);
+		$qry= $qry2.")".($ed->post('engs')==""?"":" ENGINE=".$ed->post('engs')).($ed->post('tcomm')!=""?" COMMENT='".$ed->post('tcomm')."'":"").";";
+		echo "<p>".($ed->con->query($qry) ? "<b>OK!</b> $qry" : "<b>FAILED!</b> $qry")."</p>";
+	} else {
+		echo $ed->form("6/$db")."
+		<input type='hidden' name='ctab' value='".$ed->sanitize($ed->post('ctab'))."'/>
+		<input type='hidden' name='nrf' value='".$ed->post('nrf')."'/>".$stru;
+		$nf=0;
+		while($nf<$ed->post('nrf')) {
+			$bg=($bg==1)?2:1;
+			echo "<tr class='c$bg'><td><input type='text' name='fi".$nf."'/></td>
+			<td><select name='ty".$nf."'>".$ed->fieldtypes()."</select></td>
+			<td><input type='text' name='va".$nf."'/></td><td><select name='at".$nf."'>";
+			foreach($inttype as $intk=>$intt) {
+			echo "<option value='$intk'>$intt</option>";
+			}
+			echo "</select></td>
+			<td><select name='nc".$nf."'><option value='NOT NULL'>NOT NULL</option><option value='NULL'>NULL</option></select></td>
+			<td><input type='text' name='de".$nf."'/></td><td>".
+			$ed->collate("clls".$nf)."</td><td><input type='radio' name='ex[]' value='$nf'/></td></tr>";
+			++$nf;
+		}
+		echo "<tr><td colspan='1'>Engine<br/><select name='engs'><option value=''>&nbsp;</option>";
+		$q_eng= $ed->con->query("SELECT ENGINE FROM information_schema.ENGINES WHERE ENGINE IS NOT NULL AND SUPPORT<>'NO'")->fetch(1);
+		foreach($q_eng as $r_eng) {
+			echo "<option value='".$r_eng[0]."'>".$r_eng[0]."</option>";
+		}
+		echo "</select></td><td colspan='7'>Table Comment:<br/><input type='text' name='tcomm'/></td></tr>
+		<tr><td colspan='8'><button type='submit' name='crtb'>Create Table</button></td></tr></table></form>";
+	}
 	} else {
 		$ed->redir("5/".$db,array('err'=>"Create table failed"));
 	}
@@ -2668,7 +2667,7 @@ case "53": //add,edit,update user
 	if(!empty($db_pri)) {
 	foreach($db_pri as $k=>$_pri) {
 	$gr= array_values(array_unique($_pri));
-	echo "<tr><td class='auto'>".$ed->form("53/$uu/$hh2")."<input type='hidden' name='rvkdb' value='$k'/><button type='submit'>Revoke</button></form> 
+	echo "<tr><td class='auto'>".$ed->form("53/$uu/$hh2")."<input type='hidden' name='rvkdb' value='$k'/><button type='submit'>Revoke</button></form>
 	<b>$k</b>".($gr[0]=="YES"?" [GRANT]":"")."<br/>".(count($_pri)>=18?"ALL PRIVILEGES":implode(" ",array_keys($_pri)))."</td></tr>";
 	}
 	}
