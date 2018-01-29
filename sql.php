@@ -6,7 +6,7 @@ session_name('SQL');
 session_start();
 $bg=2;
 $step=20;
-$version="3.11.1";
+$version="3.11.2";
 $bbs= array('False','True');
 $jquery= (file_exists('jquery.js')?"/jquery.js":"http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js");
 class DBT {
@@ -344,7 +344,7 @@ class ED {
 		foreach($this->u_db as $udb) $str.="<option value='{$this->path}5/".$udb[0]."'".($udb[0]==$db?" selected":"").">".$udb[0]."</option>";
 		$str.="</select>";
 		//table select
-		$q_tbs=array(); $c_sp= count($sp);
+		$q_tbs=array(); $c_sp= !empty($sp) ? count($sp):"";
 		if($tb!="" || $c_sp >1) {
 		$q_tbs= $this->con->query("SHOW TABLES FROM ".$db)->fetch(1);
 		$sl2="<select onchange='location=this.value;'>";
@@ -487,6 +487,7 @@ class ED {
 			$trans = array("PRI" => "PRIMARY KEY","UNI"=>"UNIQUE KEY","MUL"=>"KEY");
 			$nul=($r_ex['Null']=='YES' ? "NULL" : "NOT NULL");
 			$def=($r_ex['Default']!='' ? " default '".$r_ex['Default']."'" : "");
+			if($r_ex['Default']=='CURRENT_TIMESTAMP') $def= " default ".$r_ex['Default'];
 			$clls=(($r_ex['Collation']!='' && $r_ex['Collation']!='NULL' && $r_ex['Collation']!=$r_st[14]) ? " COLLATE '".$r_ex['Collation']."'" : "");
 			$xtr=($r_ex['Extra']!='' ? " ".$r_ex['Extra'] : "");
 			$sq.="\n{$tab}`".$r_ex['Field']."` ".$r_ex['Type']." ".$nul.$clls.
@@ -735,7 +736,7 @@ for(var i=0;i<to;i++) opt[i].parentElement.style.display="none";
 </head><body><noscript><h1 class="msg err">Please activate Javascript in your browser!</h1></noscript>
 <div class="l1"><div class="left"><b><a href="https://github.com/edmondsql/edmyadmin">EdMyAdmin '.$version.'</a></b></div>'.(isset($ed->sg[0]) && $ed->sg[0]==50 ? "": '<div class="right"><div class="left more"><span class="a">More <small>&#9660;</small></span><div><a href="'.$ed->path.'60">Info</a><a href="'.$ed->path.'60/var">Variables</a><a href="'.$ed->path.'60/status">Status</a><a href="'.$ed->path.'60/process">Processes</a></div></div><a href="'.$ed->path.'52">Users</a><a href="'.$ed->path.'51">Logout ['.(isset($_SESSION['user']) ? $_SESSION['user']:"").']</a></div>').'<br class="clear"/></div>';
 $stru= "<table><caption>TABLE STRUCTURE</caption><tr><th>FIELD</th><th>TYPE</th><th>VALUE</th><th>ATTRIBUTES</th><th>NULL</th><th>DEFAULT</th><th>COLLATION</th><th>AUTO <input type='radio' name='ex[]'/></th>".(isset($ed->sg[0]) && $ed->sg[0]==11?"<th>POSITION</th>":"")."</tr>";
-$inttype= array(''=>'&nbsp;','UNSIGNED'=>'unsigned','ZEROFILL'=>'zerofill','UNSIGNED ZEROFILL'=>'unsigned zerofill');
+$inttype= array(''=>'&nbsp;','UNSIGNED'=>'unsigned','ZEROFILL'=>'zerofill','UNSIGNED ZEROFILL'=>'unsigned zerofill','on update CURRENT_TIMESTAMP'=>'on update');
 
 if(!isset($ed->sg[0])) $ed->sg[0]=0;
 switch($ed->sg[0]) {
@@ -951,12 +952,16 @@ case "6": //Create table
 		$nf=0;
 		while($nf<$ed->post('nrf')) {
 			$c1=$ed->post('fi'.$nf); $c2=$ed->post('ty'.$nf);
-			$c3=($ed->post('va'.$nf,'!e') ? "(".$ed->post('va'.$nf).")" : "");
+			$c3=($ed->post('va'.$nf,'!e') ? "(".$ed->post('va'.$nf).")":"");
 			$c4=($ed->post('at'.$nf,'!e') ? " ".$ed->post('at'.$nf):"");
 			$c5=$ed->post('nc'.$nf);
-			$c6=($ed->post('de'.$nf,'!e') ? " default '".$ed->post('de'.$nf)."'":"");
 			$c7=($ed->post('ex','!e') && $ed->post('ex',0)!='on' && $ed->post('ex',0)==$nf ? " AUTO_INCREMENT PRIMARY KEY":"");
+			$c6=($ed->post('de'.$nf,'!e') ? " default '".$ed->post('de'.$nf)."'":"");
 			$c8=($ed->post('clls'.$nf,'!e') ? " collate ".$ed->post('clls'.$nf):"");
+			if(stripos($c4,'on update') || $ed->post('de'.$nf)=='CURRENT_TIMESTAMP') {
+			$c8.=$c4;$c4='';
+			$c6=($ed->post('de'.$nf,'!e') ? " default ".$ed->post('de'.$nf):"");
+			}
 			$qry1 .= $c1." ".$c2.$c3.$c4." ".$c5.$c6.$c7.$c8.",";
 			++$nf;
 		}
@@ -1195,12 +1200,16 @@ case "11": //Add field
 	$tb= $ed->sg[2];
 	$id= $ed->sg[3];
 	if($ed->post('fi','!e') && $ed->post('ty','!e') && !is_numeric(substr($ed->post('fi'),0,1))) {
-		$va=($ed->post('va','!e') ? "(".$ed->post('va').")" : "");
-		$at=($ed->post('at')!=0 ? " ".$ed->post('at'):"");
-		$def=($ed->post('de','!e') ? " default '".$ed->post('de')."' ":"");
+		$va=($ed->post('va','!e') ? "(".$ed->post('va').")":"");
+		$at=($ed->post('at')!='' ? " ".$ed->post('at'):"");
+		$def=($ed->post('de','!e') ? " default '".$ed->post('de')."'":"");
 		$clls=($ed->post('clls','!e') ? " collate ".$ed->post('clls'):"");
 		$ex= ($ed->post('ex','!e') && $ed->post('ex',0)==1 ? " AUTO_INCREMENT PRIMARY KEY":"");
 		$col=($ed->post('col')=="FIRST" ? " FIRST":" AFTER ".$ed->post('col'));
+		if(stripos($at,'on update') || $ed->post('de')=='CURRENT_TIMESTAMP') {
+		$def=($ed->post('de','!e') ? " default ".$ed->post('de'):"");
+		$ex=$at; $at='';
+		}
 		$e= $ed->con->query("ALTER TABLE $tb ADD ".$ed->sanitize($ed->post('fi'))." ".$ed->post('ty').$va.$at." ".$ed->post('nc').$def.$clls.$ex.$col);
 		if($e) $ed->redir("10/$db/".$tb,array('ok'=>"Successfully added"));
 		else $ed->redir("10/$db/".$tb,array('err'=>"Add field failed"));
@@ -1229,6 +1238,10 @@ case "12": //structure change
 		$at= ($ed->post('at','e') ? "":" ".$ed->post('at'));
 		$def=($ed->post('de','e') ? "":" default '".$ed->post('de')."'");
 		$clls=($ed->post('clls','e') ? "":" collate ".$ed->post('clls'));
+		if(stripos($at,'on update') || $ed->post('de')=='CURRENT_TIMESTAMP') {
+		$def=($ed->post('de','e') ? "":" default ".$ed->post('de'));
+		$def.=$at; $at='';
+		}
 		if($ed->post('ex','!e') && $ed->post('ex',0)==1) {
 			$ex=" AUTO_INCREMENT";
 			$q_pri= $ed->con->query("SHOW KEYS FROM {$db}.".$tb);
@@ -1304,7 +1317,7 @@ case "12": //structure change
 	<td><input type='text' name='va' value=\"".(isset($fe_type[1])?$fe_type[1]:"")."\" /></td><td><select name='at'>";
 	$fe_atr=substr($r_fe[1], strpos($r_fe[1], " ")+1);
 	$big= strtoupper($fe_atr);
-	foreach($inttype as $b=>$b2) echo "<option value='$b'".($b==$big ? " selected":"").">".$b2."</option>";
+	foreach($inttype as $b=>$b2) echo "<option value='$b'".($b==$big || (!empty($r_fe[6]) && $r_fe[6]==$b) ? " selected":"").">".$b2."</option>";
 	echo "</select></td><td><select name='nc'>";
 	$cc = array('NOT NULL','NULL');
 	foreach ($cc as $c) echo("<option value='$c'".(($r_fe[3]=="YES" && $c=="NULL")?" selected":"").">$c</option>");
@@ -1698,7 +1711,7 @@ case "30"://import
 	set_time_limit(7200);
 	if($ed->post()) {
 		$e='';
-		$rgex ="~^\xEF\xBB\xBF|^\xFE\xFF|^\xFF\xFE|((?is)DELIMITER).*?[^ ]|(\#|--).*|(\/\*).*(\*\/;*)|([\$$|//].*[^\$$|//])|((?is)(BEGIN.*?END)|\"[^\"]*\"|'[^'|\\\']*')(*SKIP)(*F)|;~";
+		$rgex ="~^\xEF\xBB\xBF|^\xFE\xFF|^\xFF\xFE|(?i)DELIMITER.*[^ ]|(\#|--).*|(\/\*).*(\*\/;*)|([\$$|//].*[^\$$|//])|\(([^)]*\)*(\"*.*\")*('*.*'))(*SKIP)(*F)|(?is)(BEGIN.*?END)(*SKIP)(*F)|(?<=;)(?![ ]*$)~";
 		if($ed->post('qtxt','!e')) {//in textarea
 			$e= preg_split($rgex, $ed->post('qtxt'), -1, PREG_SPLIT_NO_EMPTY);
 		} elseif($ed->post('send','i') && $ed->post('send') == "ja") {//from file
@@ -2643,7 +2656,7 @@ case "53": //add,edit,update user
 	<tr><td>Host </td><td><input type='text' name='host' value='{$hh}'/></td></tr>
 	<tr><td>Name </td><td><input type='text' name='username' value='{$uu}'/></td></tr>
 	<tr><td>Password </td><td><input type='password' name='password'/></td></tr>";
-	echo "<tr><td>Global Privileges</td><td><input type='checkbox' name='priall' onclick='toggle(this,\"prialls[]\")'".(count($a_pri)>=18?' checked':"")." /> All privileges</td></tr>
+	echo "<tr><td>Global Privileges</td><td><input type='checkbox' name='priall' onclick='toggle(this,\"prialls[]\")' /> All privileges</td></tr>
 	<tr><td></td><td class='c1'><ul class='upr'>";
 	foreach($q_prs as $r_prs) {
 	if($r_prs[0]!='Grant option' && $r_prs[0]!='Usage' && $r_prs[0]!='Proxy')
@@ -2728,7 +2741,7 @@ case "54": //db priv
 	echo $head.$ed->menu(1,'',2).$ed->form("54/$uu/$hh2").
 	"<table><tr><th colspan='2'>Database Privileges</th></tr>
 	<tr><td>Selected DB</td><td><select name='dbs'><option value='$dbn'>$dbn</option></select></td></tr>
-	<tr><td>DB Privileges</td><td><input type='checkbox' onclick='toggle(this,\"pridbs[]\")'".(count($db_pri)>=18?' checked':"")." /> All privileges</td></tr>
+	<tr><td>DB Privileges</td><td><input type='checkbox' onclick='toggle(this,\"pridbs[]\")' /> All privileges</td></tr>
 	<tr><td></td><td class='c1'><ul class='upr'>";
 	foreach($q_prs as $r_prs) {
 	if($r_prs[0]=='Event' || stripos($r_prs[1],'Server')===false && $r_prs[0]!='Grant option' && $r_prs[0]!='Usage' && $r_prs[0]!='Proxy')
