@@ -6,9 +6,9 @@ session_name('SQL');
 session_start();
 $bg=2;
 $step=20;
-$version="3.11.2";
+$version="3.11.3";
 $bbs= array('False','True');
-$jquery= (file_exists('jquery.js')?"/jquery.js":"http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js");
+$js= (file_exists('jquery.js')?"/jquery.js":"http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js");
 class DBT {
 	public static $sqltype= array('mysqli','pdo_mysql');
 	private $_cnx, $_query, $_fetch = array(), $_num_col, $dbty;
@@ -18,7 +18,7 @@ class DBT {
 		try {
 		self::$instance = new DBT($host,$user,$pwd,$db);
 		} catch(Exception $ex) {
-			return false;
+		return false;
 		}
 		return self::$instance;
 	}
@@ -41,13 +41,13 @@ class DBT {
 	}
 	public function query($sql) {
 		try{
-			if($this->dbty == self::$sqltype[0]) {
-			mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
-			$this->_query = $this->_cnx->query($sql);
-			mysqli_report(MYSQLI_REPORT_OFF);
-			} else {
-			$this->_query = $this->_cnx->query($sql);
-			}
+		if($this->dbty == self::$sqltype[0]) {
+		mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+		$this->_query = $this->_cnx->query($sql);
+		mysqli_report(MYSQLI_REPORT_OFF);
+		} else {
+		$this->_query = $this->_cnx->query($sql);
+		}
 		return $this;
 		} catch(Exception $e) {
 		return false;
@@ -87,10 +87,8 @@ class DBT {
 	} else {
 		if($mode > 0) {
 			switch($mode){
-			case 1: $ty = PDO::FETCH_NUM;
-			break;
-			case 2: $ty = PDO::FETCH_ASSOC;
-			break;
+			case 1: $ty = PDO::FETCH_NUM; break;
+			case 2: $ty = PDO::FETCH_ASSOC; break;
 			}
 			while($row = $this->_query->fetch($ty)) {
 			$res[] = $row;
@@ -253,9 +251,7 @@ class ED {
 			$usr= $_SESSION['user'];
 			$ho = $_SESSION['host'];
 			$this->con = DBT::factory($ho, $usr, $pwd);
-			if($this->con === false) {
-				$this->redir("50",array('err'=>"Can't connect to the server"));
-			}
+			if($this->con === false) $this->redir("50",array('err'=>"Can't connect to the server"));
 			session_regenerate_id(true);
 		} else {
 			$this->redir("50");
@@ -631,41 +627,41 @@ textarea, .he {min-height:90px}
 .bb * {font: 22px/18px Arial}
 .upr {list-style:none;overflow:auto;overflow-x:hidden;height:90px}
 </style>
-<script src="'.$jquery.'" type="text/javascript"></script>
+<script src="'.$js.'" type="text/javascript"></script>
 <script type="text/javascript">
 $(document).ready(function(){
 $("#host").focus();
 $("noscript").remove();
-'.((empty($_SESSION['ok']) && empty($_SESSION['err'])) ? '':'$("body").fadeIn("slow").prepend("'.
+'.((empty($_SESSION['ok']) && empty($_SESSION['err'])) ? '':'$("body").fadeIn(1000).prepend("'.
 (!empty($_SESSION['ok']) ? '<div class=\"msg ok\">'.$_SESSION['ok'].'<\/div>':'').
 (!empty($_SESSION['err']) ? '<div class=\"msg err\">'.$_SESSION['err'].'<\/div>':'').'");
-setTimeout(function(){$(".msg").fadeOut("slow",function(){$(this).remove();});}, 7000);').'
-$(".del").click(function(e){//confirm
+setTimeout(function(){$(".msg").fadeOut(1000,function(){$(this).remove();});}, 7000);').'
+$(".del").on("click",function(e){
 e.preventDefault();
 $(".msg").remove();
 var but=$(this);
-$("body").fadeIn("slow").prepend("<div class=\"msg\"><div class=\"ok\">Yes<\/div><div class=\"err\">No<\/div><\/div>");
-$(".msg .ok").click(function(){window.location = but.prop("href");});
-$(".msg .err").click(function(){$(".msg").remove();});
-$(document).keyup(function(e){
+$("body").fadeIn(1000).prepend("<div class=\"msg\"><div class=\"ok\">Yes<\/div><div class=\"err\">No<\/div><\/div>");
+$(".msg .ok").on("click",function(){window.location=but.prop("href");});
+$(".msg .err").on("click",function(){$(".msg").remove();});
+$(document).on("keyup",function(e){
 if(e.which==89 || e.which==32) window.location=but.prop("href");
 if(e.which==27 || e.which==78) $(".msg").remove();
 });
 });
-$(".msg").dblclick(function(){$(this).hide()});
+$(".msg").on("dblclick",function(){$(this).hide()});
 $(".more").hover(function(){$(".more div").fadeIn();},function(){$(".more div").fadeOut(100);});
 if($("#one:checked").val()=="on"){$("#every,#evend").hide();}else{$("#every,#evend").show();}
-$("#one").click(function(){if($("#one:checked").val()=="on"){$("#every,#evend").hide();}else{$("#every,#evend").show();}});//add event case
+$("#one").on("click",function(){if($("#one:checked").val()=="on"){$("#every,#evend").hide();}else{$("#every,#evend").show();}});//add event
 if($("#rou").val()=="FUNCTION"){$(".rou1").hide();$(".rou2").show();}else{$(".rou1").show();$(".rou2").hide();}
-$("#rou").change(function(){//routine form
+$("#rou").on("change",function(){//routine
 if($(this).val()=="FUNCTION"){$(".rou1").hide();$(".rou2").show();}else{$(".rou1").show();$(".rou2").hide();}
 });
-//load param rows
+//param rows
 var rou_p= $("[id^=\"pty_\"]").length;
 for(var i=1;i <= rou_p;i++) routine(i);
-$(".up,.down").click(function(){//reorder
+$(".up,.down").on("click",function(){//reorder
 var row= $(this).parents("tr:first");
-if($(this).is(".up")){row.insertBefore(row.prev());obj1=row.next().prop("id");obj2=row.prop("id");}else{
+if($(this).hasClass("up")){row.insertBefore(row.prev());obj1=row.next().prop("id");obj2=row.prop("id");}else{
 row.insertAfter(row.next());obj1=row.prop("id");obj2=row.prev().prop("id");
 }
 $.ajax({type: "POST", url:"'.$ed->path.'9/'.(empty($ed->sg[1])?"":$ed->sg[1]).'/'.(empty($ed->sg[2])?"":$ed->sg[2]).'", data:"n1="+obj1+"&n2="+obj2, success:function(){location.reload();}});
@@ -695,7 +691,7 @@ function routine(id){
 //function returns
 var ej=$("#pty2"),ej1=$("#px1"),ej2=$("#px2");
 routin2();
-ej.change(function(){routin2();});
+ej.on("change",function(){routin2();});
 function routin2(){
 if($.inArray(ej.val(),ar1)!= -1){ej1.show();ej2.hide();}else if($.inArray(ej.val(),ar2)!= -1){ej1.hide();ej2.show();}else{ej1.hide();ej2.hide();}
 }
@@ -706,10 +702,10 @@ if($.inArray(el,ar1)!= -1){el1.show();el2.hide();}else if($.inArray(el,ar2)!= -1
 }
 if(id === undefined) id=0;
 routin1(id);
-$("#pty_"+id).change(function(){routin1(id);});
+$("#pty_"+id).on("change",function(){routin1(id);});
 }
-function show(ex){$("#"+ex).fadeIn("slow");}
-function hide(ex){$("#"+ex).fadeOut("slow");}
+function show(ex){$("#"+ex).fadeIn(1000);}
+function hide(ex){$("#"+ex).fadeOut(1000);}
 function selectall(cb,lb) {
 var multi=document.getElementById(lb);
 if(cb.checked) {for(var i=0;i<multi.options.length;i++) multi.options[i].selected=true;
@@ -730,7 +726,7 @@ for(var k=0;k<from;k++) opt[k].parentElement.style.display="block";
 for(var k=2;k<to;k++) {opt[k].parentElement.style.display="none";opt[k].checked=false;}
 }else{
 for(var i=0;i<to;i++) opt[i].parentElement.style.display="none";
-}  
+}
 }
 </script>
 </head><body><noscript><h1 class="msg err">Please activate Javascript in your browser!</h1></noscript>
@@ -1911,7 +1907,7 @@ case "32": //export
 							} elseif(is_numeric($r_rx[$e])){
 							$inn .= $r_rx[$e].", ";
 							} else {
-							$inn .= "'".preg_replace(array("/\r\n|\r|\n/","/'/"),array("\\n","\'"),stripslashes($r_rx[$e]))."', ";
+							$inn .= "'".preg_replace(array("/\r\n|\r|\n/","/'/"),array("\\n","\'"),$r_rx[$e])."', ";
 							}
 							++$e;
 						}
@@ -2330,7 +2326,7 @@ case "42": //routine
 		$ed->check(array(1));
 		$db= $ed->sg[1];
 		$ed->priv("ALTER ROUTINE","5/$db");
-		$r_rou= array(0=>'',1=>'',4=>'',5=>'NO',6=>'',7=>'',8=>'');$plist=1;
+		$r_rou= array(0=>'',1=>'',4=>'',5=>'NO',6=>'',7=>'',8=>'');$plist=[1];
 		if($ed->post('ronme','!e') && $ed->post('rodf','!e')) {
 			$r_new= $ed->sanitize($ed->post('ronme'));
 			$crea= $ed->create_ro($db,$r_new);
