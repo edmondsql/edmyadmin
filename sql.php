@@ -6,7 +6,7 @@ session_name('SQL');
 session_start();
 $bg=2;
 $step=20;
-$version="3.11.3";
+$version="3.11.4";
 $bbs= array('False','True');
 $js= (file_exists('jquery.js')?"/jquery.js":"http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js");
 class DBT {
@@ -1432,6 +1432,7 @@ case "21": //table insert
 		$qr4="";
 		$n= 0;
 		while($n<$nrcol) {
+			if($ed->post('r'.$n,'!e')) {
 			$qr2.=$coln[$n].",";
 			if(stristr($colt[$n],"blob") == true) {
 				if(!empty($_FILES["r".$n]['tmp_name'])) {
@@ -1449,6 +1450,7 @@ case "21": //table insert
 				} else {
 				$qr4.= (($ed->post('r'.$n,'e') && $colu[$n]=='YES')? "NULL":"'".addslashes($ed->post('r'.$n))."'").",";
 				}
+			}
 			}
 			++$n;
 		}
