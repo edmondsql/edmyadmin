@@ -6,7 +6,7 @@ session_name('SQL');
 session_start();
 $bg=2;
 $step=20;
-$version="3.11.4";
+$version="3.11.5";
 $bbs= array('False','True');
 $js= (file_exists('jquery.js')?"/jquery.js":"http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js");
 class DBT {
@@ -486,8 +486,7 @@ class ED {
 			if($r_ex['Default']=='CURRENT_TIMESTAMP') $def= " default ".$r_ex['Default'];
 			$clls=(($r_ex['Collation']!='' && $r_ex['Collation']!='NULL' && $r_ex['Collation']!=$r_st[14]) ? " COLLATE '".$r_ex['Collation']."'" : "");
 			$xtr=($r_ex['Extra']!='' ? " ".$r_ex['Extra'] : "");
-			$sq.="\n{$tab}`".$r_ex['Field']."` ".$r_ex['Type']." ".$nul.$clls.
-			$def.$xtr.",";
+			$sq.="\n{$tab}`".$r_ex['Field']."` ".$r_ex['Type']." ".$nul.$clls.$def.$xtr.",";
 		}
 		$idx1= array();$idx2= array();$idx3= array();$idx4= array();
 		$q_sidx= $this->con->query("SHOW KEYS FROM ".$tb);
@@ -512,7 +511,7 @@ class ED {
 		}
 		$sql.= substr($sq,0,-1)."\n{$tab})";
 		$co = ($r_st[17]=='' ? "":" COMMENT='".$r_st[17]."'");
-		$auto = (in_array('auto',$fopt) ? " AUTO_INCREMENT=".$r_st[10] : "");//check auto option
+		$auto = (in_array('auto',$fopt) && $r_st[10] > 1 ? " AUTO_INCREMENT=".$r_st[10] : "");//check auto option
 		$sql.= ($r_st[17]!='VIEW' ? " ENGINE=".$r_st[1]." DEFAULT CHARSET=".strtok($r_st[14],'_').$co.$auto:"").";";
 		return $sql;
 	}
