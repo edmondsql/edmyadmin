@@ -1,12 +1,12 @@
 <?php
 error_reporting(E_ALL);
-if(version_compare(PHP_VERSION, '5.4.0', '<')) die('Require PHP 5.4 or higher');
+if(version_compare(PHP_VERSION,'5.4.0','<')) die('Require PHP 5.4 or higher');
 if(!extension_loaded('mysqli') && !extension_loaded('pdo_mysql')) die('Install mysqli or pdo_mysql extension!');
 session_name('SQL');
 session_start();
 $bg=2;
 $step=20;
-$version="3.12.0";
+$version="3.13.0";
 $bbs= ['False','True'];
 $js= (file_exists('jquery.js')?"/jquery.js":"http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js");
 class DBT {
@@ -121,12 +121,6 @@ class ED {
 	$this->fieldtype= ['Numbers'=>['INT','TINYINT','SMALLINT','MEDIUMINT','BIGINT','DOUBLE','DECIMAL','FLOAT'],'Strings'=>['VARCHAR','CHAR','TEXT','TINYTEXT','MEDIUMTEXT','LONGTEXT'],'DateTime'=>['DATE','DATETIME','TIME','TIMESTAMP','YEAR'],'Binary'=>['BIT','BLOB','TINYBLOB','MEDIUMBLOB','LONGBLOB'],'Lists'=>['ENUM','SET'],'Spatial'=>['GEOMETRY','POINT','LINESTRING','POLYGON','MULTIPOINT','MULTILINESTRING','MULTIPOLYGON','GEOMETRYCOLLECTION']];
 	$this->sqlda= ['CONTAINS SQL'=>'CONTAINS SQL','NO SQL'=>'NO SQL','READS SQL DATA'=>'READS SQL DATA','MODIFIES SQL DATA'=>'MODIFIES SQL DATA'];
 	}
-	public function clean($el) {
-		if(get_magic_quotes_gpc()) {//<php5.4
-		$el= stripslashes($el);
-		}
-		return $el;
-	}
 	public function sanitize($el) {
 		return preg_replace(['/[^A-Za-z0-9]/'],'_',trim($el));
 	}
@@ -153,14 +147,14 @@ class ED {
 		if(!isset($_POST[$idxk])) return FALSE;
 		if(is_array($_POST[$idxk])) {
 			if(isset($op) && is_numeric($op)) {
-			return $this->clean($_POST[$idxk][$op]);
+			return $_POST[$idxk][$op];
 			} else {
 			$aout= [];
 			foreach($_POST[$idxk] as $key=>$val) {
-			if($val !='') $aout[$key]= $this->clean($val);
+			if($val !='') $aout[$key]= $val;
 			}
 			}
-		} else $aout= $this->clean($_POST[$idxk]);
+		} else $aout= $_POST[$idxk];
 		if($op=='i') return isset($aout);
 		if($op=='e') return empty($aout);
 		if($op=='!i') return !isset($aout);
@@ -358,7 +352,7 @@ class ED {
 		$nrf_op.= "<option value='$f'>$f</option>";
 		++$f;
 		}
-		if($left==1) $str .= "<div class='col1'><h3>SQL Query</h3>".$this->form("30/$db")."<textarea name='qtxt'></textarea><br/><button type='submit'>Run</button></form>
+		if($left==1) $str .= "<div class='col1'><h3>Import sql / Run select</h3>".$this->form("30/$db")."<textarea name='qtxt'></textarea><br/><button type='submit'>Run</button></form>
 		<h3>Import</h3><small>sql, csv, json, xml, gz, zip</small>".$this->form("30/$db",1)."<input type='file' name='importfile'/>
 		<input type='hidden' name='send' value='ja'/><br/><button type='submit'>Upload (&lt;".ini_get("upload_max_filesize")."B)</button></form>
 		<h3>Create Table</h3>".$this->form("6/$db")."<input type='text' name='ctab'/><br/>
@@ -745,9 +739,9 @@ case "": //show DBs
 	$db0= $r_db[0];
 	$bg=($bg==1)?2:1;
 	$q_tbs= $ed->con->query("SHOW TABLES FROM ".$db0);
-	echo "<tr class='r c$bg'><td>".$db0."</td><td>".$r_db[1]."</td><td>".$q_tbs->num_row()."</td><td>
-	<a href='{$ed->path}31/".$db0."'>Exp</a><a class='del' href='{$ed->path}4/".$db0."'>Drop</a>
-	<a href='{$ed->path}5/".$db0."'>Browse</a></td></tr>";
+	echo "<tr class='r c$bg'><td>$db0</td><td>".$r_db[1]."</td><td>".$q_tbs->num_row()."</td><td>
+	<a href='{$ed->path}31/$db0'>Exp</a><a class='del' href='{$ed->path}4/$db0'>Drop</a>
+	<a href='{$ed->path}5/$db0'>Browse</a></td></tr>";
 	}
 	echo "</table>";
 break;
@@ -1346,37 +1340,42 @@ case "20": //table browse
 	$db= $ed->sg[1];
 	$tb= $ed->sg[2];
 	$ed->con->query("SET NAMES utf8");
-	$where=(!empty($_SESSION['_sqlsearch_'.$db.'_'.$tb])?" ".$_SESSION['_sqlsearch_'.$db.'_'.$tb] : "");
-	//paginate
-	$q_resul= $ed->con->query("SELECT COUNT(*) FROM ".$tb.$where)->fetch();
-	$totalr= $q_resul[0];
-	$totalpg= ceil($totalr/$step);
-	if(empty($ed->sg[3])) {
-		$pg = 1;
+	if(!empty($_SESSION['_sql_select'])) {
+		$where='';
+		$select= $_SESSION['_sql_select'];
+		$q_rex= $ed->con->query($select);
+		$r_rex= $q_rex->fetch(2);
+		$q_rcol= array_keys($r_rex[0]);
 	} else {
-		$pg= $ed->sg[3];
-		$ed->check([1,4],['pg'=>$pg,'total'=>$totalpg,'redir'=>"20/$db/$tb"]);
+		$where=(!empty($_SESSION['_sqlsearch_'.$db.'_'.$tb])?" ".$_SESSION['_sqlsearch_'.$db.'_'.$tb] : "");
+		$q_cnt= $ed->con->query("SELECT COUNT(*) FROM ".$tb.$where)->fetch();
+		$totalr= $q_cnt[0];
+		$totalpg= ceil($totalr/$step);
+		if(empty($ed->sg[3])) {
+			$pg = 1;
+		} else {
+			$pg= $ed->sg[3];
+			$ed->check([1,4],['pg'=>$pg,'total'=>$totalpg,'redir'=>"20/$db/$tb"]);
+		}
+		$offset = ($pg - 1) * $step;
 	}
-	$q_vic = $ed->con->query("SHOW TABLE STATUS FROM $db like '".$tb."'")->fetch();//17-comment=view
+	$q_vic = $ed->con->query("SHOW TABLE STATUS FROM $db like '$tb'")->fetch();//17-comment=view
 	echo $head.$ed->menu($db, ($q_vic[17]=='VIEW'?'':$tb), 1,($q_vic[17]=='VIEW'?['view',$tb]:''));
 	echo "<table><tr>";
-	if($q_vic[17]!='VIEW'){
-	echo "<th>ACTIONS</th>";
-	}
-	$q_bro= $ed->con->query("SHOW FIELDS FROM ".$tb);
+	if($q_vic[17]!='VIEW') {echo "<th>ACTIONS</th>";}
+	$q_bro= $ed->con->query("SHOW FIELDS FROM ".$tb.(!empty($q_rcol)?" WHERE field IN ('".implode("','", $q_rcol)."')":""));
 	$r_cl= $q_bro->num_row();
 	$coln= [];//field
 	$colt= [];//type
-	$select= [];
-	foreach($q_bro->fetch(2) as $r_brw) {
-		$select[] = (stristr($r_brw['Type'],'bit')?"BIN(".$r_brw['Field']." + 0) AS ".$r_brw['Field']:'`'.$r_brw['Field'].'`');
-		$coln[]= $r_brw['Field'];
-		$colt[]= $r_brw['Type'];
-		echo "<th>".$r_brw['Field']."</th>";
+	$cols= [];
+	foreach($q_bro->fetch(2) as $r_bro) {
+		$cols[]= (stristr($r_bro['Type'],'bit')?"BIN(".$r_bro['Field']." + 0) AS ".$r_bro['Field']:'`'.$r_bro['Field'].'`');
+		$coln[]= $r_bro['Field'];
+		$colt[]= $r_bro['Type'];
+		echo "<th>".$r_bro['Field']."</th>";
 	}
 	echo "</tr>";
-	$offset = ($pg - 1) * $step;
-	$q_res= $ed->con->query("SELECT ".implode(",",$select)." FROM {$tb}{$where} LIMIT $offset, $step");
+	$q_res= $ed->con->query(!empty($select) ? $select : "SELECT ".implode(",",$cols)." FROM {$tb}{$where} LIMIT $offset, $step");
 	foreach($q_res->fetch(1) as $r_rw) {
 		$bg=($bg==1)?2:1;
 		$nu = $coln[0]."/".($r_rw[0]==""?"isnull":base64_encode($r_rw[0])).(isset($colt[1]) && (stristr($colt[1],"int") || stristr($colt[1],"varchar")) && stristr($colt[1],"blob") == false && !empty($coln[1]) && !empty($r_rw[1]) ? "/".$coln[1]."/".base64_encode($r_rw[1]):"");
@@ -1406,7 +1405,9 @@ case "20": //table browse
 		}
 		echo "</tr>";
 	}
-	echo "</table>".$ed->pg_number($pg, $totalpg);
+	echo "</table>";
+	if(empty($select)) $ed->pg_number($pg, $totalpg);
+	else unset($_SESSION['_sql_select']);
 break;
 
 case "21": //table insert
@@ -1508,9 +1509,9 @@ case "22": //table edit row
 	$coln= [];//field
 	$colt= [];//type
 	$colu= [];//null
-	$select= [];
+	$cols= [];
 	foreach($q_col->fetch(2) as $r_brw) {
-		$select[] = (stristr($r_brw['Type'],'bit')?"BIN(".$r_brw['Field']." + 0) AS ".$r_brw['Field']:'`'.$r_brw['Field'].'`');
+		$cols[] = (stristr($r_brw['Type'],'bit')?"BIN(".$r_brw['Field']." + 0) AS ".$r_brw['Field']:'`'.$r_brw['Field'].'`');
 		$coln[]= $r_brw['Field'];
 		$colt[]= $r_brw['Type'];
 		$colu[]= $r_brw['Null'];
@@ -1544,7 +1545,7 @@ case "22": //table edit row
 	} else {//edit form
 		$q_flds= $ed->con->query("SHOW COLUMNS FROM ".$tb);
 		$r_fnr= $q_flds->num_row();
-		$q_rst= $ed->con->query("SELECT ".implode(",",$select)." FROM `$tb` WHERE ".($id==""?$nul:$nu."='".addslashes($id)."'").(!empty($colt[1]) && stristr($colt[1],"blob") == false && !empty($nu1) && !empty($id1)?" AND $nu1='".addslashes($id1)."'":""));
+		$q_rst= $ed->con->query("SELECT ".implode(",",$cols)." FROM `$tb` WHERE ".($id==""?$nul:$nu."='".addslashes($id)."'").(!empty($colt[1]) && stristr($colt[1],"blob") == false && !empty($nu1) && !empty($id1)?" AND $nu1='".addslashes($id1)."'":""));
 		if($q_rst->num_row() < 1) $ed->redir("20/$db/".$tb,['err'=>"Edit failed"]);
 		$r_rx = $q_rst->fetch();
 		echo $head.$ed->menu($db, $tb, 1).$ed->form("22/$db/$tb/$nu/".($id==""?"isnull":base64_encode($id)).(!empty($colt[1]) && stristr($colt[1],"blob") == false && !empty($nu1) && !empty($id1)?"/$nu1/".base64_encode($r_rx['1']):""),1)."<table><caption>Edit Row</caption>";
@@ -1710,7 +1711,20 @@ case "30"://import
 		$e='';
 		$rgex ="~^\xEF\xBB\xBF|^\xFE\xFF|^\xFF\xFE|(?i)DELIMITER.*[^ ]|(\#|--).*|(\/\*).*(\*\/;*)|([\$$|//].*[^\$$|//])|\(([^)]*\)*(\"*.*\")*('*.*'))(*SKIP)(*F)|(?is)(BEGIN.*?END)(*SKIP)(*F)|(?<=;)(?![ ]*$)~";
 		if($ed->post('qtxt','!e')) {//in textarea
-			$e= preg_split($rgex, $ed->post('qtxt'), -1, PREG_SPLIT_NO_EMPTY);
+			$qtxt = $ed->post('qtxt');
+			if (preg_match('/^\b(select)\b/is',$qtxt)) {//run select
+				$q_sel = $ed->con->query("SHOW TABLES FROM ".$db)->fetch(1);
+				if($q_sel) {
+				$s_tb=[];
+				foreach($q_sel as $r_sel) $s_tb[]=$r_sel[0];
+				preg_match("/(?<=\bfrom\s)(?:[\w-]+)/is",$qtxt,$mtch);
+				if(in_array($mtch[0],$s_tb)) {
+				$_SESSION['_sql_select'] = $qtxt;
+				$ed->redir("20/$db/".$mtch[0]);
+				} else $ed->redir("5/$db",['err'=>"Table not exist"]);
+				}
+			}
+			$e= preg_split($rgex, $qtxt, -1, PREG_SPLIT_NO_EMPTY);
 		} elseif($ed->post('send','i') && $ed->post('send') == "ja") {//from file
 			if(empty($_FILES['importfile']['tmp_name'])) {
 			$ed->redir("5/$db",['err'=>"No file to upload"]);
