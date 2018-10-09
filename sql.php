@@ -6,7 +6,7 @@ session_name('SQL');
 session_start();
 $bg=2;
 $step=20;
-$version="3.13.0";
+$version="3.13.1";
 $bbs= ['False','True'];
 $js= (file_exists('jquery.js')?"/jquery.js":"http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js");
 class DBT {
@@ -1340,14 +1340,8 @@ case "20": //table browse
 	$db= $ed->sg[1];
 	$tb= $ed->sg[2];
 	$ed->con->query("SET NAMES utf8");
-	if(!empty($_SESSION['_sql_select'])) {
-		$where='';
-		$select= $_SESSION['_sql_select'];
-		$q_rex= $ed->con->query($select);
-		$r_rex= $q_rex->fetch(2);
-		$q_rcol= array_keys($r_rex[0]);
-	} else {
-		$where=(!empty($_SESSION['_sqlsearch_'.$db.'_'.$tb])?" ".$_SESSION['_sqlsearch_'.$db.'_'.$tb] : "");
+	if(empty($_SESSION['_sql_select'])) {
+		$where=(empty($_SESSION['_sqlsearch_'.$db.'_'.$tb])?"":" ".$_SESSION['_sqlsearch_'.$db.'_'.$tb]);
 		$q_cnt= $ed->con->query("SELECT COUNT(*) FROM ".$tb.$where)->fetch();
 		$totalr= $q_cnt[0];
 		$totalpg= ceil($totalr/$step);
@@ -1358,6 +1352,12 @@ case "20": //table browse
 			$ed->check([1,4],['pg'=>$pg,'total'=>$totalpg,'redir'=>"20/$db/$tb"]);
 		}
 		$offset = ($pg - 1) * $step;
+	} else {
+		$where='';
+		$select= $_SESSION['_sql_select'];
+		$q_rex= $ed->con->query($select);
+		$r_rex= $q_rex->fetch(2);
+		$q_rcol= array_keys($r_rex[0]);
 	}
 	$q_vic = $ed->con->query("SHOW TABLE STATUS FROM $db like '$tb'")->fetch();//17-comment=view
 	echo $head.$ed->menu($db, ($q_vic[17]=='VIEW'?'':$tb), 1,($q_vic[17]=='VIEW'?['view',$tb]:''));
@@ -1375,7 +1375,7 @@ case "20": //table browse
 		echo "<th>".$r_bro['Field']."</th>";
 	}
 	echo "</tr>";
-	$q_res= $ed->con->query(!empty($select) ? $select : "SELECT ".implode(",",$cols)." FROM {$tb}{$where} LIMIT $offset, $step");
+	$q_res= $ed->con->query(empty($select) ? "SELECT ".implode(",",$cols)." FROM {$tb}{$where} LIMIT $offset, $step" : $select);
 	foreach($q_res->fetch(1) as $r_rw) {
 		$bg=($bg==1)?2:1;
 		$nu = $coln[0]."/".($r_rw[0]==""?"isnull":base64_encode($r_rw[0])).(isset($colt[1]) && (stristr($colt[1],"int") || stristr($colt[1],"varchar")) && stristr($colt[1],"blob") == false && !empty($coln[1]) && !empty($r_rw[1]) ? "/".$coln[1]."/".base64_encode($r_rw[1]):"");
@@ -1406,7 +1406,7 @@ case "20": //table browse
 		echo "</tr>";
 	}
 	echo "</table>";
-	if(empty($select)) $ed->pg_number($pg, $totalpg);
+	if(empty($select)) echo $ed->pg_number($pg, $totalpg);
 	else unset($_SESSION['_sql_select']);
 break;
 
