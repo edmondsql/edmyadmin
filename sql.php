@@ -6,7 +6,7 @@ session_name('SQL');
 session_start();
 $bg=2;
 $step=20;
-$version="3.13.1";
+$version="3.13.2";
 $bbs= ['False','True'];
 $js= (file_exists('jquery.js')?"/jquery.js":"http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js");
 class DBT {
@@ -559,10 +559,10 @@ class ED {
 	}
 }
 $ed= new ED;
-$head= '<!DOCTYPE html><html><head>
+$head= '<!DOCTYPE html><html lang="en"><head>
 <title>EdMyAdmin</title><meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-<style type="text/css">
+<style>
 * {margin:0;padding:0;font-size:12px;color:#333;font-family:Arial}
 html {-ms-text-size-adjust:100%;-webkit-text-size-adjust:100%}
 html, textarea {overflow:auto}
@@ -620,8 +620,8 @@ textarea, .he {min-height:90px}
 .bb * {font: 22px/18px Arial}
 .upr {list-style:none;overflow:auto;overflow-x:hidden;height:90px}
 </style>
-<script src="'.$js.'" type="text/javascript"></script>
-<script type="text/javascript">
+<script src="'.$js.'"></script>
+<script>
 $(document).ready(function(){
 $("#host").focus();
 $("noscript").remove();
