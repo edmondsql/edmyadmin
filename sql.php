@@ -6,7 +6,7 @@ session_name('SQL');
 session_start();
 $bg=2;
 $step=20;
-$version="3.13.2";
+$version="3.13.3";
 $bbs= ['False','True'];
 $js= (file_exists('jquery.js')?"/jquery.js":"http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js");
 class DBT {
@@ -567,10 +567,11 @@ $head= '<!DOCTYPE html><html lang="en"><head>
 html {-ms-text-size-adjust:100%;-webkit-text-size-adjust:100%}
 html, textarea {overflow:auto}
 .container {overflow:auto;overflow-y:hidden;-ms-overflow-y:hidden;white-space:nowrap;position:relative}
-[hidden],.more div{display:none}
-.more {position:relative}
-.more div a {display:block;padding:0;width:100%}
-.more div {position:absolute;z-index:8}
+[hidden],.dd div{display:none}
+.d {position:absolute;display:inline-block;right:0}
+.dd {display:inline-block}
+.dd div {position:absolute;z-index:8}
+.dd div a,.dd:hover div {display:block}
 small {font-size:9px}
 .clear {clear:both}
 .cntr {text-align:center}
@@ -594,13 +595,14 @@ input[type=text],select {min-width:98px !important}
 select {padding:1px 0}
 optgroup option {padding-left:8px}
 textarea, .he {min-height:90px}
+textarea {white-space: pre-wrap}
 .msg {position:absolute;top:0;right:0;z-index:9;position:fixed}
 .ok, .err {padding:8px;font-weight:bold;font-size:13px}
 .ok {background:#EFE;color:#080;border-bottom:2px solid #080}
 .err {background:#FEE;color:#f00;border-bottom:2px solid #f00}
 .l1, th, caption, button {background:#9be}
 .l2,.c1,.col1 {background:#cdf}
-.c2,.more div a {background:#fff}
+.c2,.dd div {background:#fff}
 .l3, tr:hover.r, button:hover {background:#fe3 !important}
 .ok,.err,.col1,.col2 {display:inline-block;*display:inline;zoom:1}
 .col1 textarea {position: relative;z-index:3}
@@ -615,7 +617,7 @@ textarea, .he {min-height:90px}
 .auto2 select {width:auto;border:0;padding:0;background:#fe3}
 
 .l1,.l2,.l3,.wi {width:100%}
-.msg,.a,.move,.bb {cursor:pointer}
+.msg,.dd,.a,.move,.bb {cursor:pointer}
 [class^=pa],[id^=px],.rou2 {display:none}
 .bb * {font: 22px/18px Arial}
 .upr {list-style:none;overflow:auto;overflow-x:hidden;height:90px}
@@ -625,24 +627,20 @@ textarea, .he {min-height:90px}
 $(document).ready(function(){
 $("#host").focus();
 $("noscript").remove();
-'.((empty($_SESSION['ok']) && empty($_SESSION['err'])) ? '':'$("body").fadeIn(1000).prepend("'.
-(!empty($_SESSION['ok']) ? '<div class=\"msg ok\">'.$_SESSION['ok'].'<\/div>':'').
-(!empty($_SESSION['err']) ? '<div class=\"msg err\">'.$_SESSION['err'].'<\/div>':'').'");
-setTimeout(function(){$(".msg").fadeOut(1000,function(){$(this).remove();});}, 7000);').'
+if($(".msg").text()!="") setTimeout(function(){$(".msg").fadeOut(1000,function(){$(this).remove();});}, 7000);
 $(".del").on("click",function(e){
 e.preventDefault();
 $(".msg").remove();
-var but=$(this);
+var but=$(this),hrf=but.prop("href");
 $("body").fadeIn(1000).prepend("<div class=\"msg\"><div class=\"ok\">Yes<\/div><div class=\"err\">No<\/div><\/div>");
-$(".msg .ok").on("click",function(){window.location=but.prop("href");});
+$(".msg .ok").on("click",function(){window.location=hrf;});
 $(".msg .err").on("click",function(){$(".msg").remove();});
 $(document).on("keyup",function(e){
-if(e.which==89 || e.which==32) window.location=but.prop("href");
+if(e.which==89 || e.which==32) window.location=hrf;
 if(e.which==27 || e.which==78) $(".msg").remove();
 });
 });
 $(".msg").on("dblclick",function(){$(this).hide()});
-$(".more").hover(function(){$(".more div").fadeIn();},function(){$(".more div").fadeOut(100);});
 if($("#one:checked").val()=="on"){$("#every,#evend").hide();}else{$("#every,#evend").show();}
 $("#one").on("click",function(){if($("#one:checked").val()=="on"){$("#every,#evend").hide();}else{$("#every,#evend").show();}});//add event
 if($("#rou").val()=="FUNCTION"){$(".rou1").hide();$(".rou2").show();}else{$(".rou1").show();$(".rou2").hide();}
@@ -654,10 +652,8 @@ var rou_p= $("[id^=\"pty_\"]").length;
 for(var i=1;i <= rou_p;i++) routine(i);
 $(".up,.down").on("click",function(){//reorder
 var row= $(this).parents("tr:first");
-if($(this).hasClass("up")){row.insertBefore(row.prev());obj1=row.next().prop("id");obj2=row.prop("id");}else{
-row.insertAfter(row.next());obj1=row.prop("id");obj2=row.prev().prop("id");
-}
-$.ajax({type: "POST", url:"'.$ed->path.'9/'.(empty($ed->sg[1])?"":$ed->sg[1]).'/'.(empty($ed->sg[2])?"":$ed->sg[2]).'", data:"n1="+obj1+"&n2="+obj2, success:function(){location.reload();}});
+if($(this).hasClass("up")){k1=row.prev().prop("id");k2=row.prop("id");}else{k1=row.prop("id");k2=row.next().prop("id");}
+$.ajax({type:"POST", url:"'.$ed->path.'9/'.(empty($ed->sg[1])?"":$ed->sg[1]).'/'.(empty($ed->sg[2])?"":$ed->sg[2]).'", data:"n1="+k1+"&n2="+k2, success:function(){$(this).load(location.reload())}});
 });
 //privs
 for(var a=1;a<5;a++){
@@ -722,8 +718,7 @@ for(var i=0;i<to;i++) opt[i].parentElement.style.display="none";
 }
 }
 </script>
-</head><body><noscript><h1 class="msg err">Please activate Javascript in your browser!</h1></noscript>
-<div class="l1"><div class="left"><b><a href="https://github.com/edmondsql/edmyadmin">EdMyAdmin '.$version.'</a></b></div>'.(isset($ed->sg[0]) && $ed->sg[0]==50 ? "": '<div class="right"><div class="left more"><span class="a">More <small>&#9660;</small></span><div><a href="'.$ed->path.'60">Info</a><a href="'.$ed->path.'60/var">Variables</a><a href="'.$ed->path.'60/status">Status</a><a href="'.$ed->path.'60/process">Processes</a></div></div><a href="'.$ed->path.'52">Users</a><a href="'.$ed->path.'51">Logout ['.(isset($_SESSION['user']) ? $_SESSION['user']:"").']</a></div>').'<br class="clear"/></div>';
+</head><body><noscript><h1 class="msg err">Please activate Javascript in your browser!</h1></noscript>'.(empty($_SESSION['ok'])?'':'<div class="msg ok">'.$_SESSION['ok'].'</div>').(empty($_SESSION['err'])?'':'<div class="msg err">'.$_SESSION['err'].'</div>').'<div class="l1"><b><a href="https://github.com/edmondsql/edmyadmin">EdMyAdmin '.$version.'</a></b>'.(isset($ed->sg[0]) && $ed->sg[0]==50 ? "": '<div class="d"><div class="dd">More <small>&#9660;</small><div><a href="'.$ed->path.'60">Info</a><a href="'.$ed->path.'60/var">Variables</a><a href="'.$ed->path.'60/status">Status</a><a href="'.$ed->path.'60/process">Processes</a></div></div><a href="'.$ed->path.'52">Users</a><a href="'.$ed->path.'51">Logout ['.(isset($_SESSION['user']) ? $_SESSION['user']:"").']</a></div>').'</div>';
 $stru= "<table><caption>TABLE STRUCTURE</caption><tr><th>FIELD</th><th>TYPE</th><th>VALUE</th><th>ATTRIBUTES</th><th>NULL</th><th>DEFAULT</th><th>COLLATION</th><th>AUTO <input type='radio' name='ex[]'/></th>".(isset($ed->sg[0]) && $ed->sg[0]==11?"<th>POSITION</th>":"")."</tr>";
 $inttype= [''=>'&nbsp;','UNSIGNED'=>'unsigned','ZEROFILL'=>'zerofill','UNSIGNED ZEROFILL'=>'unsigned zerofill','on update CURRENT_TIMESTAMP'=>'on update'];
 
@@ -1121,18 +1116,18 @@ case "10": //table structure
 	echo $head.$ed->menu($db, $tb, 1);
 	echo $ed->form("9/$db/$tb")."<table><caption>TABLE STRUCTURE</caption><tr><th><input type='checkbox' onclick='toggle(this,\"idx[]\")'/></th><th>FIELD</th><th>TYPE</th><th>NULL</th><th>COLLATION</th><th>DEFAULT</th><th>EXTRA</th><th>ACTIONS</th></tr><tbody id='allord'>";
 	$q_fi= $ed->con->query("SHOW FULL FIELDS FROM ".$tb);
-	$r_filds= $q_fi->num_row();
+	$r_flds= $q_fi->num_row();
 	$h=1;
 	foreach($q_fi->fetch(2) as $r_fi) {
 		$bg=($bg==1)?2:1;
 		echo "<tr class='r c$bg' id='".$r_fi['Field']."'><td><input type='checkbox' name='idx[]' value='".$r_fi['Field']."'/></td><td>".$r_fi['Field']."</td><td>".$r_fi['Type']."</td><td>".$r_fi['Null']."</td>";
 		echo "<td>".($r_fi['Collation']!='NULL' ? $r_fi['Collation']:'')."</td>";
 		echo "<td>".$r_fi['Default']."</td><td>".$r_fi['Extra']."</td><td><a href='{$ed->path}12/$db/$tb/".$r_fi['Field']."'>change</a><a class='del' href='{$ed->path}13/$db/$tb/".$r_fi['Field']."'>drop</a><a href='{$ed->path}11/$db/$tb/".$r_fi['Field']."'>add</a>";
-		if($r_filds>1){
+		if($r_flds>1) {
 		$up= "<a class='move up' title='Up'>&#9650;</a>";
 		$down= "<a class='move down' title='Down'>&#9660;</a>";
 		if($h == 1) echo $down;
-		elseif($h == $r_filds) echo $up;
+		elseif($h == $r_flds) echo $up;
 		else echo $up.$down;
 		}
 		echo "</td></tr>";
