@@ -6,7 +6,7 @@ session_name('SQL');
 session_start();
 $bg=2;
 $step=20;
-$version="3.13.4";
+$version="3.14.0";
 $bbs= ['False','True'];
 $js= (file_exists('jquery.js')?"/jquery.js":"http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js");
 class DBT {
@@ -246,7 +246,7 @@ class ED {
 			$ho = $_SESSION['host'];
 			$this->con = DBT::factory($ho, $usr, $pwd);
 			if($this->con === false) $this->redir("50",['err'=>"Can't connect to the server"]);
-			session_regenerate_id(true);
+			if(empty($_SERVER['HTTP_X_REQUESTED_WITH'])) session_regenerate_id(true);
 		} else {
 			$this->redir("50");
 		}
@@ -321,7 +321,6 @@ class ED {
 		}
 	}
 	public function menu($db='',$tb='',$left='',$sp=[]) {
-		$srch=((!empty($_SESSION['_sqlsearch_'.$db.'_'.$tb]) && $this->sg[0]==20) ? " [<a href='{$this->path}24/$db/$tb/reset'>reset search</a>]":"");
 		$str='';
 		if($db==1 || $db!='') $str .="<div class='l2'><ul><li><a href='{$this->path}'>Databases</a></li>";
 		if($db!='' && $db!=1) $str .="<li><a href='{$this->path}31/$db'>Export</a></li><li><a href='{$this->path}5/$db'>Tables</a></li>";
@@ -329,24 +328,33 @@ class ED {
 		$dv="<li class='divider'>---</li>";
 		if($tb!="") $str .=$dv."<li><a href='{$this->path}10/$db/$tb'>Structure</a></li><li><a href='{$this->path}20/$db/$tb'>Browse</a></li><li><a href='{$this->path}21/$db/$tb'>Insert</a></li><li><a href='{$this->path}24/$db/$tb'>Search</a></li><li><a class='del' href='{$this->path}25/$db/$tb'>Empty</a></li><li><a class='del' href='{$this->path}26/$db/$tb'>Drop</a></li>";//table
 		if(!empty($sp[1]) && $sp[0]=='view') $str .=$dv."<li><a href='{$this->path}40/$db/".$sp[1]."/view'>Structure</a></li><li><a href='{$this->path}20/$db/".$sp[1]."'>Browse</a></li><li><a class='del' href='{$this->path}49/$db/".$sp[1]."/view'>Drop</a></li>";//view
-		$str.=($db==""?"":"</ul></div>");
+		if($db!='') $str.="</ul></div>";
 
 		if($db!="" && $db!=1) {//db select
-		$str.="<div class='l3 auto2'>&nbsp;Database: <select onchange='location=this.value;'>";
+		$str.="<div class='l3 auto'><select onchange='location=this.value;'><optgroup label='Databases'>";
 		foreach($this->u_db as $udb) $str.="<option value='{$this->path}5/".$udb[0]."'".($udb[0]==$db?" selected":"").">".$udb[0]."</option>";
-		$str.="</select>";
-		//table select
-		$q_tbs=[]; $c_sp= !empty($sp) ? count($sp):"";
-		if($tb!="" || $c_sp >1) {
-		$q_tbs= $this->con->query("SHOW TABLES FROM ".$db)->fetch(1);
+		$str.="</optgroup></select>";
+
+		$q_tbs=[]; $c_sp= empty($sp) ? "":count($sp);
+		if($tb!="" || $c_sp >1) {//table select
+		$q_tbs= $this->con->query("SELECT TABLE_NAME,TABLE_TYPE FROM information_schema.tables WHERE `TABLE_SCHEMA`='$db' ORDER BY TABLE_TYPE,TABLE_NAME")->fetch(1);
 		$sl2="<select onchange='location=this.value;'>";
-		foreach($q_tbs as $r_tbs) $sl2.="<option value='{$this->path}20/$db/".$r_tbs[0]."'".($r_tbs[0]==$tb || ($c_sp >1 && $r_tbs[0]==$sp[1])?" selected":"").">".$r_tbs[0]."</option>";
-		$sl2.="</select>";
-		if($tb!="") $str.=" Table: ".$sl2.$srch;
-		if($c_sp >1) $str.=" ".$sp[0].": ".($sp[0]=='view'?$sl2:$sp[1]);
+		$qtype='';
+		foreach($q_tbs as $r_tbs) {
+		if($qtype != $r_tbs[1]) {
+		if($qtype != '') $sl2.='</optgroup>';
+		$sl2.='<optgroup label="'.$r_tbs[1].'s">';
+		}
+		$sl2.="<option value='{$this->path}20/$db/".$r_tbs[0]."'".($r_tbs[0]==$tb || ($c_sp >1 && $r_tbs[0]==$sp[1])?" selected":"").">".$r_tbs[0]."</option>";
+		$qtype= $r_tbs[1];
+		}
+		if($qtype != '') $sl2.='</optgroup>';
+		if($c_sp <1 || $sp[0]=='view') $str.=$sl2."</select>".((!empty($_SESSION['_sqlsearch_'.$db.'_'.$tb]) && $this->sg[0]==20) ? " [<a href='{$this->path}24/$db/$tb/reset'>reset search</a>]":"");
+		else $str.=" ".$sp[0].": ".$sp[1];
 		}
 		$str.="</div>";
 		}
+
 		$str .="<div class='container'>";
 		if($left==2) $str .="<div class='col3'>";
 		$f=1;$nrf_op='';
@@ -568,19 +576,16 @@ $head= '<!DOCTYPE html><html lang="en"><head>
 * {margin:0;padding:0;font-size:12px;color:#333;font-family:Arial}
 html {-ms-text-size-adjust:100%;-webkit-text-size-adjust:100%}
 html, textarea {overflow:auto}
-.container {overflow:auto;overflow-y:hidden;-ms-overflow-y:hidden;white-space:nowrap;width:100%}
-[hidden],.dd div{display:none}
-.d {position:absolute;display:inline-block;right:0}
-.dd {display:inline-block}
-.dd div {position:absolute;z-index:2}
-.dd div a,.dd:hover div {display:block}
+.container {overflow:auto;overflow-y:hidden;-ms-overflow-y:hidden;white-space:nowrap}
+[hidden],.mn ul{display:none}
+.m1 {position:absolute;right:0;top:0}
+.mn li:hover ul {display:block;position:absolute}
 small {font-size:9px}
 .cntr {text-align:center}
-.right,.link {float:right}
-.link {padding:3px 0}
+.link {float:right;padding:3px 0}
 .pg * {padding:0 2px;width:auto}
 caption {font-weight:bold;text-decoration:underline}
-.l2 ul {list-style:none}
+.l1 ul,.l2 ul {list-style:none}
 .left {float:left}
 .left button {margin:0 1px}
 h3 {margin:2px 0 1px;padding:2px 0}
@@ -599,23 +604,27 @@ textarea, .he {min-height:90px}
 textarea {white-space:pre-wrap}
 .msg {position:absolute;top:0;right:0;z-index:9}
 .ok, .err {padding:8px;font-weight:bold;font-size:13px}
-.ok {background:#EFE;color:#080;border-bottom:2px solid #080}
-.err {background:#FEE;color:#f00;border-bottom:2px solid #f00}
+.ok {background:#efe;color:#080;border-bottom:2px solid #080}
+.err {background:#fee;color:#f00;border-bottom:2px solid #f00}
 .l1, th, caption, button {background:#9be}
 .l2,.c1,.col1,h3 {background:#cdf}
-.c2,.dd div {background:#fff}
+.c2,.mn ul {background:#fff}
 .l3, tr:hover.r, button:hover {background:#fe3 !important}
-.ok,.err,.l2 li {display:inline-block;*display:inline;zoom:1}
+.ok,.err,.l2 li,.mn>li {display:inline-block;*display:inline;zoom:1}
 .col1,.col2 {display:table-cell}
-.col1 {vertical-align:top;padding:0 3px}
-.col1, .dw {width:180px}
+.col1 {vertical-align:top;padding:0 3px;min-width:180px}
+.col1,.dw {width:180px}
 .col2 table {margin:3px}
 .col3 table, .dw {margin:3px auto}
 .auto button,.auto input,.auto select {width:auto}
-.auto2 select {width:auto;border:0;padding:0;background:#fe3}
-
+.l3.auto select {border:0;padding:0;background:#fe3}
+.sort tbody tr {cursor:default;position:relative}
+.handle {font:18px/12px Arial;vertical-align:middle}
+.handle:hover {cursor:move}
+.opacity {opacity:0.7;filter:Alpha(opacity=70)}
+.drag {opacity:1;top:3px;left:0}
 .l1,.l2,.l3,.wi {width:100%}
-.msg,.dd,.a,.move,.bb {cursor:pointer}
+.msg,.a,.bb {cursor:pointer}
 [class^=pa],[id^=px],.rou2 {display:none}
 .bb * {font:22px/18px Arial}
 .upr {list-style:none;overflow:auto;overflow-x:hidden;height:90px}
@@ -648,17 +657,37 @@ if($(this).val()=="FUNCTION"){$(".rou1").hide();$(".rou2").show();}else{$(".rou1
 //param rows
 var rou_p= $("[id^=\"pty_\"]").length;
 for(var i=1;i <= rou_p;i++) routine(i);
-$(".up,.down").on("click",function(){//reorder
-var row= $(this).parents("tr:first");
-if($(this).hasClass("up")){k1=row.prev().prop("id");k2=row.prop("id");}else{k1=row.prop("id");k2=row.next().prop("id");}
-$.ajax({type:"POST", url:"'.$ed->path.'9/'.(empty($ed->sg[1])?"":$ed->sg[1]).'/'.(empty($ed->sg[2])?"":$ed->sg[2]).'", data:"n1="+k1+"&n2="+k2, success:function(){$(this).load(location.reload())}});
-});
 //privs
 for(var a=1;a<5;a++){
 var fc=$("#fi"+a+" > option").length,fs=$("#fi"+a+" :selected").length;
 if(fc==fs) $("#fi"+a).prevAll(":checkbox").prop("checked","checked");
 }
+$(".sort").sort();
 });//end
+$.fn.sort=function(){
+var base=$(this),els=base.find("tr"),its=base.find(".handle"),drag=false,item;
+its.mousedown(function(event){
+base.css({"-webkit-touch-callout":"none","-webkit-user-select":"none","-khtml-user-select":"none","-moz-user-select":"none","-ms-user-select":"none","user-select":"none"});
+if(event.which===1){item=$(this).closest("tr");els.addClass("opacity");item.addClass("drag");drag=true;}
+});
+its.mousemove(function(e){
+var hoverItem=$(this).closest("tr"),overTop=false,overBottom=false,hoverItemHeight=hoverItem.outerHeight(),yPos=e.offsetY;
+yPos<(hoverItemHeight/2)?overTop=true:overBottom=true;
+if(item && hoverItem.parent().get(0)===item.parent().get(0)){
+if(drag && overTop) item.insertBefore(hoverItem);
+if(drag && overBottom) item.insertAfter(hoverItem);
+}
+$(document).mouseup(function(){
+base.css({"-webkit-touch-callout":"auto","-webkit-user-select":"auto","-khtml-user-select":"auto","-moz-user-select":"auto","-ms-user-select":"auto","user-select":"auto"});
+els.removeClass("opacity");
+item.removeClass("drag");
+pre="x";
+if(item.prev().is("tr")) pre=item.prev("tr").prop("id");
+drag=false;
+$.ajax({type:"POST", url:"'.$ed->path.'9/'.(empty($ed->sg[1])?"":$ed->sg[1]).'/'.(empty($ed->sg[2])?"":$ed->sg[2]).'", data:"n1="+item.prop("id")+"&n2="+pre, success:function(){$(this).load(location.reload())}});
+});
+});
+}
 function minus(el){//routine remove row
 var crr=$("[id^=\"rr_\"]").length;
 if(crr>1) $(el).closest("tr").remove();
@@ -716,8 +745,8 @@ for(var i=0;i<to;i++) opt[i].parentElement.style.display="none";
 }
 }
 </script>
-</head><body><noscript><h1 class="msg err">Please activate Javascript in your browser!</h1></noscript>'.(empty($_SESSION['ok'])?'':'<div class="msg ok">'.$_SESSION['ok'].'</div>').(empty($_SESSION['err'])?'':'<div class="msg err">'.$_SESSION['err'].'</div>').'<div class="l1"><b><a href="https://github.com/edmondsql/edmyadmin">EdMyAdmin '.$version.'</a></b>'.(isset($ed->sg[0]) && $ed->sg[0]==50 ? "": '<div class="d"><div class="dd">More <small>&#9660;</small><div><a href="'.$ed->path.'60">Info</a><a href="'.$ed->path.'60/var">Variables</a><a href="'.$ed->path.'60/status">Status</a><a href="'.$ed->path.'60/process">Processes</a></div></div><a href="'.$ed->path.'52">Users</a><a href="'.$ed->path.'51">Logout ['.(isset($_SESSION['user']) ? $_SESSION['user']:"").']</a></div>').'</div>';
-$stru= "<table><caption>TABLE STRUCTURE</caption><tr><th>FIELD</th><th>TYPE</th><th>VALUE</th><th>ATTRIBUTES</th><th>NULL</th><th>DEFAULT</th><th>COLLATION</th><th>AUTO <input type='radio' name='ex[]'/></th>".(isset($ed->sg[0]) && $ed->sg[0]==11?"<th>POSITION</th>":"")."</tr>";
+</head><body><noscript><h1 class="msg err">Please activate Javascript in your browser!</h1></noscript>'.(empty($_SESSION['ok'])?'':'<div class="msg ok">'.$_SESSION['ok'].'</div>').(empty($_SESSION['err'])?'':'<div class="msg err">'.$_SESSION['err'].'</div>').'<div class="l1"><b><a href="https://github.com/edmondsql/edmyadmin">EdMyAdmin '.$version.'</a></b>'.(isset($ed->sg[0]) && $ed->sg[0]==50 ? "": '<ul class="mn m1"><li>More <small>&#9660;</small><ul><li><a href="'.$ed->path.'60">Info</a></li><li><a href="'.$ed->path.'60/var">Variables</a></li><li><a href="'.$ed->path.'60/status">Status</a></li><li><a href="'.$ed->path.'60/process">Processes</a></li></ul></li><li><a href="'.$ed->path.'52">Users</a></li><li><a href="'.$ed->path.'51">Logout ['.(isset($_SESSION['user']) ? $_SESSION['user']:"").']</a></li></ul>').'</div>';
+$stru= "<table><caption>TABLE STRUCTURE</caption><tr><th>FIELD</th><th>TYPE</th><th>VALUE</th><th>ATTRIBUTES</th><th>NULL</th><th>DEFAULT</th><th>COLLATION</th><th>AI <input type='radio' name='ex[]'/></th>".(isset($ed->sg[0]) && $ed->sg[0]==11?"<th>POSITION</th>":"")."</tr>";
 $inttype= [''=>'&nbsp;','UNSIGNED'=>'unsigned','ZEROFILL'=>'zerofill','UNSIGNED ZEROFILL'=>'unsigned zerofill','on update CURRENT_TIMESTAMP'=>'on update'];
 
 if(!isset($ed->sg[0])) $ed->sg[0]=0;
@@ -872,6 +901,16 @@ case "5"://Show Tables
 	}
 	echo "</table>".$ed->pg_number($pg, $ttalpg);
 	}//end rows
+	//triggers
+	$q_trg=$ed->con->query("SHOW TRIGGERS FROM ".$db);
+	if($q_trg->num_row()) {
+		echo "<table><tr><th>TRIGGER</th><th>TABLE</th><th>TIMING</th><th>EVENT</th><th>ACTIONS</th></tr>";
+		foreach($q_trg->fetch(1) as $r_tg) {
+		$bg=($bg==1)?2:1;
+		echo "<tr class='r c$bg'><td>".$r_tg[0]."</td><td>".$r_tg[2]."</td><td>".$r_tg[4]."</td><td>".$r_tg[1]."</td><td><a href='{$ed->path}41/$db/".$r_tg[0]."/trigger'>Edit</a><a class='del' href='{$ed->path}49/$db/".$r_tg[0]."/trigger'>Drop</a></td></tr>";
+		}
+	echo "</table>";
+	}
 	//spp
 	$tsp ='';
 	$spps = ['procedure','function'];
@@ -881,8 +920,8 @@ case "5"://Show Tables
 		if($q_spp) {
 		foreach($q_spp as $r_spp) {
 		if($r_spp[0] == $db) {
-			$tsp=1;
-			$q_sp[] = $r_spp;
+		$tsp=1;
+		$q_sp[] = $r_spp;
 		}
 		}
 		}
@@ -896,16 +935,6 @@ case "5"://Show Tables
 		."</td><td><a href='{$ed->path}42/".$r_sp[0]."/".$r_sp[1]."/".strtolower($r_sp[2])."'>Edit</a><a href='{$ed->path}48/".$r_sp[0]."/".$r_sp[1]."/".strtolower($r_sp[2])."'>Execute</a><a class='del' href='{$ed->path}49/".$r_sp[0]."/".$r_sp[1]."/".strtolower($r_sp[2])."'>Drop</a></td></tr>";
 		}
 	}
-	echo "</table>";
-	}
-	//show triggers
-	$q_trg=$ed->con->query("SHOW TRIGGERS FROM ".$db);
-	if($q_trg->num_row()) {
-		echo "<table><tr><th>TRIGGER</th><th>TABLE</th><th>TIMING</th><th>EVENT</th><th>ACTIONS</th></tr>";
-		foreach($q_trg->fetch(1) as $r_tg) {
-		$bg=($bg==1)?2:1;
-		echo "<tr class='r c$bg'><td>".$r_tg[0]."</td><td>".$r_tg[2]."</td><td>".$r_tg[4]."</td><td>".$r_tg[1]."</td><td><a href='{$ed->path}41/$db/".$r_tg[0]."/trigger'>Edit</a><a class='del' href='{$ed->path}49/$db/".$r_tg[0]."/trigger'>Drop</a></td></tr>";
-		}
 	echo "</table>";
 	}
 	//events
@@ -924,7 +953,7 @@ case "5"://Show Tables
 	}
 break;
 
-case "6"://Create table
+case "6"://create table
 	$ed->check([1]);
 	$db= $ed->sg[1];
 	if($ed->post('ctab','!e') && !is_numeric(substr($ed->post('ctab'),0,1)) && $ed->post('nrf','!e') && is_numeric($ed->post('nrf')) && $ed->post('nrf')>0 ) {
@@ -1068,9 +1097,11 @@ case "9":
 		} else $ed->redir("5/$db",['err'=>"Table already exist"]);
 	}
 	if($ed->post('n1','!e') && $ed->post('n2','!e')) {//reorder
-		$q_fel= $ed->con->query("SHOW FULL FIELDS FROM {$tb} LIKE '".$ed->post('n1')."'");
-		foreach($q_fel->fetch(2) as $r_fel) {
-		if(empty($r_fel['Extra'])) $ed->con->query("ALTER TABLE $tb MODIFY COLUMN ".$ed->post('n1')." ".$r_fel['Type']." AFTER ".$ed->post('n2'));
+		$q_co= $ed->con->query("SHOW FULL FIELDS FROM $tb")->fetch(1);
+		foreach($q_co as $k=>$r_co) {
+		if($ed->post('n1')==$r_co[0] && $r_co[4]!='PRI' && empty($r_co[6])) {
+		$ed->con->query("ALTER TABLE $tb MODIFY COLUMN ".$r_co[0]." ".$r_co[1]." ".(($ed->post('n2')=="x" && $q_co[0][4]!='PRI' && empty($q_co[0][6]))?"FIRST":"AFTER ".$ed->post('n2')));
+		}
 		}
 		exit;
 	}
@@ -1112,24 +1143,14 @@ case "10"://table structure
 	$db= $ed->sg[1];
 	$tb= $ed->sg[2];
 	echo $head.$ed->menu($db, $tb, 1);
-	echo $ed->form("9/$db/$tb")."<table><caption>TABLE STRUCTURE</caption><tr><th><input type='checkbox' onclick='toggle(this,\"idx[]\")'/></th><th>FIELD</th><th>TYPE</th><th>NULL</th><th>COLLATION</th><th>DEFAULT</th><th>EXTRA</th><th>ACTIONS</th></tr><tbody id='allord'>";
+	echo $ed->form("9/$db/$tb")."<table><caption>TABLE STRUCTURE</caption><tr><th><input type='checkbox' onclick='toggle(this,\"idx[]\")'/></th><th>FIELD</th><th>TYPE</th><th>NULL</th><th>COLLATION</th><th>DEFAULT</th><th>EXTRA</th><th>ACTIONS</th></tr><tbody class='sort'>";
 	$q_fi= $ed->con->query("SHOW FULL FIELDS FROM ".$tb);
 	$r_flds= $q_fi->num_row();
-	$h=1;
 	foreach($q_fi->fetch(2) as $r_fi) {
 		$bg=($bg==1)?2:1;
 		echo "<tr class='r c$bg' id='".$r_fi['Field']."'><td><input type='checkbox' name='idx[]' value='".$r_fi['Field']."'/></td><td>".$r_fi['Field']."</td><td>".$r_fi['Type']."</td><td>".$r_fi['Null']."</td>";
 		echo "<td>".($r_fi['Collation']!='NULL' ? $r_fi['Collation']:'')."</td>";
-		echo "<td>".$r_fi['Default']."</td><td>".$r_fi['Extra']."</td><td><a href='{$ed->path}12/$db/$tb/".$r_fi['Field']."'>change</a><a class='del' href='{$ed->path}13/$db/$tb/".$r_fi['Field']."'>drop</a><a href='{$ed->path}11/$db/$tb/".$r_fi['Field']."'>add</a>";
-		if($r_flds>1) {
-		$up= "<a class='move up' title='Up'>&#9650;</a>";
-		$down= "<a class='move down' title='Down'>&#9660;</a>";
-		if($h == 1) echo $down;
-		elseif($h == $r_flds) echo $up;
-		else echo $up.$down;
-		}
-		echo "</td></tr>";
-		++$h;
+		echo "<td>".$r_fi['Default']."</td><td>".$r_fi['Extra']."</td><td><a href='{$ed->path}12/$db/$tb/".$r_fi['Field']."'>change</a><a class='del' href='{$ed->path}13/$db/$tb/".$r_fi['Field']."'>drop</a><a href='{$ed->path}11/$db/$tb/".$r_fi['Field']."'>add</a><span class='handle' title='move'>&#10021;</span></td></tr>";
 	}
 	$q_comm= $ed->con->query("SELECT TABLE_COMMENT FROM INFORMATION_SCHEMA.TABLES WHERE `TABLE_SCHEMA`='$db' AND `TABLE_NAME`='$tb'")->fetch();
 	echo "</tbody><tr><td colspan='3'><button type='submit' name='changeb'>Change Comment</button></td><td colspan='5'><input type='text' name='changec' value='".$q_comm[0]."'/></td></tr>
@@ -1139,11 +1160,11 @@ case "10"://table structure
 	if($q_idx->num_row()) {
 	foreach($q_idx->fetch(2) as $r_idx) {
 		if($r_idx['Index_type']=="BTREE") {
-			if($r_idx['Non_unique']==1) $idxtyp="INDEX";
-			elseif($r_idx['Key_name']=="PRIMARY") $idxtyp="PRIMARY";
-			else $idxtyp="UNIQUE";
+		if($r_idx['Non_unique']==1) $idxtyp="INDEX";
+		elseif($r_idx['Key_name']=="PRIMARY") $idxtyp="PRIMARY";
+		else $idxtyp="UNIQUE";
 		}elseif($r_idx['Index_type']=="FULLTEXT") {
-			$idxtyp="FULLTEXT";
+		$idxtyp="FULLTEXT";
 		}
 		$idxs[$r_idx['Key_name']]['type']=$idxtyp;
 		$idxs[$r_idx['Key_name']]['column'][]=$r_idx['Column_name'];
@@ -1160,8 +1181,7 @@ case "10"://table structure
 	}
 	echo "</table><table class='c1'><tr><td>Rename Table<br/>".$ed->form("9/$db/$tb")."<input type='text' name='rtab'/><br/><button type='submit'>Rename</button></form><br/>Copy Table to Database<br/>".$ed->form("9/$db/$tb")."<select name='copytab'>";
 	foreach($ed->u_db as $r_ldb) {
-		if(!in_array($r_ldb[0], $ed->deny))
-		echo "<option value='".$r_ldb[0]."'".($r_ldb[0]==$db?" selected":"").">".$r_ldb[0]."</option>";
+		if(!in_array($r_ldb[0], $ed->deny)) echo "<option value='".$r_ldb[0]."'".($r_ldb[0]==$db?" selected":"").">".$r_ldb[0]."</option>";
 	}
 	echo "</select><br/><button type='submit'>Copy</button></form><br/>";
 	$q_cll= $ed->con->query("SHOW TABLE STATUS FROM {$db} like '{$tb}'");
@@ -1229,9 +1249,7 @@ case "12"://structure change
 			$q_pri= $ed->con->query("SHOW KEYS FROM {$db}.".$tb);
 			if($q_pri->num_row()) {
 			foreach($q_pri->fetch(2) as $r_pri) {
-				if($r_pri['Key_name'] != "PRIMARY" && $r_pri['Column_name'] != $fi_) {
-				$ex .= " PRIMARY KEY";
-				}
+				if($r_pri['Key_name'] != "PRIMARY" && $r_pri['Column_name'] != $fi_) $ex .= " PRIMARY KEY";
 			}
 			} else $ex .= " PRIMARY KEY";
 		} else $ex="";
@@ -1314,7 +1332,7 @@ case "13"://Drop field
 	$db= $ed->sg[1];
 	$tb= $ed->sg[2];
 	$fi= $ed->sg[3];
-	//drop view if have field
+	//drop view with field
 	$q_vi = $ed->con->query("SHOW TABLE STATUS FROM $db");
 	foreach($q_vi->fetch(2) as $r_vi) {
 	if($r_vi['Comment']=='VIEW') {
@@ -1339,10 +1357,10 @@ case "20"://table browse
 		$totalr= $q_cnt[0];
 		$totalpg= ceil($totalr/$step);
 		if(empty($ed->sg[3])) {
-			$pg = 1;
+		$pg = 1;
 		} else {
-			$pg= $ed->sg[3];
-			$ed->check([1,4],['pg'=>$pg,'total'=>$totalpg,'redir'=>"20/$db/$tb"]);
+		$pg= $ed->sg[3];
+		$ed->check([1,4],['pg'=>$pg,'total'=>$totalpg,'redir'=>"20/$db/$tb"]);
 		}
 		$offset = ($pg - 1) * $step;
 	} else {
