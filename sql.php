@@ -6,7 +6,7 @@ session_name('SQL');
 session_start();
 $bg=2;
 $step=20;
-$version="3.14.0";
+$version="3.15.0";
 $bbs= ['False','True'];
 $js= (file_exists('jquery.js')?"/jquery.js":"http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js");
 class DBT {
@@ -87,10 +87,10 @@ class DBT {
 	} else {
 		if($mode > 0) {
 			switch($mode){
-			case 1: $ty= FETCH_NUM; break;
-			case 2: $ty= FETCH_ASSOC; break;
+			case 1: $this->_query->setFetchMode(PDO::FETCH_NUM); break;
+			case 2: $this->_query->setFetchMode(PDO::FETCH_ASSOC); break;
 			}
-			while($row= $this->_query->fetch(PDO::$ty)) {
+			while($row= $this->_query->fetch()) {
 			$res[]= $row;
 			}
 			return $res;
@@ -1351,25 +1351,18 @@ case "20"://table browse
 	$db= $ed->sg[1];
 	$tb= $ed->sg[2];
 	$ed->con->query("SET NAMES utf8");
-	if(empty($_SESSION['_sql_select'])) {
-		$where=(empty($_SESSION['_sqlsearch_'.$db.'_'.$tb])?"":" ".$_SESSION['_sqlsearch_'.$db.'_'.$tb]);
-		$q_cnt= $ed->con->query("SELECT COUNT(*) FROM ".$tb.$where)->fetch();
-		$totalr= $q_cnt[0];
-		$totalpg= ceil($totalr/$step);
-		if(empty($ed->sg[3])) {
-		$pg = 1;
-		} else {
-		$pg= $ed->sg[3];
-		$ed->check([1,4],['pg'=>$pg,'total'=>$totalpg,'redir'=>"20/$db/$tb"]);
-		}
-		$offset = ($pg - 1) * $step;
+	$where=(empty($_SESSION['_sqlsearch_'.$db.'_'.$tb])?"":" ".$_SESSION['_sqlsearch_'.$db.'_'.$tb]);
+	$q_cnt= $ed->con->query("SELECT COUNT(*) FROM ".$tb.$where)->fetch();
+	$totalr= $q_cnt[0];
+	$totalpg= ceil($totalr/$step);
+	if(empty($ed->sg[3])) {
+	$pg = 1;
 	} else {
-		$where='';
-		$select= $_SESSION['_sql_select'];
-		$q_rex= $ed->con->query($select);
-		$r_rex= $q_rex->fetch(2);
-		$q_rcol= array_keys($r_rex[0]);
+	$pg= $ed->sg[3];
+	$ed->check([1,4],['pg'=>$pg,'total'=>$totalpg,'redir'=>"20/$db/$tb"]);
 	}
+	$offset = ($pg - 1) * $step;
+
 	$q_vic = $ed->con->query("SHOW TABLE STATUS FROM $db like '$tb'")->fetch();//17-comment=view
 	echo $head.$ed->menu($db, ($q_vic[17]=='VIEW'?'':$tb), 1,($q_vic[17]=='VIEW'?['view',$tb]:''));
 	echo "<table><tr>";
@@ -1417,8 +1410,7 @@ case "20"://table browse
 		echo "</tr>";
 	}
 	echo "</table>";
-	if(empty($select)) echo $ed->pg_number($pg, $totalpg);
-	else unset($_SESSION['_sql_select']);
+	echo $ed->pg_number($pg, $totalpg);
 break;
 
 case "21"://table insert
@@ -1719,116 +1711,121 @@ case "30"://import
 	$q=0;
 	set_time_limit(7200);
 	if($ed->post()) {
-		$e='';
-		$rgex ="~^\xEF\xBB\xBF|^\xFE\xFF|^\xFF\xFE|(?i)DELIMITER.*[^ ]|(\#|--).*|(\/\*).*(\*\/;*)|([\$$|//].*[^\$$|//])|\(([^)]*\)*(\"*.*\")*('*.*'))(*SKIP)(*F)|(?is)(BEGIN.*?END)(*SKIP)(*F)|(?<=;)(?![ ]*$)~";
-		if($ed->post('qtxt','!e')) {//in textarea
-			$qtxt = $ed->post('qtxt');
-			if (preg_match('/^\b(select)\b/is',$qtxt)) {//run select
-				$q_sel = $ed->con->query("SHOW TABLES FROM ".$db)->fetch(1);
-				if($q_sel) {
-				$s_tb=[];
-				foreach($q_sel as $r_sel) $s_tb[]=$r_sel[0];
-				preg_match("/(?<=\bfrom\s)(?:[\w-]+)/is",$qtxt,$mtch);
-				if(in_array($mtch[0],$s_tb)) {
-				$_SESSION['_sql_select'] = $qtxt;
-				$ed->redir("20/$db/".$mtch[0]);
-				} else $ed->redir("5/$db",['err'=>"Table not exist"]);
-				}
+	$e='';
+	$rgex ="~^\xEF\xBB\xBF|^\xFE\xFF|^\xFF\xFE|(?i)DELIMITER.*[^ ]|(\#|--).*|(\/\*).*(\*\/;*)|([\$$|//].*[^\$$|//])|\(([^)]*\)*(\"*.*\")*('*.*'))(*SKIP)(*F)|(?is)(BEGIN.*?END)(*SKIP)(*F)|(?<=;)(?![ ]*$)~";
+	if($ed->post('qtxt','!e')) {//in textarea
+		$qtxt = $ed->post('qtxt');
+		if(preg_match('/^\b(describe|explain|select|show)\b/is',$qtxt)) {
+			$q_sel = $ed->con->query($qtxt);
+			if($q_sel) {
+			$q_sel=$q_sel->fetch(2);
+			echo $head.$ed->menu($db,'',1)."<table><tr>";
+			foreach($q_sel[0] as $k=>$r_sel) echo "<th>$k</th>";
+			echo "</tr>";
+			foreach($q_sel as $r_sel) {
+			$bg=($bg==1)?2:1;
+			echo "<tr class='r c$bg'>";
+			foreach($r_sel as $r_se) echo "<td>".$r_se."</td>";
+			echo "</tr>";
 			}
+			echo "</table>";
+			} else $ed->redir("5/$db",['err'=>"Wrong query"]);
+		} else {
 			$e= preg_split($rgex, $qtxt, -1, PREG_SPLIT_NO_EMPTY);
-		} elseif($ed->post('send','i') && $ed->post('send') == "ja") {//from file
-			if(empty($_FILES['importfile']['tmp_name'])) {
-			$ed->redir("5/$db",['err'=>"No file to upload"]);
-			} else {
-			$tmp= $_FILES['importfile']['tmp_name'];
-			$file= pathinfo($_FILES['importfile']['name']);
-			$ext= strtolower($file['extension']);
-			if($ext == 'sql') {
-				$fi= $ed->utf(file_get_contents($tmp));
-				$e= preg_split($rgex, $fi, -1, PREG_SPLIT_NO_EMPTY);
-			} elseif($ext == 'csv') {
-				$e= $ed->imp_csv($file['filename'], $tmp);
-			} elseif($ext == 'json') {
-				$e= $ed->imp_json($file['filename'], $tmp);
-			} elseif($ext == 'xml') {
-				$e= $ed->imp_xml($file['filename'], $tmp);
-			} elseif($ext == 'gz') {
-				if(($fgz = fopen($tmp, 'r')) !== FALSE) {
-					if(@fread($fgz, 3) != "\x1F\x8B\x08") {
-					$ed->redir("5/$db",['err'=>"Not a valid GZ file"]);
-					}
-					fclose($fgz);
+		}
+	} elseif($ed->post('send','i') && $ed->post('send') == "ja") {//from file
+		if(empty($_FILES['importfile']['tmp_name'])) {
+		$ed->redir("5/$db",['err'=>"No file to upload"]);
+		} else {
+		$tmp= $_FILES['importfile']['tmp_name'];
+		$file= pathinfo($_FILES['importfile']['name']);
+		$ext= strtolower($file['extension']);
+		if($ext == 'sql') {
+			$fi= $ed->utf(file_get_contents($tmp));
+			$e= preg_split($rgex, $fi, -1, PREG_SPLIT_NO_EMPTY);
+		} elseif($ext == 'csv') {
+			$e= $ed->imp_csv($file['filename'], $tmp);
+		} elseif($ext == 'json') {
+			$e= $ed->imp_json($file['filename'], $tmp);
+		} elseif($ext == 'xml') {
+			$e= $ed->imp_xml($file['filename'], $tmp);
+		} elseif($ext == 'gz') {
+			if(($fgz = fopen($tmp, 'r')) !== FALSE) {
+				if(@fread($fgz, 3) != "\x1F\x8B\x08") {
+				$ed->redir("5/$db",['err'=>"Not a valid GZ file"]);
 				}
-				if(@function_exists('gzopen')) {
-					$gzfile = @gzopen($tmp, 'rb');
-					if (!$gzfile) {
-					$ed->redir("5/$db",['err'=>"Open GZ failed"]);
-					}
-					$e='';
-					while (!gzeof($gzfile)) {
-					$e .= gzgetc($gzfile);
-					}
-					gzclose($gzfile);
-					$entr= pathinfo($file['filename']);
-					$e_ext= $entr['extension'];
-					if($e_ext == 'sql') $e= preg_split($rgex, $ed->utf($e), -1, PREG_SPLIT_NO_EMPTY);
-					elseif($e_ext =='csv') $e= $ed->imp_csv($entr['filename'], $e);
-					elseif($e_ext =='json') $e= $ed->imp_json($entr['filename'], $e);
-					elseif($e_ext =='xml') $e= $ed->imp_xml($entr['filename'], $e);
-					else $ed->redir("5/$db",['err'=>"Disallowed extension"]);
-				} else {
-					$ed->redir("5/$db",['err'=>"Open GZ failed"]);
-				}
-			} elseif($ext == 'zip') {
-				if(($fzip = fopen($tmp, 'r')) !== FALSE) {
-					if(@fread($fzip, 4) != "\x50\x4B\x03\x04") {
-					$ed->redir("5/$db",['err'=>"Not a valid ZIP file"]);
-					}
-					fclose($fzip);
+				fclose($fgz);
+			}
+			if(@function_exists('gzopen')) {
+				$gzfile = @gzopen($tmp, 'rb');
+				if (!$gzfile) {
+				$ed->redir("5/$db",['err'=>"Open GZ failed"]);
 				}
 				$e='';
-				$zip = zip_open($tmp);
-				if(is_resource($zip)) {
-					$zip_entry = zip_read($zip);
-					if(zip_entry_open($zip, $zip_entry, "rb")) {
-					$zentry= zip_entry_name($zip_entry);
-					if($file['filename']==$zentry) {
-					$buf= zip_entry_read($zip_entry, zip_entry_filesize($zip_entry));
-					preg_match("/^(.*)\.(sql|csv|json|xml)$/i",$zentry,$zn);
-					if(!empty($zn[2]) && $zn[2]=='sql') $e= preg_split($rgex, $ed->utf($buf), -1, PREG_SPLIT_NO_EMPTY);
-					elseif(!empty($zn[2]) && $zn[2]=='csv') $e= $ed->imp_csv($zn[1], $buf);
-					elseif(!empty($zn[2]) && $zn[2]=='json') $e= $ed->imp_json($zn[1], $buf);
-					elseif(!empty($zn[2]) && $zn[2]=='xml') $e= $ed->imp_xml($zn[1], $buf);
-					else $ed->redir("5/$db",['err'=>"Disallowed extension"]);
-					zip_entry_close($zip_entry);
-					}
-					}
-					zip_close($zip);
+				while (!gzeof($gzfile)) {
+				$e .= gzgetc($gzfile);
 				}
+				gzclose($gzfile);
+				$entr= pathinfo($file['filename']);
+				$e_ext= $entr['extension'];
+				if($e_ext == 'sql') $e= preg_split($rgex, $ed->utf($e), -1, PREG_SPLIT_NO_EMPTY);
+				elseif($e_ext =='csv') $e= $ed->imp_csv($entr['filename'], $e);
+				elseif($e_ext =='json') $e= $ed->imp_json($entr['filename'], $e);
+				elseif($e_ext =='xml') $e= $ed->imp_xml($entr['filename'], $e);
+				else $ed->redir("5/$db",['err'=>"Disallowed extension"]);
 			} else {
-				$ed->redir("5/$db",['err'=>"Disallowed extension"]);
+				$ed->redir("5/$db",['err'=>"Open GZ failed"]);
 			}
+		} elseif($ext == 'zip') {
+			if(($fzip = fopen($tmp, 'r')) !== FALSE) {
+				if(@fread($fzip, 4) != "\x50\x4B\x03\x04") {
+				$ed->redir("5/$db",['err'=>"Not a valid ZIP file"]);
+				}
+				fclose($fzip);
+			}
+			$e='';
+			$zip = zip_open($tmp);
+			if(is_resource($zip)) {
+				$zip_entry = zip_read($zip);
+				if(zip_entry_open($zip, $zip_entry, "rb")) {
+				$zentry= zip_entry_name($zip_entry);
+				if($file['filename']==$zentry) {
+				$buf= zip_entry_read($zip_entry, zip_entry_filesize($zip_entry));
+				preg_match("/^(.*)\.(sql|csv|json|xml)$/i",$zentry,$zn);
+				if(!empty($zn[2]) && $zn[2]=='sql') $e= preg_split($rgex, $ed->utf($buf), -1, PREG_SPLIT_NO_EMPTY);
+				elseif(!empty($zn[2]) && $zn[2]=='csv') $e= $ed->imp_csv($zn[1], $buf);
+				elseif(!empty($zn[2]) && $zn[2]=='json') $e= $ed->imp_json($zn[1], $buf);
+				elseif(!empty($zn[2]) && $zn[2]=='xml') $e= $ed->imp_xml($zn[1], $buf);
+				else $ed->redir("5/$db",['err'=>"Disallowed extension"]);
+				zip_entry_close($zip_entry);
+				}
+				}
+				zip_close($zip);
 			}
 		} else {
-			$ed->redir("5/$db",['err'=>"Query failed"]);
+			$ed->redir("5/$db",['err'=>"Disallowed extension"]);
 		}
-		if(is_array($e)) {
-			$ed->con->begin();
-			foreach($e as $qry) {
-				$qry= trim($qry);
-				if(!empty($qry)) {
-					$exc = $ed->con->query($qry);
-					$op= ['insert','update','delete'];
-					$p_qry= strtolower(substr($qry,0,6));
-					if(in_array($p_qry, $op) && $exc) $exc= $exc->last();
-					if($exc) ++$q;
-					else $out .= "<p><b>FAILED!</b> $qry</p>";
-				}
-			}
-			$ed->con->commit();
 		}
+	} else {
+		$ed->redir("5/$db",['err'=>"Query failed"]);
 	}
-	echo $head.$ed->menu($db)."<div class='col2'><p>Successfully executed: <b>".$q." quer".($q>1?'ies':'y')."</b></p>".$out;
+	if(is_array($e)) {
+		$ed->con->begin();
+		foreach($e as $qry) {
+			$qry= trim($qry);
+			if(!empty($qry)) {
+				$exc = $ed->con->query($qry);
+				$op= ['insert','update','delete'];
+				$p_qry= strtolower(substr($qry,0,6));
+				if(in_array($p_qry, $op) && $exc) $exc= $exc->last();
+				if($exc) ++$q;
+				else $out .= "<p><b>FAILED!</b> $qry</p>";
+			}
+		}
+		$ed->con->commit();
+		echo $head.$ed->menu($db)."<div class='col2'><p>Successfully executed: <b>".$q." quer".($q>1?'ies':'y')."</b></p>".$out;
+	}
+	} else $ed->redir("5/$db",['err'=>"Empty import"]);
 break;
 
 case "31"://export form
