@@ -6,7 +6,7 @@ session_name('SQL');
 session_start();
 $bg=2;
 $step=20;
-$version="3.15.0";
+$version="3.15.1";
 $bbs= ['False','True'];
 $js= (file_exists('jquery.js')?"/jquery.js":"http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js");
 class DBT {
@@ -2661,7 +2661,8 @@ case "53"://add,edit,update user
 	}
 	//max
 	if(!empty($hh)) {
-	$mx= $ed->con->query("SELECT max_questions,max_updates,max_connections,max_user_connections FROM mysql.user WHERE `User`='$uu' AND `Host`='$hh'")->fetch();
+	$mx= $ed->con->query("SELECT max_questions,max_updates,max_connections,max_user_connections FROM mysql.user WHERE `User`='$uu' AND `Host`='$hh'");
+	if($mx) $mx->fetch();
 	}
 	$mx1=(empty($mx[0])?0:$mx[0]);$mx2=(empty($mx[1])?0:$mx[1]);$mx3=(empty($mx[2])?0:$mx[2]);$mx4=(empty($mx[3])?0:$mx[3]);
 	//form
