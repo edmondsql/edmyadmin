@@ -6,7 +6,7 @@ session_name('SQL');
 session_start();
 $bg=2;
 $step=20;
-$version="3.15.2";
+$version="3.15.3";
 $bbs= ['False','True'];
 $js= (file_exists('jquery.js')?"/jquery.js":"http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js");
 class DBT {
@@ -31,13 +31,13 @@ class DBT {
 			$this->_cnx = new mysqli($host,$user,$pwd,$db);
 			mysqli_report(MYSQLI_REPORT_OFF);
 		} else {
-			$this->_cnx = new PDO('mysql:host='.$host.';dbname='.$db, $user, $pwd);
+			$this->_cnx = new PDO("mysql:host=".$host.";dbname=".$db, $user, $pwd);
 			$this->_cnx->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 		}
 	}
 	private function __clone() {}
 	public function db($db) {
-		return $this->_cnx->query('USE '.$db);
+		return $this->_cnx->query("USE `$db`");
 	}
 	public function query($sql) {
 		try{
@@ -265,22 +265,22 @@ class ED {
 			if(!$se) $this->redir();
 		}
 		if(in_array(2,$level)) {//check table
-			$q_com= $this->con->query("SHOW TABLE STATUS FROM $db like '".$this->sg[2]."'");
-			if(!$q_com->num_row()) $this->redir("5/".$db);
+			$q_com= $this->con->query("SHOW TABLE STATUS FROM `$db` like '".$this->sg[2]."'");
+			if(!$q_com->num_row()) $this->redir("5/$db");
 			foreach($q_com->fetch(2) as $r_com) {
-			if(stristr($r_com['Comment'],'Unknown storage')==true) $this->redir("5/".$db);
-			if($r_com['Comment']=='VIEW' && $this->sg[0] != 20) $this->redir("5/".$db);//prevent to show view as table
+			if(stristr($r_com['Comment'],'Unknown storage')==true) $this->redir("5/$db");
+			if($r_com['Comment']=='VIEW' && $this->sg[0] != 20) $this->redir("5/$db");//prevent to show view as table
 			}
-			$q_ = $this->con->query("SELECT COUNT(*) FROM ".$this->sg[2]);
-			if(!$q_) $this->redir("5/".$db,['err'=>"No records"]);
+			$q_ = $this->con->query("SELECT COUNT(*) FROM `".$this->sg[2]."`");
+			if(!$q_) $this->redir("5/$db",['err'=>"No records"]);
 		}
 		if(in_array(3,$level)) {//check field
 			$tb= $this->sg[2];
-			$qr= $this->con->query("SHOW FIELDS FROM {$db}.{$tb} LIKE '".$this->sg[3]."'");
+			$qr= $this->con->query("SHOW FIELDS FROM `$db`.`$tb` LIKE '".$this->sg[3]."'");
 			if(!$qr->num_row()) $this->redir($param['redir']."/$db/".$tb);
 			if(isset($this->sg[5])) {
-			$qr2= $this->con->query("SHOW FIELDS FROM {$db}.{$tb} LIKE '".$this->sg[5]."'");
-			if(!$qr2->num_row()) $this->redir($param['redir']."/$db/".$tb);
+			$qr2= $this->con->query("SHOW FIELDS FROM `$db`.`$tb` LIKE '".$this->sg[5]."'");
+			if(!$qr2->num_row()) $this->redir($param['redir']."/$db/$tb");
 			}
 		}
 		if(in_array(4,$level)) {//check paginate
@@ -293,20 +293,20 @@ class ED {
 			$sg3= $this->sg[3];
 			if($op!=49 && ($op==40 && $sg3!=$sp[0]) || ($op==41 && $sg3!=$sp[1]) || ($op==42 && $sg3!=$sp[2] && $sg3!=$sp[3]) || ($op==43 && $sg3!=$sp[4])) $this->redir("5/".$db);
 			if($sg3 == $sp[0]) {//check view
-				$q= $this->con->query("SHOW CREATE VIEW $tb");
-				if(!$q) $this->redir("5/".$db);
+				$q= $this->con->query("SHOW CREATE VIEW `$tb`");
+				if(!$q) $this->redir("5/$db");
 			} elseif($sg3 == $sp[1]) {//check trigger
-				$this->priv("TRIGGER","5/".$db);
-				$q = $this->con->query("SHOW TRIGGERS FROM $db WHERE `Trigger`='$tb'")->fetch();
-				if($tb != $q[0]) $this->redir("5/".$db);
+				$this->priv("TRIGGER","5/$db");
+				$q = $this->con->query("SHOW TRIGGERS FROM `$db` WHERE `Trigger`='$tb'")->fetch();
+				if($tb != $q[0]) $this->redir("5/$db");
 			} elseif($sg3 == $sp[4]) {//check event
-				$this->priv("EVENT","5/".$db);
-				$q = $this->con->query("SHOW EVENTS FROM $db LIKE '$tb'")->fetch();
-				if($tb != $q[1]) $this->redir("5/".$db);
+				$this->priv("EVENT","5/$db");
+				$q = $this->con->query("SHOW EVENTS FROM `$db` LIKE '$tb'")->fetch();
+				if($tb != $q[1]) $this->redir("5/$db");
 			} else {//check proc, func
-				$this->priv("CREATE ROUTINE","5/".$db);
-				$q = $this->con->query("SHOW ".$sg3." STATUS WHERE `Db`='$db' AND `Name`='$tb'")->fetch();
-				if($tb != $q[1]) $this->redir("5/".$db);
+				$this->priv("CREATE ROUTINE","5/$db");
+				$q = $this->con->query("SHOW $sg3 STATUS WHERE `Db`='$db' AND `Name`='$tb'")->fetch();
+				if($tb != $q[1]) $this->redir("5/$db");
 			}
 		}
 		if(in_array(6,$level)) {//check user
@@ -366,7 +366,7 @@ class ED {
 		<h3>Import</h3><small>sql, csv, json, xml, gz, zip</small>".$this->form("30/$db",1)."<input type='file' name='importfile'/>
 		<input type='hidden' name='send' value='ja'/><br/><button type='submit'>Upload (&lt;".ini_get("upload_max_filesize")."B)</button></form>
 		<h3>Create Table</h3>".$this->form("6/$db")."<input type='text' name='ctab'/><br/>
-		Number of fields<br/><select name='nrf'>".$nrf_op."</select><br/><button type='submit'>Create</button></form>
+		Number of fields<br/><select name='nrf'>$nrf_op</select><br/><button type='submit'>Create</button></form>
 		<h3>Rename DB</h3>".$this->form("3/$db")."<input type='text' name='rdb'/><br/>Collation<br/>".$this->collate("rdbcll")."<br/><button type='submit'>Rename</button></form>
 		<h3>Create</h3><a href='{$this->path}40/$db'>View</a><a href='{$this->path}41/$db'>Trigger</a><a href='{$this->path}42/$db'>Routine</a><a href='{$this->path}43/$db'>Event</a></div><div class='col2'>";
 		return $str;
@@ -386,7 +386,7 @@ class ED {
 		}
 	}
 	public function imp_csv($fname, $fbody) {
-		$exist= $this->con->query("SELECT 1 FROM ".$fname);
+		$exist= $this->con->query("SELECT 1 FROM `$fname`");
 		if(!$exist) $this->redir("5/".$this->sg[1],['err'=>"Table not exist"]);
 		$fname= $this->sanitize($fname);
 		$e= [];
@@ -414,7 +414,7 @@ class ED {
 		}
 		foreach($rows as $k=>$rw) {
 		if($k>0) {
-		$e1= "INSERT INTO ".$fname."(".implode(',',$rows[0]).") VALUES(";
+		$e1= "INSERT INTO `$fname`(".implode(',',$rows[0]).") VALUES(";
 		foreach($rw as $r) $e1 .= (is_numeric($r)?$r:"'".str_replace("'","''",$r)."'").',';
 		$e[]=substr($e1,0,-1).");";
 		}
@@ -423,7 +423,7 @@ class ED {
 		return $e;
 	}
 	public function imp_json($fname, $fbody) {
-		$exist= $this->con->query("SELECT 1 FROM ".$fname);
+		$exist= $this->con->query("SELECT 1 FROM `$fname`");
 		if(!$exist) $this->redir("5/".$this->sg[1],['err'=>"Table not exist"]);
 		$e= [];
 		if(@is_file($fbody)) $fbody= file_get_contents($fbody);
@@ -436,7 +436,7 @@ class ED {
 		foreach($lines as $line) {
 		$jv='';
 		foreach($line as $ky=>$el) $jv.=(is_numeric($el)?$el:"'".$el."'").",";
-		$e[]="INSERT INTO ".$fname." (".substr($jr,0,-1).") VALUES (".substr($jv,0,-1).")";
+		$e[]="INSERT INTO `$fname`(".substr($jr,0,-1).") VALUES (".substr($jv,0,-1).")";
 		}
 		return $e;
 	}
@@ -482,7 +482,7 @@ class ED {
 			$ifnot .= "IF NOT EXISTS ";
 		}
 		$sq="\n{$tab}CREATE TABLE ".$ifnot."`".$tb."` (";
-		$q_ex= $this->con->query("SHOW FULL FIELDS FROM ".$tb);
+		$q_ex= $this->con->query("SHOW FULL FIELDS FROM `$tb`");
 		foreach($q_ex->fetch(2) as $r_ex) {
 			$trans = ["PRI" => "PRIMARY KEY","UNI"=>"UNIQUE KEY","MUL"=>"KEY"];
 			$nul=($r_ex['Null']=='YES' ? "NULL" : "NOT NULL");
@@ -493,7 +493,7 @@ class ED {
 			$sq.="\n{$tab}`".$r_ex['Field']."` ".$r_ex['Type']." ".$nul.$clls.$def.$xtr.",";
 		}
 		$idx1= [];$idx2= [];$idx3= [];$idx4= [];
-		$q_sidx= $this->con->query("SHOW KEYS FROM ".$tb);
+		$q_sidx= $this->con->query("SHOW KEYS FROM `$tb`");
 		foreach($q_sidx->fetch(2) as $r_sidx) {
 		if($r_sidx['Key_name']=='PRIMARY') $idx1[]=$r_sidx['Column_name'];
 		elseif($r_sidx['Index_type']=='FULLTEXT') $idx4[$r_sidx['Key_name']][]= $r_sidx['Column_name'];
@@ -760,7 +760,7 @@ case ""://show DBs
 	foreach($ed->u_db as $r_db) {
 	$db0= $r_db[0];
 	$bg=($bg==1)?2:1;
-	$q_tbs= $ed->con->query("SHOW TABLES FROM ".$db0);
+	$q_tbs= $ed->con->query("SHOW TABLES FROM `$db0`");
 	echo "<tr class='r c$bg'><td>$db0</td><td>".$r_db[1]."</td><td>".$q_tbs->num_row()."</td><td>
 	<a href='{$ed->path}31/$db0'>Exp</a><a class='del' href='{$ed->path}4/$db0'>Drop</a>
 	<a href='{$ed->path}5/$db0'>Browse</a></td></tr>";
@@ -772,7 +772,7 @@ case "2"://created DB
 	$ed->check();
 	if($ed->post('dbc','!e')) {
 	$db= $ed->sanitize($ed->post('dbc'));
-	$q_cc = $ed->con->query("CREATE DATABASE ".$db.($ed->post('dbcll','!e')?" COLLATE '".$ed->post('dbcll')."'":""));
+	$q_cc = $ed->con->query("CREATE DATABASE `$db`".($ed->post('dbcll','!e')?" COLLATE '".$ed->post('dbcll')."'":""));
 	if($q_cc) $ed->redir("",['ok'=>"Created DB"]);
 	$ed->redir("",['err'=>"Create DB failed"]);
 	}
@@ -793,15 +793,16 @@ case "3"://rename DB
 	$ed->con->query("ALTER DATABASE `$db` COLLATE ".$ed->post('rdbcll'));
 	$ed->redir("",['ok'=>"Changed collation"]);
 	}
-	$q_ren = $ed->con->query("CREATE DATABASE ".$ndb.($ed->post('rdbcll','!e')?" COLLATE '".$ed->post('rdbcll')."'":""));//create DB
+	$q_ren = $ed->con->query("CREATE DATABASE `$ndb`".($ed->post('rdbcll','!e')?" COLLATE '".$ed->post('rdbcll')."'":""));//create DB
 	if(!$q_ren) $ed->redir("",['err'=>"Don't have privilege to create the DB"]);
 	//table
 	$q_tb = $ed->con->query("SELECT TABLE_NAME,TABLE_TYPE FROM information_schema.TABLES WHERE `TABLE_SCHEMA`='$db'");
 	if($q_tb->num_row()) {
 	foreach($q_tb->fetch(1) as $r_tb) {
 	if($r_tb[1] != 'VIEW') {
-	$ed->con->query("CREATE TABLE ".$ndb.".".$r_tb[0]." LIKE ".$db.".".$r_tb[0]);
-	$ed->con->query("INSERT ".$ndb.".".$r_tb[0]." SELECT * FROM ".$db.".".$r_tb[0]);
+	$r_tb0=$r_tb[0];
+	$ed->con->query("CREATE TABLE `$ndb`.`$r_tb0` LIKE `$db`.`$r_tb0`");
+	$ed->con->query("INSERT `$ndb`.`$r_tb0` SELECT * FROM `$db`.`$r_tb0`");
 	}
 	}
 	}
@@ -819,33 +820,33 @@ case "3"://rename DB
 	$q_aro= $ed->con->query("SELECT ROUTINE_NAME,ROUTINE_TYPE FROM information_schema.ROUTINES WHERE `ROUTINE_SCHEMA`='$db'");
 	if($q_aro->num_row()) {
 	foreach($q_aro->fetch(1) as $r_aro) {
-	$q_ros= $ed->con->query("SHOW CREATE ".$r_aro[1]." $db.".$r_aro[0])->fetch();
-	$ed->con->query("USE ".$ndb);
+	$q_ros= $ed->con->query("SHOW CREATE ".$r_aro[1]." `$db`.`".$r_aro[0]."`")->fetch();
+	$ed->con->query("USE `$ndb`");
 	$ed->con->query($q_ros[2]);
 	}
 	}
 	}
 	//event
 	if($ed->priv("EVENT")) {
-	$all_ev = $ed->con->query("SHOW EVENTS FROM ".$db);
+	$all_ev = $ed->con->query("SHOW EVENTS FROM `$db`");
 	if($all_ev->num_row()) {
-	foreach($all_ev->fetch(1) as $aev) $ed->con->query("ALTER EVENT $db.".$aev[1]." RENAME TO $ndb.".$aev[1]);
+	foreach($all_ev->fetch(1) as $aev) $ed->con->query("ALTER EVENT `$db`.`".$aev[1]."` RENAME TO `$ndb`.`".$aev[1]."`");
 	}
 	}
 	//trigger
 	if($ed->priv("TRIGGER")) {
-	$q_tg = $ed->con->query("SHOW TRIGGERS FROM ".$db);
+	$q_tg = $ed->con->query("SHOW TRIGGERS FROM `$db`");
 	if($q_tg->num_row()) {
 	foreach($q_tg->fetch(1) as $r_tg) {
-	$ed->con->query('USE '.$ndb);
+	$ed->con->query("USE `$ndb`");
 	$ed->con->query("CREATE TRIGGER `".$r_tg[0]."` ".$r_tg[4]." ".$r_tg[1]." ON `".$ndb."`.`".$r_tg[2]."` FOR EACH ROW ".$r_tg[3]);
 	}
 	}
 	}
 	//drop old DB
-	$ed->con->query('DROP DATABASE '.$db);
+	$ed->con->query("DROP DATABASE `$db`");
 	$ed->redir("",['ok'=>"Successfully renamed"]);
-	} else $ed->redir("5/".$db,['err'=>"DB name must not be empty"]);
+	} else $ed->redir("5/$db",['err'=>"DB name must not be empty"]);
 break;
 
 case "4"://Drop DB
@@ -853,7 +854,7 @@ case "4"://Drop DB
 	$ed->priv("DROP","");
 	$db= $ed->sg[1];
 	if(!in_array($db, $ed->deny)) {
-	$q_drodb = $ed->con->query("DROP DATABASE ".$db);
+	$q_drodb = $ed->con->query("DROP DATABASE `$db`");
 	if($q_drodb) $ed->redir("",['ok'=>"Succeful deleted DB"]);
 	}
 	$ed->redir('',['err'=>"Delete DB failed"]);
@@ -886,23 +887,24 @@ case "5"://Show Tables
 	while($ofset < $max) {
 		if(!empty($tables[$ofset][0])) {
 		$bg=($bg==1)?2:1;
-		$_vl= "/$db/".$tables[$ofset][0];
+		$tbs=$tables[$ofset][0];
+		$_vl= "/$db/".$tbs;
 		if($tables[$ofset][1]=='VIEW') {
 			$lnk="40{$_vl}/view";$dro="49{$_vl}/view";
 		} else {
 			$lnk="10".$_vl;$dro="26".$_vl;
 		}
 		$q_rows[0]=0;
-		$q_t= $ed->con->query("SELECT COUNT(*) FROM ".$tables[$ofset][0]);
+		$q_t= $ed->con->query("SELECT COUNT(*) FROM `$tbs`");
 		if($q_t) $q_rows= $q_t->fetch();
-		echo "<tr class='r c$bg'><td>".$tables[$ofset][0]."</td><td>".$q_rows[0]."</td><td>".$tables[$ofset][2]."</td><td>".$tables[$ofset][3]."</td><td>".$tables[$ofset][4]."</td><td><a href='".$ed->path.$lnk."'>Structure</a><a class='del' href='".$ed->path.$dro."'>Drop</a><a href='".$ed->path."20/$db/".$tables[$ofset][0]."'>Browse</a></td></tr>";
+		echo "<tr class='r c$bg'><td>$tbs</td><td>".$q_rows[0]."</td><td>".$tables[$ofset][2]."</td><td>".$tables[$ofset][3]."</td><td>".$tables[$ofset][4]."</td><td><a href='".$ed->path.$lnk."'>Structure</a><a class='del' href='".$ed->path.$dro."'>Drop</a><a href='".$ed->path."20/$db/$tbs'>Browse</a></td></tr>";
 		}
 		++$ofset;
 	}
 	echo "</table>".$ed->pg_number($pg, $ttalpg);
 	}//end rows
 	//triggers
-	$q_trg=$ed->con->query("SHOW TRIGGERS FROM ".$db);
+	$q_trg=$ed->con->query("SHOW TRIGGERS FROM `$db`");
 	if($q_trg->num_row()) {
 		echo "<table><tr><th>TRIGGER</th><th>TABLE</th><th>TIMING</th><th>EVENT</th><th>ACTIONS</th></tr>";
 		foreach($q_trg->fetch(1) as $r_tg) {
@@ -939,7 +941,7 @@ case "5"://Show Tables
 	}
 	//events
 	if(!in_array($db,$ed->deny)) {
-	$q_eve=$ed->con->query("SHOW EVENTS FROM ".$db);
+	$q_eve=$ed->con->query("SHOW EVENTS FROM `$db`");
 	if($q_eve)
 	if($q_eve->num_row()) {
 	echo "<table><tr><th>EVENT</th><th>SCHEDULE</th><th>START</th><th>END</th><th>ACTIONS</th></tr>";
@@ -959,7 +961,7 @@ case "6"://create table
 	if($ed->post('ctab','!e') && !is_numeric(substr($ed->post('ctab'),0,1)) && $ed->post('nrf','!e') && is_numeric($ed->post('nrf')) && $ed->post('nrf')>0 ) {
 	echo $head.$ed->menu($db,'',2);
 	if($ed->post('crtb','i')) {
-		$qry1 = "Create TABLE ".$ed->sanitize($ed->post('ctab'))."(";
+		$qry1 = "CREATE TABLE ".$ed->sanitize($ed->post('ctab'))."(";
 		$nf=0;
 		while($nf<$ed->post('nrf')) {
 			$c1=$ed->post('fi'.$nf); $c2=$ed->post('ty'.$nf);
@@ -1016,44 +1018,44 @@ case "9":
 	$db= $ed->sg[1];
 	$tb= $ed->sg[2];
 	if($ed->post('cll','i')) {//change table collation
-		$q_altcll = $ed->con->query('ALTER TABLE '.$db.'.'.$tb.' CONVERT TO CHARACTER SET '.strtok($ed->post('cll'),'_').' COLLATE '.$ed->post('cll'));
+		$q_altcll = $ed->con->query("ALTER TABLE `$db`.`$tb` CONVERT TO CHARACTER SET ".strtok($ed->post('cll'),'_')." COLLATE ".$ed->post('cll'));
 		if($q_altcll) $ed->redir("10/$db/".$tb, ['ok'=>"Successfully changed"]);
-		$ed->redir("10/$db/".$tb, ['err'=>"Change failed"]);
+		$ed->redir("10/$db/$tb", ['err'=>"Change failed"]);
 	}
 	if($ed->post('engs','i')) {//change table engine
-		$q_engs = $ed->con->query('ALTER TABLE '.$db.'.'.$tb.' ENGINE='.$ed->post('engs'));
+		$q_engs = $ed->con->query("ALTER TABLE `$db`.`$tb` ENGINE=".$ed->post('engs'));
 		if($q_engs) $ed->redir("5/$db/$tb", ['ok'=>"Successfully changed"]);
 		$ed->redir("10/$db/$tb", ['err'=>"Change failed"]);
 	}
 	if($ed->post('copytab','!e')) {//copy table in new DB
 		$ndb = $ed->post('copytab');
-		$q_altchk = $ed->con->query("SELECT 1 FROM {$ndb}.{$tb}");
+		$q_altchk = $ed->con->query("SELECT 1 FROM `$ndb`.`$tb`");
 		if($q_altchk) $ed->redir("10/$db/".$tb, ['err'=>"Table already exists"]);
-		$q_altcrt = $ed->con->query("CREATE TABLE {$ndb}.{$tb} LIKE {$db}.{$tb}");
-		$q_altins = $ed->con->query("INSERT {$ndb}.{$tb} SELECT * FROM {$db}.{$tb}");
-		if($q_altcrt && $q_altins) $ed->redir("10/$db/".$tb, ['ok'=>"Successfully copied"]);
-		$ed->redir("10/$db/".$tb, ['err'=>"Copy table failed"]);
+		$q_altcrt = $ed->con->query("CREATE TABLE `$ndb`.`$tb` LIKE `$db`.`$tb`");
+		$q_altins = $ed->con->query("INSERT `$ndb`.`$tb` SELECT * FROM `$db`.`$tb`");
+		if($q_altcrt && $q_altins) $ed->redir("10/$db/$tb", ['ok'=>"Successfully copied"]);
+		$ed->redir("10/$db/$tb", ['err'=>"Copy table failed"]);
 	}
 	if($ed->post('changeb','i') && $ed->post('changec','i')) {//table comment
-		$ed->con->query("ALTER TABLE $tb COMMENT=\"".htmlentities($ed->post('changec'),ENT_QUOTES)."\"");
-		$ed->redir("10/$db/".$tb, ['ok'=>"Changed table comment"]);
+		$ed->con->query("ALTER TABLE `$tb` COMMENT=\"".htmlentities($ed->post('changec'),ENT_QUOTES)."\"");
+		$ed->redir("10/$db/$tb", ['ok'=>"Changed table comment"]);
 	}
 	if($ed->post('rtab','!e')) {//rename table
 		$ntb = $ed->sanitize($ed->post('rtab'));
 		if(is_numeric(substr($ntb,0,1))) $ed->redir("5/$db",['err'=>"Not a valid table name"]);
-		$q_creatt = $ed->con->query("SELECT count(*) FROM ".$ntb);
+		$q_creatt = $ed->con->query("SELECT count(*) FROM `$ntb`");
 		if(!$q_creatt) {//prevent create duplicate
 		//create table
 		$q_ttab= $ed->con->query("SELECT TABLE_NAME,TABLE_TYPE FROM information_schema.TABLES WHERE `TABLE_SCHEMA`='$db' AND `TABLE_NAME`='$tb'");
 		$r_ttr= $q_ttab->fetch();
-		$ed->con->query("CREATE TABLE ".$ntb." LIKE ".$r_ttr[0]);
-		$ed->con->query("INSERT INTO ".$ntb." SELECT * FROM ".$r_ttr[0]);
+		$ed->con->query("CREATE TABLE `$ntb` LIKE `".$r_ttr[0]."`");
+		$ed->con->query("INSERT INTO `$ntb` SELECT * FROM `".$r_ttr[0]."`");
 		//rename table in view
 		if($ed->priv("SHOW VIEW") && $ed->priv("CREATE VIEW")) {
 		$q_vtb = $ed->con->query("SELECT TABLE_NAME,VIEW_DEFINITION FROM information_schema.VIEWS WHERE `TABLE_SCHEMA`='$db'");
 		if($q_vtb->num_row()) {
 		foreach($q_vtb->fetch(1) as $r_tv) {
-		$ed->con->query("DROP VIEW IF EXISTS ".$db.".".$r_tv[0]);
+		$ed->con->query("DROP VIEW IF EXISTS `$db`.`".$r_tv[0]."`");
 		$ed->con->query("CREATE VIEW `$db`.`".$r_tv[0]."` AS ".str_replace("`".$tb."`", "`".$ntb."`", $r_tv[1]));
 		}
 		}
@@ -1063,9 +1065,9 @@ case "9":
 		$q_prs= $ed->con->query("SELECT ROUTINE_NAME,ROUTINE_TYPE FROM information_schema.ROUTINES WHERE `ROUTINE_SCHEMA`='$db'");
 		if($q_prs->num_row()) {
 		foreach($q_prs->fetch(1) as $r_prs) {
-		$q_ros= $ed->con->query("SHOW CREATE ".$r_prs[1]." $db.".$r_prs[0])->fetch();
-		$retb= preg_replace("/\b".$tb."\b/i", $ntb, $q_ros[2]);
-		$ed->con->query("DROP ".$r_prs[1]." ".$r_prs[0]);
+		$q_ros= $ed->con->query("SHOW CREATE ".$r_prs[1]." `$db`.`".$r_prs[0]."`")->fetch();
+		$retb= preg_replace("/\`".$tb."\`|\b".$tb."\b/i", "`".$ntb."`", $q_ros[2]);
+		$ed->con->query("DROP ".$r_prs[1]." `".$r_prs[0]."`");
 		$ed->con->query($retb);
 		}
 		}
@@ -1076,31 +1078,31 @@ case "9":
 		if($q_evn)
 		if($q_evn->num_row()) {
 		foreach($q_evn->fetch(1) as $r_evn) {
-		$evb = preg_replace("/\b(".$tb.")\b/i", $ntb, $r_evn[1]);
-		$ed->con->query("ALTER EVENT ".$r_evn[0]." DO ".$evb);
+		$evb = preg_replace("/\`".$tb."\`|\b".$tb."\b/i", "`".$ntb."`", $r_evn[1]);
+		$ed->con->query("ALTER EVENT `".$r_evn[0]."` DO ".$evb);
 		}
 		}
 		}
 		//rename table in triggers
 		if($ed->priv("TRIGGER")) {
-		$q_trg=$ed->con->query("SHOW TRIGGERS FROM ".$db);
+		$q_trg=$ed->con->query("SHOW TRIGGERS FROM `$db`");
 		if($q_trg->num_row()) {
 		foreach($q_trg->fetch(1) as $r_trg) {
-		$ed->con->query("DROP TRIGGER IF EXISTS ".$db.".".$r_trg[0]);
+		$ed->con->query("DROP TRIGGER IF EXISTS `$db`.`".$r_trg[0]."`");
 		$ed->con->query("CREATE TRIGGER `".$r_trg[0]."` ".$r_trg[4]." ".$r_trg[1]." ON `".$ntb."` FOR EACH ROW ".$r_trg[3]);
 		}
 		}
 		}
 		//drop table
-		$ed->con->query("DROP TABLE ".$tb);
+		$ed->con->query("DROP TABLE `$tb`");
 		$ed->redir("5/$db",['ok'=>"Successfully renamed"]);
 		} else $ed->redir("5/$db",['err'=>"Table already exist"]);
 	}
 	if($ed->post('n1','!e') && $ed->post('n2','!e')) {//reorder
-		$q_co= $ed->con->query("SHOW FULL FIELDS FROM $tb")->fetch(1);
+		$q_co= $ed->con->query("SHOW FULL FIELDS FROM `$tb`")->fetch(1);
 		foreach($q_co as $k=>$r_co) {
 		if($ed->post('n1')==$r_co[0] && $r_co[4]!='PRI' && empty($r_co[6])) {
-		$ed->con->query("ALTER TABLE $tb MODIFY COLUMN ".$r_co[0]." ".$r_co[1]." ".(($ed->post('n2')=="x" && $q_co[0][4]!='PRI' && empty($q_co[0][6]))?"FIRST":"AFTER ".$ed->post('n2')));
+		$ed->con->query("ALTER TABLE `$tb` MODIFY COLUMN ".$r_co[0]." ".$r_co[1]." ".(($ed->post('n2')=="x" && $q_co[0][4]!='PRI' && empty($q_co[0][6]))?"FIRST":"AFTER ".$ed->post('n2')));
 		}
 		}
 		exit;
@@ -1109,33 +1111,33 @@ case "9":
 		$idx= '`'.implode('`,`',$ed->post('idx')).'`';
 		$idxn= implode('_',$ed->post('idx'));
 		if($ed->post('primary','i')) {
-			$q = $ed->con->query("ALTER TABLE $tb DROP PRIMARY KEY, ADD PRIMARY KEY($idx)");
-			if(!$q) $ed->con->query("ALTER TABLE $tb ADD PRIMARY KEY($idx)");
+			$q = $ed->con->query("ALTER TABLE `$tb` DROP PRIMARY KEY, ADD PRIMARY KEY($idx)");
+			if(!$q) $ed->con->query("ALTER TABLE `$tb` ADD PRIMARY KEY($idx)");
 		} elseif($ed->post('unique','i')) {
-			$ed->con->query("ALTER TABLE $tb ADD UNIQUE KEY($idx)");
+			$ed->con->query("ALTER TABLE `$tb` ADD UNIQUE KEY($idx)");
 		} elseif($ed->post('index','i')) {
-			$ed->con->query("ALTER TABLE $tb ADD INDEX($idx)");
+			$ed->con->query("ALTER TABLE `$tb` ADD INDEX($idx)");
 		} elseif($ed->post('fulltext','i')) {
-			$ed->con->query("ALTER TABLE $tb ADD FULLTEXT INDEX($idx)");
+			$ed->con->query("ALTER TABLE `$tb` ADD FULLTEXT INDEX($idx)");
 		}
 		$ed->redir("10/$db/$tb",['ok'=>"Successfully created"]);
 	}
 	if(isset($ed->sg[3])) {//drop index
 		if($ed->sg[3] == "PRIMARY") {
-			$q_alt= $ed->con->query("ALTER TABLE `".$tb."` DROP PRIMARY KEY");
+			$q_alt= $ed->con->query("ALTER TABLE `$tb` DROP PRIMARY KEY");
 		} else {
-			$q_key = $ed->con->query("SHOW KEYS FROM ".$tb);
+			$q_key = $ed->con->query("SHOW KEYS FROM `$tb`");
 			if($q_key) {
 			foreach($q_key->fetch(2) as $r_key) {
 			if($r_key['Key_name'] == $ed->sg[3]) $keys= $r_key['Key_name'];
 			}
-			$q_alt= $ed->con->query("ALTER TABLE `".$tb."` DROP INDEX ".$keys);
+			$q_alt= $ed->con->query("ALTER TABLE `$tb` DROP INDEX $keys");
 			}
 		}
-		if($q_alt) $ed->redir("10/$db/".$tb,['ok'=>"Successfully dropped"]);
-		else $ed->redir("10/$db/".$tb,['err'=>"Drop index failed"]);
+		if($q_alt) $ed->redir("10/$db/$tb",['ok'=>"Successfully dropped"]);
+		else $ed->redir("10/$db/$tb",['err'=>"Drop index failed"]);
 	}
-	$ed->redir("5/".$db,['err'=>"Action failed"]);
+	$ed->redir("5/$db",['err'=>"Action failed"]);
 break;
 
 case "10"://table structure
@@ -1144,7 +1146,7 @@ case "10"://table structure
 	$tb= $ed->sg[2];
 	echo $head.$ed->menu($db, $tb, 1);
 	echo $ed->form("9/$db/$tb")."<table><caption>TABLE STRUCTURE</caption><tr><th><input type='checkbox' onclick='toggle(this,\"idx[]\")'/></th><th>FIELD</th><th>TYPE</th><th>NULL</th><th>COLLATION</th><th>DEFAULT</th><th>EXTRA</th><th>ACTIONS</th></tr><tbody class='sort'>";
-	$q_fi= $ed->con->query("SHOW FULL FIELDS FROM ".$tb);
+	$q_fi= $ed->con->query("SHOW FULL FIELDS FROM `$tb`");
 	$r_flds= $q_fi->num_row();
 	foreach($q_fi->fetch(2) as $r_fi) {
 		$bg=($bg==1)?2:1;
@@ -1156,7 +1158,7 @@ case "10"://table structure
 	echo "</tbody><tr><td colspan='3'><button type='submit' name='changeb'>Change Comment</button></td><td colspan='5'><input type='text' name='changec' value='".$q_comm[0]."'/></td></tr>
 	<tr><td class='auto' colspan='8'><div class='left'><button type='submit' name='primary'>Primary</button><button type='submit' name='index'>Index</button><button type='submit' name='unique'>Unique</button><button type='submit' name='fulltext'>Fulltext</button></div><div class='link'><a href='{$ed->path}27/$db/$tb/analyze'>Analyze</a><a href='{$ed->path}27/$db/$tb/optimize'>Optimize</a><a href='{$ed->path}27/$db/$tb/check'>Check</a><a href='{$ed->path}27/$db/$tb/repair'>Repair</a></div></td></tr></table></form>
 	<table><caption>TABLE INDEX</caption><tr><th>KEY NAME</th><th>FIELD</th><th>TYPE</th><th>ACTIONS</th></tr>";
-	$q_idx= $ed->con->query("SHOW KEYS FROM ".$tb);
+	$q_idx= $ed->con->query("SHOW KEYS FROM `$tb`");
 	if($q_idx->num_row()) {
 	foreach($q_idx->fetch(2) as $r_idx) {
 		if($r_idx['Index_type']=="BTREE") {
@@ -1175,23 +1177,25 @@ case "10"://table structure
 	echo "<tr class='r c$bg'><td>".$idxnam."</td><td>";
 	foreach($idxcol['column'] as $col) echo $col."<br/>";
 	echo "</td><td>".$idxcol['type'];
-	echo "</td><td><a class='del' href='{$ed->path}9/$db/$tb/".$idxnam."'>drop</a></td></tr>";
+	echo "</td><td><a class='del' href='{$ed->path}9/$db/$tb/$idxnam'>drop</a></td></tr>";
 	}
 	}
 	}
 	echo "</table><table class='c1'><tr><td>Rename Table<br/>".$ed->form("9/$db/$tb")."<input type='text' name='rtab'/><br/><button type='submit'>Rename</button></form><br/>Copy Table to Database<br/>".$ed->form("9/$db/$tb")."<select name='copytab'>";
 	foreach($ed->u_db as $r_ldb) {
-		if(!in_array($r_ldb[0], $ed->deny)) echo "<option value='".$r_ldb[0]."'".($r_ldb[0]==$db?" selected":"").">".$r_ldb[0]."</option>";
+		$r_ldb0=$r_ldb[0];
+		if(!in_array($r_ldb0, $ed->deny)) echo "<option value='$r_ldb0'".($r_ldb0==$db?" selected":"").">$r_ldb0</option>";
 	}
 	echo "</select><br/><button type='submit'>Copy</button></form><br/>";
-	$q_cll= $ed->con->query("SHOW TABLE STATUS FROM {$db} like '{$tb}'");
+	$q_cll= $ed->con->query("SHOW TABLE STATUS FROM `$db` like '$tb'");
 	$r_cll= $q_cll->fetch(2);
 	echo "Change Table Collation<br/>".$ed->form("9/$db/$tb").$ed->collate("cll",$r_cll[0]['Collation']).
 	"<br/><button type='submit'>Change</button></form><br/>Change Table Engine<br/>".$ed->form("9/$db/$tb")."<select name='engs'>";
 	$q_def= $ed->con->query("SELECT ENGINE FROM information_schema.TABLES WHERE `TABLE_SCHEMA`='$db' AND `TABLE_NAME`='$tb'")->fetch();
 	$q_eng= $ed->con->query("SELECT ENGINE FROM information_schema.ENGINES WHERE ENGINE IS NOT NULL AND SUPPORT<>'NO'")->fetch(1);
 	foreach($q_eng as $r_eng) {
-		echo "<option value='".$r_eng[0]."'".($q_def[0]==$r_eng[0]?" selected":"").">".$r_eng[0]."</option>";
+		$r_eng0=$r_eng[0];
+		echo "<option value='$r_eng0'".($q_def[0]==$r_eng0?" selected":"").">$r_eng0</option>";
 	}
 	echo "</select><br/><button type='submit'>Change</button></form></td></tr></table>";
 break;
@@ -1212,9 +1216,9 @@ case "11"://Add field
 		$def=($ed->post('de','!e') ? " default ".$ed->post('de'):"");
 		$ex=$at; $at='';
 		}
-		$e= $ed->con->query("ALTER TABLE $tb ADD ".$ed->sanitize($ed->post('fi'))." ".$ed->post('ty').$va.$at." ".$ed->post('nc').$def.$clls.$ex.$col);
-		if($e) $ed->redir("10/$db/".$tb,['ok'=>"Successfully added"]);
-		else $ed->redir("10/$db/".$tb,['err'=>"Add field failed"]);
+		$e= $ed->con->query("ALTER TABLE `$tb` ADD ".$ed->sanitize($ed->post('fi'))." ".$ed->post('ty').$va.$at." ".$ed->post('nc').$def.$clls.$ex.$col);
+		if($e) $ed->redir("10/$db/$tb",['ok'=>"Successfully added"]);
+		else $ed->redir("10/$db/$tb",['err'=>"Add field failed"]);
 	} else {
 		echo $head.$ed->menu($db,$tb,2).$ed->form("11/$db/$tb/$id").$stru.
 		"<tr><td><input type='text' name='fi'/></td><td><select name='ty'>".$ed->fieldtypes()."</select></td><td><input type='text' name='va'/></td><td><select name='at'>";
@@ -1224,7 +1228,7 @@ case "11"://Add field
 		echo "</select></td>
 		<td><select name='nc'><option value='NOT NULL'>NOT NULL</option><option value='NULL'>NULL</option></select></td>
 		<td><input type='text' name='de'/></td><td>".$ed->collate("clls")."</td><td><input type='radio' name='ex[]' value='1'/></td>
-		<td><select name='col'><option value='".$id."'>after: ".$id."</option><option value='FIRST'>first</option></select></td>
+		<td><select name='col'><option value='$id'>after: $id</option><option value='FIRST'>first</option></select></td>
 		</tr><tr><td colspan='9'><button type='submit'>Add</button></td></tr></table></form>";
 	}
 break;
@@ -1246,14 +1250,14 @@ case "12"://structure change
 		}
 		if($ed->post('ex','!e') && $ed->post('ex',0)==1) {
 			$ex=" AUTO_INCREMENT";
-			$q_pri= $ed->con->query("SHOW KEYS FROM {$db}.".$tb);
+			$q_pri= $ed->con->query("SHOW KEYS FROM `$db`.`$tb`");
 			if($q_pri->num_row()) {
 			foreach($q_pri->fetch(2) as $r_pri) {
 				if($r_pri['Key_name'] != "PRIMARY" && $r_pri['Column_name'] != $fi_) $ex .= " PRIMARY KEY";
 			}
 			} else $ex .= " PRIMARY KEY";
 		} else $ex="";
-		$ok= $ed->con->query("ALTER TABLE $tb CHANGE ".$fi_." ".$ed->sanitize($ed->post('fi'))." ".$ed->post('ty').$va.$at." ".$ed->post('nc').$def.$clls.$ex);
+		$ok= $ed->con->query("ALTER TABLE `$tb` CHANGE ".$fi_." ".$ed->sanitize($ed->post('fi'))." ".$ed->post('ty').$va.$at." ".$ed->post('nc').$def.$clls.$ex);
 		if($ok) {
 		//replace in view
 		if($ed->priv("DROP") && $ed->priv("SHOW VIEW") && $ed->priv("CREATE VIEW")) {
@@ -1269,13 +1273,13 @@ case "12"://structure change
 		}
 		//repalce in trigger
 		if($ed->priv("TRIGGER")) {
-		$q_tge = $ed->con->query("SHOW TRIGGERS FROM $db WHERE `Table`='$tb'");
+		$q_tge = $ed->con->query("SHOW TRIGGERS FROM `$db` WHERE `Table`='$tb'");
 		if($q_tge->num_row()) {
 		foreach($q_tge->fetch(1) as $r_tge) {
 			if($r_tge[2] == $tb) {
-			$stt= preg_replace("/\b(".$fi_.")\b/i", $fi, $r_tge[3]);
-			$ed->con->query("DROP TRIGGER IF EXISTS ".$db.".".$r_tge[0]);
-			$ed->con->query("CREATE TRIGGER `".$r_tge[0]."` ".$r_tge[4]." ".$r_tge[1]." ON `".$r_tge[2]."` FOR EACH ROW ".$stt);
+			$stt= preg_replace("/\b".$fi_."\b/i", $fi, $r_tge[3]);
+			$ed->con->query("DROP TRIGGER IF EXISTS `$db`.`".$r_tge[0]."`");
+			$ed->con->query("CREATE TRIGGER `".$r_tge[0]."` ".$r_tge[4]." ".$r_tge[1]." ON `".$r_tge[2]."` FOR EACH ROW $stt");
 			}
 		}
 		}
@@ -1285,9 +1289,9 @@ case "12"://structure change
 		$q_prs= $ed->con->query("SELECT ROUTINE_NAME,ROUTINE_TYPE FROM information_schema.ROUTINES WHERE `ROUTINE_SCHEMA`='$db'");
 		if($q_prs->num_row()) {
 		foreach($q_prs->fetch(1) as $r_prs) {
-		$q_ros= $ed->con->query("SHOW CREATE ".$r_prs[1]." $db.".$r_prs[0])->fetch();
+		$q_ros= $ed->con->query("SHOW CREATE ".$r_prs[1]." `$db`.`".$r_prs[0]."`")->fetch();
 		$refi= preg_replace("/\b".$fi_."\b/i", $fi, $q_ros[2]);
-		$ed->con->query("DROP ".$r_prs[1]." ".$r_prs[0]);
+		$ed->con->query("DROP ".$r_prs[1]." `".$r_prs[0]."`");
 		$ed->con->query($refi);
 		}
 		}
@@ -1299,8 +1303,8 @@ case "12"://structure change
 		if($q_evn->num_row()) {
 		foreach($q_evn->fetch(1) as $r_evn) {
 			if(strrpos($r_evn[1],$tb)==true) {
-			$evb = preg_replace("/\b(".$fi_.")\b/i", $fi, $r_evn[1]);
-			$ed->con->query("ALTER EVENT ".$r_evn[0]." DO ".$evb);
+			$evb = preg_replace("/\b".$fi_."\b/i", $fi, $r_evn[1]);
+			$ed->con->query("ALTER EVENT `".$r_evn[0]."` DO ".$evb);
 			}
 		}
 		}
@@ -1310,7 +1314,7 @@ case "12"://structure change
 	} else {//structure form
 	echo $head.$ed->menu($db,$tb,2);
 	echo $ed->form("12/$db/$tb/".$ed->sg[3]).$stru;
-	$r_fe = $ed->con->query("SHOW FULL FIELDS FROM {$db}.{$tb} LIKE '".$ed->sg[3]."'")->fetch();
+	$r_fe = $ed->con->query("SHOW FULL FIELDS FROM `$db`.`$tb` LIKE '".$ed->sg[3]."'")->fetch();
 	$fe_type= preg_split("/[()]+/", $r_fe[1], -1, PREG_SPLIT_NO_EMPTY);
 	echo "<tr><td><input type='hidden' name='fi_' value='".$r_fe[0]."'/><input type='text' name='fi' value=".$r_fe[0]." /></td>
 	<td><select name='ty'>".$ed->fieldtypes(strtoupper($fe_type[0]))."</select></td>
@@ -1333,17 +1337,18 @@ case "13"://Drop field
 	$tb= $ed->sg[2];
 	$fi= $ed->sg[3];
 	//drop view with field
-	$q_vi = $ed->con->query("SHOW TABLE STATUS FROM $db");
+	$q_vi = $ed->con->query("SHOW TABLE STATUS FROM `$db`");
 	foreach($q_vi->fetch(2) as $r_vi) {
 	if($r_vi['Comment']=='VIEW') {
-	$q_sv= $ed->con->query("SHOW CREATE VIEW {$db}.".$r_vi['Name']);
+	$r_tb=$r_vi['Name'];
+	$q_sv= $ed->con->query("SHOW CREATE VIEW `$db`.`$r_tb`");
 	$r_sv= $q_sv->fetch();
-	if(strpos($r_sv[1],"`$tb`.`$fi`")!==false) $ed->con->query("DROP VIEW {$db}.".$r_vi['Name']);
+	if(strpos($r_sv[1],"`$tb`.`$fi`")!==false) $ed->con->query("DROP VIEW `$db`.`$r_tb`");
 	}
 	}
-	$q_drofd = $ed->con->query("ALTER TABLE $tb DROP ".$fi);
-	if($q_drofd) $ed->redir("10/$db/".$tb, ['ok'=>"Successfully deleted"]);
-	$ed->redir("10/$db/".$tb, ['err'=>"Field delete failed"]);
+	$q_drofd = $ed->con->query("ALTER TABLE `$tb` DROP ".$fi);
+	if($q_drofd) $ed->redir("10/$db/$tb", ['ok'=>"Successfully deleted"]);
+	$ed->redir("10/$db/$tb", ['err'=>"Field delete failed"]);
 break;
 
 case "20"://table browse
@@ -1352,7 +1357,7 @@ case "20"://table browse
 	$tb= $ed->sg[2];
 	$ed->con->query("SET NAMES utf8");
 	$where=(empty($_SESSION['_sqlsearch_'.$db.'_'.$tb])?"":" ".$_SESSION['_sqlsearch_'.$db.'_'.$tb]);
-	$q_cnt= $ed->con->query("SELECT COUNT(*) FROM ".$tb.$where)->fetch();
+	$q_cnt= $ed->con->query("SELECT COUNT(*) FROM `$tb`".$where)->fetch();
 	$totalr= $q_cnt[0];
 	$totalpg= ceil($totalr/$step);
 	if(empty($ed->sg[3])) {
@@ -1363,11 +1368,11 @@ case "20"://table browse
 	}
 	$offset = ($pg - 1) * $step;
 
-	$q_vic = $ed->con->query("SHOW TABLE STATUS FROM $db like '$tb'")->fetch();//17-comment=view
+	$q_vic = $ed->con->query("SHOW TABLE STATUS FROM `$db` like '$tb'")->fetch();//17-comment=view
 	echo $head.$ed->menu($db, ($q_vic[17]=='VIEW'?'':$tb), 1,($q_vic[17]=='VIEW'?['view',$tb]:''));
 	echo "<table><tr>";
 	if($q_vic[17]!='VIEW') {echo "<th>ACTIONS</th>";}
-	$q_bro= $ed->con->query("SHOW FIELDS FROM ".$tb.(!empty($q_rcol)?" WHERE field IN ('".implode("','", $q_rcol)."')":""));
+	$q_bro= $ed->con->query("SHOW FIELDS FROM `$tb`".(!empty($q_rcol)?" WHERE field IN ('".implode("','", $q_rcol)."')":""));
 	$r_cl= $q_bro->num_row();
 	$coln=[];//field
 	$colt=[];//type
@@ -1379,7 +1384,7 @@ case "20"://table browse
 		echo "<th>".$r_bro['Field']."</th>";
 	}
 	echo "</tr>";
-	$q_res= $ed->con->query(empty($select) ? "SELECT ".implode(",",$cols)." FROM {$tb}{$where} LIMIT $offset, $step" : $select);
+	$q_res= $ed->con->query(empty($select) ? "SELECT ".implode(",",$cols)." FROM `$tb`{$where} LIMIT $offset, $step" : $select);
 	foreach($q_res->fetch(1) as $r_rw) {
 		$bg=($bg==1)?2:1;
 		$nu = $coln[0]."/".($r_rw[0]==""?"isnull":base64_encode($r_rw[0])).(isset($colt[1]) && (stristr($colt[1],"int") || stristr($colt[1],"varchar")) && stristr($colt[1],"blob") == false && !empty($coln[1]) && !empty($r_rw[1]) ? "/".$coln[1]."/".base64_encode($r_rw[1]):"");
@@ -1417,7 +1422,7 @@ case "21"://table insert
 	$ed->check([1,2]);
 	$db= $ed->sg[1];
 	$tb= $ed->sg[2];
-	$q_col= $ed->con->query("SHOW COLUMNS FROM ".$tb);
+	$q_col= $ed->con->query("SHOW COLUMNS FROM `$tb`");
 	$coln=[];//field
 	$colt=[];//type
 	$colu=[];//null
@@ -1427,9 +1432,9 @@ case "21"://table insert
 		$colu[]= $r_brw['Null'];
 	}
 	if($ed->post('save','i') || $ed->post('save2','i')) {
-		$q_res= $ed->con->query("SELECT * FROM ".$tb);
+		$q_res= $ed->con->query("SELECT * FROM `$tb`");
 		$nrcol= $q_res->num_col();
-		$qr1="INSERT INTO $tb (";
+		$qr1="INSERT INTO `$tb` (";
 		$qr2="";
 		$qr3="VALUES(";
 		$qr4="";
@@ -1466,7 +1471,7 @@ case "21"://table insert
 		else $ed->redir("$rr/$db/$tb",['err'=>"Insert failed"]);
 	} else {
 		echo $head.$ed->menu($db, $tb, 1).$ed->form("21/$db/$tb",1)."<table><caption>Insert Row</caption>";
-		$q_res= $ed->con->query("SELECT * FROM ".$tb);
+		$q_res= $ed->con->query("SELECT * FROM `$tb`");
 		$r_col= $q_res->num_col();
 		$j=0;
 		while($j<$r_col) {
@@ -1508,7 +1513,7 @@ case "22"://table edit row
 	if(empty($nu)) $ed->redir("20/$db/$tb",['err'=>"Can't edit empty field"]);
 	$id=($ed->sg[4]=="isnull"?"":base64_decode($ed->sg[4]));
 	$nu1= (empty($ed->sg[5])?"":$ed->sg[5]); $id1= (empty($ed->sg[6])?"":base64_decode($ed->sg[6]));
-	$q_col= $ed->con->query("SHOW COLUMNS FROM ".$tb);
+	$q_col= $ed->con->query("SHOW COLUMNS FROM `$tb`");
 	$coln=[];//field
 	$colt=[];//type
 	$colu=[];//null
@@ -1521,9 +1526,9 @@ case "22"://table edit row
 	}
 	$nul= ("(".$nu." IS NULL OR ".$nu."='')");
 	if($ed->post('edit','i')) {//update
-	$q_re2= $ed->con->query("SELECT * FROM ".$tb);
+	$q_re2= $ed->con->query("SELECT * FROM `$tb`");
 	$r_co= $q_re2->num_col();
-		$qr1="UPDATE $tb SET ";
+		$qr1="UPDATE `$tb` SET ";
 		$qr2="";
 		$p=0;
 		while($p<$r_co) {
@@ -1543,13 +1548,13 @@ case "22"://table edit row
 		$qr2=substr($qr2,0,-1);
 		$qr3=" WHERE ".($id==""?$nul:$nu."='".addslashes($id)."'").(!empty($nu1) && !empty($id1)?" AND $nu1='".addslashes($id1)."'":"")." LIMIT 1";
 		$q_upd = $ed->con->query($qr1.$qr2.$qr3);
-		if($q_upd) $ed->redir("20/{$db}/".$tb,['ok'=>"Successfully updated"]);
-		else $ed->redir("20/{$db}/".$tb,['err'=>"Update failed"]);
+		if($q_upd) $ed->redir("20/$db/$tb",['ok'=>"Successfully updated"]);
+		else $ed->redir("20/$db/$tb",['err'=>"Update failed"]);
 	} else {//edit form
-		$q_flds= $ed->con->query("SHOW COLUMNS FROM ".$tb);
+		$q_flds= $ed->con->query("SHOW COLUMNS FROM `$tb`");
 		$r_fnr= $q_flds->num_row();
 		$q_rst= $ed->con->query("SELECT ".implode(",",$cols)." FROM `$tb` WHERE ".($id==""?$nul:$nu."='".addslashes($id)."'").(!empty($colt[1]) && stristr($colt[1],"blob") == false && !empty($nu1) && !empty($id1)?" AND $nu1='".addslashes($id1)."'":""));
-		if($q_rst->num_row() < 1) $ed->redir("20/$db/".$tb,['err'=>"Edit failed"]);
+		if($q_rst->num_row() < 1) $ed->redir("20/$db/$tb",['err'=>"Edit failed"]);
 		$r_rx = $q_rst->fetch();
 		echo $head.$ed->menu($db, $tb, 1).$ed->form("22/$db/$tb/$nu/".($id==""?"isnull":base64_encode($id)).(!empty($colt[1]) && stristr($colt[1],"blob") == false && !empty($nu1) && !empty($id1)?"/$nu1/".base64_encode($r_rx['1']):""),1)."<table><caption>Edit Row</caption>";
 		$k=0;
@@ -1592,8 +1597,8 @@ case "23"://table delete row
 	$nu= $ed->sg[3];
 	$id= $ed->sg[4];
 	$nul= ("(".$nu." IS NULL OR ".$nu."='')");
-	$q_delro = $ed->con->query("DELETE FROM $tb WHERE ".($id=="isnull"?$nul:$nu."='".addslashes(base64_decode($id))."'").(!empty($ed->sg[5]) && !empty($ed->sg[6])?" AND ".$ed->sg[5]."='".addslashes(base64_decode($ed->sg[6]))."'":"")." LIMIT 1");
-	if($q_delro && $q_delro->last()) $ed->redir("20/$db/".$tb,['ok'=>"Successfully deleted"]);
+	$q_delro = $ed->con->query("DELETE FROM `$tb` WHERE ".($id=="isnull"?$nul:$nu."='".addslashes(base64_decode($id))."'").(!empty($ed->sg[5]) && !empty($ed->sg[6])?" AND ".$ed->sg[5]."='".addslashes(base64_decode($ed->sg[6]))."'":"")." LIMIT 1");
+	if($q_delro && $q_delro->last()) $ed->redir("20/$db/$tb",['ok'=>"Successfully deleted"]);
 	else $ed->redir("20/$db/$tb",['err'=>"Delete row failed"]);
 break;
 
@@ -1605,7 +1610,7 @@ case "24"://search
 	if(!empty($ed->sg[3]) && $ed->sg[3]=='reset') {
 	$ed->redir("20/$db/$tb",['ok'=>"Reset search"]);
 	}
-	$q_se= $ed->con->query("SHOW COLUMNS FROM ".$tb)->fetch(2);
+	$q_se= $ed->con->query("SHOW COLUMNS FROM `$tb`")->fetch(2);
 	$cond1=['=','&lt;','&gt;','&lt;=','&gt;=','!=','LIKE','NOT LIKE','REGEXP','NOT REGEXP'];
 	$cond2=['BETWEEN','NOT BETWEEN'];
 	$cond3=['IN','NOT IN'];
@@ -1636,14 +1641,14 @@ case "24"://search
 
 	echo $head.$ed->menu($db,$tb,1).$ed->form("24/$db/$tb")."<table><caption>Search</caption>";
 	$conds="";
-	foreach($cond as $cnd) $conds .= "<option value='".$cnd."'>".$cnd."</option>";
+	foreach($cond as $cnd) $conds .= "<option value='$cnd'>$cnd</option>";
 	$fields="<option value=''>&nbsp;</option>";
 	foreach($q_se as $r_se) {
 	$fl=$r_se['Field'];
-	$fields .= "<option value='$fl'>".$fl."</option>";
-	echo "<tr><td>".$fl."</td><td><select name='cond__".$fl."'>".$conds."</select></td><td><input type='text' name='".$fl."'/></td></tr>";
+	$fields .= "<option value='$fl'>$fl</option>";
+	echo "<tr><td>$fl</td><td><select name='cond__".$fl."'>$conds</select></td><td><input type='text' name='$fl'/></td></tr>";
 	}
-	echo "<tr class='c1'><td>ORDER</td><td><select name='order_field'>".$fields."</select></td><td><select name='order_ord'><option value='ASC'>ASC</option><option value='DESC'>DESC</option></select></td></tr>
+	echo "<tr class='c1'><td>ORDER</td><td><select name='order_field'>$fields</select></td><td><select name='order_ord'><option value='ASC'>ASC</option><option value='DESC'>DESC</option></select></td></tr>
 	<tr><td class='c1' colspan='3'><button type='submit' name='search'>Search</button></td></tr></table></form>";
 break;
 
@@ -1652,7 +1657,7 @@ case "25"://table empty
 	$db= $ed->sg[1];
 	$tb= $ed->sg[2];
 	$ed->priv("DROP","20/$db/$tb");
-	$ed->con->query("TRUNCATE TABLE ".$ed->sg[2]);
+	$ed->con->query("TRUNCATE TABLE `$tb`");
 	$ed->redir("20/$db/$tb",['ok'=>"Table is empty"]);
 break;
 
@@ -1661,28 +1666,28 @@ case "26"://table drop
 	$db= $ed->sg[1];
 	$tb= $ed->sg[2];
 	$ed->priv("DROP","5/$db");
-	$ed->con->query("DROP TABLE ".$tb);
+	$ed->con->query("DROP TABLE `$tb`");
 	//drop view
 	$q_rw = $ed->con->query("SELECT TABLE_SCHEMA,TABLE_NAME,VIEW_DEFINITION FROM information_schema.views WHERE `TABLE_SCHEMA`='$db'");
 	if($q_rw->num_row()) {
 	foreach($q_rw->fetch(2) as $r_rw) {
 		$q = $ed->con->query($r_rw['VIEW_DEFINITION']);
-		if(!$q) $ed->con->query("DROP VIEW ".$r_rw['TABLE_NAME']);
+		if(!$q) $ed->con->query("DROP VIEW `".$r_rw['TABLE_NAME']."`");
 	}
 	}
 	//drop procedure (no function)
 	$q_rp = $ed->con->query("SELECT ROUTINE_NAME,ROUTINE_DEFINITION FROM information_schema.ROUTINES WHERE `ROUTINE_SCHEMA`='$db' AND `ROUTINE_TYPE`='PROCEDURE'");
 	if($q_rp) {
 	foreach($q_rp->fetch(1) as $r_rp) {
-		if(preg_match('/\b'.$tb.'\b/',$r_rp[1])) $ed->con->query("DROP PROCEDURE ".$r_rp[0]);
+		if(preg_match('/\`'.$tb.'\`|\b'.$tb.'\b/',$r_rp[1])) $ed->con->query("DROP PROCEDURE `".$r_rp[0]."`");
 	}
 	}
 	//drop event
 	$q_evn = $ed->con->query("SELECT EVENT_NAME,EVENT_DEFINITION FROM information_schema.EVENTS WHERE `EVENT_SCHEMA`='$db'");
 	foreach($q_evn->fetch(2) as $r_evn) {
-		if(preg_match('/\b'.$tb.'\b/',$r_evn['EVENT_DEFINITION'])) $ed->con->query("DROP EVENT {$db}.".$r_evn['EVENT_NAME']);
+		if(preg_match('/\`'.$tb.'\`|\b'.$tb.'\b/',$r_evn['EVENT_DEFINITION'])) $ed->con->query("DROP EVENT `$db`.`".$r_evn['EVENT_NAME']."`");
 	}
-	$ed->redir("5/".$db,['ok'=>"Successfully dropped"]);
+	$ed->redir("5/$db",['ok'=>"Successfully dropped"]);
 break;
 
 case "27"://optimize,analyze,check,repair
@@ -1725,7 +1730,7 @@ case "30"://import
 			foreach($q_sel as $r_sel) {
 			$bg=($bg==1)?2:1;
 			echo "<tr class='r c$bg'>";
-			foreach($r_sel as $r_se) echo "<td>".$r_se."</td>";
+			foreach($r_sel as $r_se) echo "<td>$r_se</td>";
 			echo "</tr>";
 			}
 			echo "</table>";
@@ -1823,7 +1828,7 @@ case "30"://import
 			}
 		}
 		$ed->con->commit();
-		echo $head.$ed->menu($db)."<div class='col2'><p>Successfully executed: <b>".$q." quer".($q>1?'ies':'y')."</b></p>".$out;
+		echo $head.$ed->menu($db)."<div class='col2'><p>Successfully executed: <b>$q quer".($q>1?'ies':'y')."</b></p>$out";
 	}
 	} else $ed->redir("5/$db",['err'=>"Empty import"]);
 break;
@@ -1831,7 +1836,7 @@ break;
 case "31"://export form
 	$ed->check([1]);
 	$db= $ed->sg[1];
-	$q_tts= $ed->con->query("SHOW TABLES FROM ".$db);
+	$q_tts= $ed->con->query("SHOW TABLES FROM `$db`");
 	if($q_tts->num_row()) {
 	echo $head.$ed->menu($db,'',2).$ed->form("32/$db")."<div class='dw'><h3 class='l1'>Export</h3><h3>Select table(s)</h3>
 	<p><input type='checkbox' onclick='selectall(this,\"tables\")'/> All/None</p>
@@ -1841,21 +1846,21 @@ case "31"://export form
 	<h3><input type='checkbox' onclick='toggle(this,\"fopt[]\")'/> Options</h3>";
 	$opts= ['structure'=>'Structure','data'=>'Data','cdb'=>'Create DB','auto'=>'Auto Increment','drop'=>'Drop if exist','ifnot'=>'If not exist','lock'=>'Lock table','trigger'=>'Triggers','procfunc'=>'Routines','event'=>'Events'];
 	foreach($opts as $k => $opt) {
-	echo "<p><input type='checkbox' name='fopt[]' value='{$k}'".($k=='structure' ? ' checked':'')." /> ".$opt."</p>";
+	echo "<p><input type='checkbox' name='fopt[]' value='$k'".($k=='structure' ? ' checked':'')." /> $opt</p>";
 	}
 	echo "<h3>File format</h3>";
 	$ffo= ['sql'=>'SQL','csv1'=>'CSV,','csv2'=>'CSV;','json'=>'JSON','xls'=>'Excel Spreadsheet','doc'=>'Word Web','xml'=>'XML'];
 	foreach($ffo as $k => $ff) {
-	echo "<p><input type='radio' name='ffmt[]' onclick='opt()' value='{$k}'".($k=='sql' ? ' checked':'')." /> {$ff}</p>";
+	echo "<p><input type='radio' name='ffmt[]' onclick='opt()' value='$k'".($k=='sql' ? ' checked':'')." /> $ff</p>";
 	}
 	echo "<h3>File compression</h3><p><select name='ftype'>";
 	$fty= ['plain'=>'None','gzip'=>'GZ','zip'=>'Zip'];
 	foreach($fty as $k => $ft) {
-	echo "<option value='{$k}'>{$ft}</option>";
+	echo "<option value='$k'>$ft</option>";
 	}
 	echo "</select></p><button type='submit' name='exp'>Export</button></div></form>";
 	} else {
-	$ed->redir("5/".$db,["err"=>"No export empty DB"]);
+	$ed->redir("5/$db",["err"=>"No export empty DB"]);
 	}
 break;
 
@@ -1867,12 +1872,12 @@ case "32"://export
 	$vws= [];
 	$ffmt= $ed->post('ffmt');
 	if($ed->post('tables')=='' && $ffmt[0]!='sql') {
-		$ed->redir("31/".$db,['err'=>"You didn't select any table"]);
+		$ed->redir("31/$db",['err'=>"You didn't select any table"]);
 	} elseif($ed->post('tables','!e')) {//selected tables
 		$tabs = $ed->post('tables');
 		foreach($tabs as $tab) {
-			$r_com = $ed->con->query("SHOW TABLE STATUS FROM {$db} like '{$tab}'")->fetch();
-			if($r_com[17] == 'VIEW') {
+			$r_com = $ed->con->query("SHOW TABLE STATUS FROM `$db` like '$tab'")->fetch();
+			if(preg_match('/view/i',$r_com[17])) {
 			array_push($vws, $r_com[0]);
 			} else {
 			array_push($tbs, $r_com[0]);
@@ -1881,7 +1886,7 @@ case "32"://export
 	}
 	//check export options
 	if($ed->post('fopt')=='') {
-		$ed->redir("31/".$db,['err'=>"You didn't select any option"]);
+		$ed->redir("31/$db",['err'=>"You didn't select any option"]);
 	} else {
 		$fopt=$ed->post('fopt');
 	}
@@ -1894,18 +1899,18 @@ case "32"://export
 			if(in_array('ifnot',$fopt)) {//option if not exist
 			$sql .= "IF NOT EXISTS ";
 			}
-			$sql .= $db.";\nUSE $db;\n\n";
+			$sql .= "`$db`;\nUSE `$db`;\n\n";
 		}
 		foreach($tbs as $tb) {
-			$r_st= $ed->con->query("SHOW TABLE STATUS FROM {$db} like '{$tb}'")->fetch();
+			$r_st= $ed->con->query("SHOW TABLE STATUS FROM `$db` like '$tb'")->fetch();
 			if(in_array('structure',$fopt)) {//structure
 				$sql .= $ed->tb_structure($tb,$fopt,$tab='',$r_st)."\n";
 			}
 			if(in_array('data',$fopt)) {//option data
-				$q_fil= $ed->con->query("SHOW FIELDS FROM ".$tb);
+				$q_fil= $ed->con->query("SHOW FIELDS FROM `$tb`");
 				$cols= $q_fil->num_row();
 				$r_fil=$q_fil->fetch(1);
-				$q_rx= $ed->con->query("SELECT * FROM ".$tb);
+				$q_rx= $ed->con->query("SELECT * FROM `$tb`");
 				if($q_rx->num_row()) {
 					if($r_st[17] != 'VIEW') {
 					$sql.="\n";
@@ -1943,7 +1948,7 @@ case "32"://export
 
 		if($vws != '' && in_array('structure',$fopt)) {//export views
 		foreach($vws as $vw) {
-			$q_rw = $ed->con->query("SHOW CREATE VIEW ".$vw);
+			$q_rw = $ed->con->query("SHOW CREATE VIEW `$vw`");
 			if($q_rw->num_row()) {
 			if(in_array('drop',$fopt)) {//option drop
 			$sql .= "\nDROP VIEW IF EXISTS `$vw`;\n";
@@ -1976,7 +1981,7 @@ case "32"://export
 				if(in_array('drop',$fopt)) {//option drop
 				$sqs .= "DROP ".$r_px[0]." IF EXISTS `".$r_px[1]."`;\n";
 				}
-				$q_rs = $ed->con->query("SHOW CREATE ".$r_px[0]." ".$r_px[1]);
+				$q_rs = $ed->con->query("SHOW CREATE ".$r_px[0]." `".$r_px[1]."`");
 				foreach($q_rs->fetch(1) as $r_rs) {
 				$sqs .= $r_rs[2]."$$\n\n";
 				}
@@ -1991,7 +1996,7 @@ case "32"://export
 				if(in_array('drop',$fopt)) {//option drop
 				$sqs .= "DROP EVENT IF EXISTS `".$r_eev[0]."`;\n";
 				}
-				$q_rev = $ed->con->query("SHOW CREATE EVENT ".$r_eev[0])->fetch(1);
+				$q_rev = $ed->con->query("SHOW CREATE EVENT `".$r_eev[0]."`")->fetch(1);
 				foreach($q_rev as $r_rev) {
 				$sqs .= $r_rev[3]."$$\n\n";
 				}
@@ -2011,10 +2016,10 @@ case "32"://export
 		if(empty($tbs[0])) $ed->redir("31/".$db,['err'=>"Select a table/view"]);
 		foreach($tbs as $tb) {
 			$sq='';
-			$q_csv= $ed->con->query("SHOW FIELDS FROM ".$tb)->fetch(2);
+			$q_csv= $ed->con->query("SHOW FIELDS FROM `$tb`")->fetch(2);
 			foreach($q_csv as $r_csv) $sq.= $r_csv['Field'].$sign;
 			$sq=substr($sq,0,-1)."\n";
-			$q_rs=$ed->con->query("SELECT * FROM ".$tb)->fetch(1);
+			$q_rs=$ed->con->query("SELECT * FROM `$tb`")->fetch(1);
 			foreach($q_rs as $r_rs) {
 			foreach($r_rs as $r_r) $sq.= (is_numeric($r_r) ? $r_r : "\"".preg_replace(["/\r\n|\r|\n/","/'/","/\"/"],["\\n","\'","\"\""],$r_r)."\"").$sign;
 			$sq=substr($sq,0,-1)."\n";
@@ -2032,7 +2037,7 @@ case "32"://export
 		}
 		foreach($tbs as $tb) {
 			$sq="// EdMyAdmin $version JSON Dump\n\n";
-			$q_jso=$ed->con->query("SELECT * FROM ".$tb);
+			$q_jso=$ed->con->query("SELECT * FROM `$tb`");
 			if($q_jso->num_row() > 0) {
 			$sq.= '[';
 			foreach($q_jso->fetch(2) as $k_jso=>$r_jso) {
@@ -2050,7 +2055,7 @@ case "32"://export
 		$ffty= "application/msword"; $ffext= ".doc"; $fname=$db.$ffext;
 		$sql ='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:word" 	xmlns="http://www.w3.org/TR/REC-html40"><!DOCTYPE html><html><head><meta http-equiv="Content-type" content="text/html;charset=utf-8"></head><body>';
 		foreach($tbs as $tb) {
-		$q_doc = $ed->con->query("SHOW FIELDS FROM ".$tb)->fetch(2);
+		$q_doc = $ed->con->query("SHOW FIELDS FROM `$tb`")->fetch(2);
 		if(in_array('structure',$fopt)) {
 			$wh ='<table border=1 cellpadding=0 cellspacing=0 style="border-collapse: collapse"><tr bgcolor="#eeeeee">';
 			foreach($q_doc[0] as $r_k=>$r_doc) $wh .='<th>'.$r_k.'</th>';
@@ -2067,7 +2072,7 @@ case "32"://export
 			$wb ='<table border=1 cellpadding=0 cellspacing=0 style="border-collapse: collapse"><tr>';
 			foreach($q_doc as $r_dc) $wb .= '<th>'.$r_dc['Field'].'</th>';
 			$wb .= "</tr>";
-			$q_dc2 = $ed->con->query("SELECT * FROM ".$tb)->fetch(1);
+			$q_dc2 = $ed->con->query("SELECT * FROM `$tb`")->fetch(1);
 			foreach($q_dc2 as $r_dc2) {
 			$wb .= "<tr>";
 			foreach($r_dc2 as $r_d2) $wb .='<td>'.$r_d2.'</td>';
@@ -2084,12 +2089,12 @@ case "32"://export
 		$sql ='<?xml version="1.0"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet" xmlns:html="http://www.w3.org/TR/REC-html40">';
 		foreach($tbs as $tb) {
 			$xh= '<Worksheet ss:Name="'.$tb.'"><Table><Row>';
-			$q_xl1 = $ed->con->query("SHOW FIELDS FROM ".$tb)->fetch(2);
+			$q_xl1 = $ed->con->query("SHOW FIELDS FROM `$tb`")->fetch(2);
 			foreach($q_xl1 as $r_xl1) {
 			$xh .= '<Cell><Data ss:Type="String">'.$r_xl1['Field'].'</Data></Cell>';
 			}
 			$xh .='</Row>';
-			$q_xl2 = $ed->con->query("SELECT * FROM ".$tb)->fetch(1);
+			$q_xl2 = $ed->con->query("SELECT * FROM `$tb`")->fetch(1);
 			foreach($q_xl2 as $r_xl2) {
 			$xh .='<Row>';
 			foreach($r_xl2 as $r_x2) $xh .= '<Cell><Data ss:Type="'.(is_numeric($r_x2)?'Number':'String').'">'.htmlentities($r_x2).'</Data></Cell>';
@@ -2106,7 +2111,7 @@ case "32"://export
 		$sql .="\n\t\t<ed:database name=\"$db\">";
 		foreach($tbs as $tb) {
 			$sql .="\n\t\t\t<ed:table name=\"$tb\">";
-			$r_st= $ed->con->query("SHOW TABLE STATUS FROM {$db} like '{$tb}'")->fetch();
+			$r_st= $ed->con->query("SHOW TABLE STATUS FROM `$db` like '$tb'")->fetch();
 			$sql .=	$ed->tb_structure($tb,$fopt,$tab="\t\t\t",$r_st);
 			$sql .="\n\t\t\t</ed:table>";
 		}
@@ -2121,8 +2126,8 @@ case "32"://export
 		if(in_array('data',$fopt)) {
 		$sq="\n\t<database name=\"$db\">";
 		foreach($tbs as $tb) {
-		$q_xm1 = $ed->con->query("SHOW FIELDS FROM ".$tb)->fetch(1);
-		$q_xm2 = $ed->con->query("SELECT * FROM ".$tb)->fetch(1);
+		$q_xm1 = $ed->con->query("SHOW FIELDS FROM `$tb`")->fetch(1);
+		$q_xm2 = $ed->con->query("SELECT * FROM `$tb`")->fetch(1);
 		foreach($q_xm2 as $r_=>$r_xm2) {
 			$sq .="\n\t\t<table name=\"$tb\">";
 			$x=0;
@@ -2221,7 +2226,7 @@ case "33"://blob download
 	} else {
 	$ph= $ed->sg[7];$nu1=" AND `".$ed->sg[5]."`='".base64_decode($ed->sg[6])."'";
 	}
-	$q_ph = $ed->con->query("SELECT $ph FROM $tb WHERE `$nu`='$id'$nu1 LIMIT 1")->fetch();
+	$q_ph = $ed->con->query("SELECT $ph FROM `$tb` WHERE `$nu`='$id'$nu1 LIMIT 1")->fetch();
 	$len= strlen($q_ph[0]);
 	if($len >= 2 && $q_ph[0][0] == chr(0xff) && $q_ph[0][1] == chr(0xd8)) {$tp= 'image/jpeg';$xt='.jpg';}
 	elseif($len >= 3 && substr($q_ph[0], 0, 3) == 'GIF') {$tp= 'image/gif';$xt='.gif';}
@@ -2241,14 +2246,14 @@ case "40"://view
 		$r_uv= [0=>'',1=>''];
 		if($ed->post('uv1','!e') && $ed->post('uv2','!e')) {
 			$tb= $ed->sanitize($ed->post('uv1'));
-			$exi= $ed->con->query("SELECT 1 FROM ".$tb);
-			if($exi) $ed->redir("5/".$db,['err'=>"This name exist"]);
+			$exi= $ed->con->query("SELECT 1 FROM `$tb`");
+			if($exi) $ed->redir("5/$db",['err'=>"This name exist"]);
 			$vstat= $ed->post('uv2');
 			$stat= $ed->con->query($vstat);
-			if(!$stat) $ed->redir("5/".$db,['err'=>"Wrong statement"]);
-			$v_cre= $ed->con->query("CREATE VIEW ".$tb." AS ".$vstat);
-			if($v_cre) $ed->redir("5/".$db,['ok'=>"Successfully created"]);
-			else $ed->redir("5/".$db,['err'=>"Create view failed"]);
+			if(!$stat) $ed->redir("5/$db",['err'=>"Wrong statement"]);
+			$v_cre= $ed->con->query("CREATE VIEW `$tb` AS ".$vstat);
+			if($v_cre) $ed->redir("5/$db",['ok'=>"Successfully created"]);
+			else $ed->redir("5/$db",['err'=>"Create view failed"]);
 		}
 		echo $head.$ed->menu($db,'',2).$ed->form("40/$db");
 		$b_lbl="Create";
@@ -2259,15 +2264,15 @@ case "40"://view
 		$r_uv= $ed->con->query("SELECT TABLE_NAME,VIEW_DEFINITION FROM information_schema.VIEWS WHERE `TABLE_SCHEMA`='$db' AND `TABLE_NAME`='$sp'")->fetch();
 		if($ed->post('uv1','!e') && $ed->post('uv2','!e')) {
 			$tb= $ed->sanitize($ed->post('uv1'));
-			if(is_numeric(substr($tb,0,1))) $ed->redir("5/".$db,['err'=>"Not a valid name"]);
-			$exi= $ed->con->query("SELECT 1 FROM ".$tb);
-			if($exi && $tb!=$r_uv[0]) $ed->redir("5/".$db,['err'=>"This name exist"]);
+			if(is_numeric(substr($tb,0,1))) $ed->redir("5/$db",['err'=>"Not a valid name"]);
+			$exi= $ed->con->query("SELECT 1 FROM `$tb`");
+			if($exi && $tb!=$r_uv[0]) $ed->redir("5/$db",['err'=>"This name exist"]);
 			$vstat= $ed->post('uv2');
 			$stat= $ed->con->query($vstat);
-			if(!$stat) $ed->redir("5/".$db,['err'=>"Wrong statement"]);
-			$ed->con->query("DROP VIEW IF EXISTS ".$sp);
-			$ed->con->query("CREATE VIEW ".$tb." AS ".$vstat);
-			$ed->redir("5/".$db,['ok'=>"Successfully updated"]);
+			if(!$stat) $ed->redir("5/$db",['err'=>"Wrong statement"]);
+			$ed->con->query("DROP VIEW IF EXISTS `$sp`");
+			$ed->con->query("CREATE VIEW `$tb` AS ".$vstat);
+			$ed->redir("5/$db",['ok'=>"Successfully updated"]);
 		}
 		echo $head.$ed->menu($db,'',2,[$ty,$sp]).$ed->form("40/$db/$sp/$ty");
 		$b_lbl="Edit";
@@ -2286,11 +2291,11 @@ case "41"://trigger
 		$r_tge= [0=>'',1=>'',2=>'',3=>'',4=>''];
 		if($ed->post('utg1','!e') && $ed->post('utg5','!e')) {
 		$utg1= $ed->sanitize($ed->post('utg1'));
-		if(is_numeric(substr($t_nm,0,1))) $ed->redir("41/".$db,['err'=>"Not a valid name"]);
+		if(is_numeric(substr($t_nm,0,1))) $ed->redir("41/$db",['err'=>"Not a valid name"]);
 		$utg2= $ed->post('utg2');$utg3= $ed->post('utg3');$utg4= $ed->post('utg4');$utg5= $ed->post('utg5');
 		$q_tgcrt= $ed->con->query("CREATE TRIGGER `".$utg1."` ".$utg2." ".$utg3." ON `".$utg4."` FOR EACH ROW ".$utg5);
-		if($q_tgcrt) $ed->redir("5/".$db,['ok'=>"Successfully created"]);
-		else $ed->redir("5/".$db,['err'=>"Create failed"]);
+		if($q_tgcrt) $ed->redir("5/$db",['ok'=>"Successfully created"]);
+		else $ed->redir("5/$db",['err'=>"Create failed"]);
 		}
 		echo $head.$ed->menu($db,'',2).$ed->form("41/$db");
 		$t_lbl="Create";
@@ -2300,14 +2305,14 @@ case "41"://trigger
 		if($ed->post('utg1','!e') && $ed->post('utg5','!e')) {
 			$utg1= $ed->sanitize($ed->post('utg1'));
 			$utg2= $ed->post('utg2');$utg3= $ed->post('utg3');$utg4= $ed->post('utg4');$utg5= $ed->post('utg5');
-			if(is_numeric(substr($utg1,0,1))) $ed->redir("5/".$db,['err'=>"Not a valid name"]);
-			$sess= $ed->con->query("SHOW CREATE ".$ty." {$db}.".$sp)->fetch();
+			if(is_numeric(substr($utg1,0,1))) $ed->redir("5/$db",['err'=>"Not a valid name"]);
+			$sess= $ed->con->query("SHOW CREATE $ty `$db`.`$sp`")->fetch();
 			$_SESSION['t_tmp']= $sess[2];
-			$ed->con->query("DROP {$ty} IF EXISTS {$db}.".$sp);
+			$ed->con->query("DROP $ty IF EXISTS `$db`.`$sp`");
 			$q_tgcrt= $ed->con->query("CREATE TRIGGER `".$utg1."` ".$utg2." ".$utg3." ON `".$utg4."` FOR EACH ROW ".$utg5);
 			if($q_tgcrt) {
 			unset($_SESSION["t_tmp"]);
-			$ed->redir("5/".$db,['ok'=>"Successfully updated"]);
+			$ed->redir("5/$db",['ok'=>"Successfully updated"]);
 			} else {
 			$ed->con->query($_SESSION["t_tmp"]);
 			unset($_SESSION["t_tmp"]);
@@ -2319,7 +2324,7 @@ case "41"://trigger
 		$t_lbl="Edit";
 	}
 	$tgtb= [];//list tables
-	$q_trgt = $ed->con->query("SHOW TABLE STATUS FROM ".$db)->fetch(2);
+	$q_trgt = $ed->con->query("SHOW TABLE STATUS FROM `$db`")->fetch(2);
 	foreach($q_trgt as $r_trgt) {
 	if($r_trgt['Comment']!='VIEW') {
 	$tgtb[] = $r_trgt['Name'];
@@ -2328,7 +2333,7 @@ case "41"://trigger
 	echo "<table><tr><th colspan='2'>{$t_lbl} Trigger</th></tr>
 	<tr><td>Trigger Name</td><td><input type='text' name='utg1' value='".$r_tge[0]."'/></td></tr>
 	<tr><td>Table</td><td><select name='utg4'>";
-	foreach($tgtb as $tgt) echo "<option value='".$tgt."'".($r_tge[1]==$tgt? " selected":"").">".$tgt."</option>";
+	foreach($tgtb as $tgt) echo "<option value='$tgt'".($r_tge[1]==$tgt? " selected":"").">$tgt</option>";
 	echo "</select></td></tr><tr><td>Time</td><td><select name='utg2'>";
 	$tm= ['BEFORE','AFTER'];
 	foreach($tm as $tn) echo "<option value='$tn'".($r_tge[2]==$tn?" selected":"").">$tn</option>";
@@ -2362,9 +2367,9 @@ case "42"://routine
 			$r_new= $ed->sanitize($ed->post('ronme'));
 			$r_tmp= $r_new.'_'.uniqid(mt_rand());
 			$crea= $ed->create_ro($db,$r_tmp);
-			$ed->con->query("DROP ".$ty." IF EXISTS ".$r_tmp);
+			$ed->con->query("DROP $ty IF EXISTS `$r_tmp`");
 			if($crea) {
-			$ed->con->query("DROP ".$ty." IF EXISTS ".$sp);
+			$ed->con->query("DROP $ty IF EXISTS `$sp`");
 			$ed->create_ro($db,$r_new);
 			$ed->redir("5/$db",['ok'=>"Updated routine"]);
 			} else $ed->redir("42/$db/$sp/$ty",['err'=>"Update failed"]);
@@ -2376,7 +2381,7 @@ case "42"://routine
 		if(empty($retrn[2]) && !empty($r_rou[2])) $retrn[2]=$r_rou[2];
 		if(!empty($retrn[2])) $retrn[2]= str_replace("CHARSET ","",$retrn[2]);
 		//param_list
-		$q_plist= $ed->con->query("SHOW CREATE $ty $db.$sp")->fetch();
+		$q_plist= $ed->con->query("SHOW CREATE $ty `$db`.`$sp`")->fetch();
 		preg_match('#\((([^()]*|(?R))*)\)#',$q_plist[2],$r_plist);
 		$plist= preg_split("/\(.*?\)(*SKIP)(*F)|,/", $r_plist[1]);
 		echo $head.$ed->menu($db,'',2,[$ty,$sp]).$ed->form("42/$db/$sp/$ty");
@@ -2449,10 +2454,10 @@ case "43"://event
 		$r_eve= [0=>'',1=>'',2=>'',3=>'',4=>'',5=>'',7=>'',8=>'',9=>'',10=>''];
 		if($ed->post('evnme','!e') && $ed->post('evstat','!e')) {
 			$evn= $ed->sanitize($ed->post('evnme'));
-			if(is_numeric(substr($evn,0,1))) $ed->redir("43/".$db,['err'=>"Not a valid name"]);
-			$q_evcrt = $ed->con->query("CREATE EVENT `".$evn."` ON SCHEDULE ".($ed->post('evpre','i')? "AT '".$ed->post('evsta')."'":"EVERY '".$ed->post('evevr1')."' ".$ed->post('evevr2')." STARTS '".$ed->post('evsta')."' ENDS '".$ed->post('evend')."'")." ON COMPLETION".($ed->post('evpre','i')?"":" NOT")." PRESERVE ".$ed->post('evendi')." COMMENT '".$ed->post('evcom')."' DO ".$ed->post('evstat'));
-			if($q_evcrt) $ed->redir("5/".$db,['ok'=>"Successfully created"]);
-			else $ed->redir("5/".$db,['err'=>"Create event failed"]);
+			if(is_numeric(substr($evn,0,1))) $ed->redir("43/$db",['err'=>"Not a valid name"]);
+			$q_evcrt = $ed->con->query("CREATE EVENT `$evn` ON SCHEDULE ".($ed->post('evpre','i')? "AT '".$ed->post('evsta')."'":"EVERY '".$ed->post('evevr1')."' ".$ed->post('evevr2')." STARTS '".$ed->post('evsta')."' ENDS '".$ed->post('evend')."'")." ON COMPLETION".($ed->post('evpre','i')?"":" NOT")." PRESERVE ".$ed->post('evendi')." COMMENT '".$ed->post('evcom')."' DO ".$ed->post('evstat'));
+			if($q_evcrt) $ed->redir("5/$db",['ok'=>"Successfully created"]);
+			else $ed->redir("5/$db",['err'=>"Create event failed"]);
 		}
 		echo $head.$ed->menu($db,'',2).$ed->form("43/$db");
 		$t_lbl="Create";
@@ -2461,16 +2466,16 @@ case "43"://event
 		$db= $ed->sg[1];$sp= $ed->sg[2];$ty= $ed->sg[3];
 		if($ed->post('evnme','!e') && $ed->post('evstat','!e')) {
 			$evn= $ed->sanitize($ed->post('evnme'));
-			if(is_numeric(substr($evn,0,1))) $ed->redir("5/".$db,['err'=>"Not a valid name"]);
-			$q_evcrt = $ed->con->query("ALTER EVENT `".$sp."` ON SCHEDULE ".
+			if(is_numeric(substr($evn,0,1))) $ed->redir("5/$db",['err'=>"Not a valid name"]);
+			$q_evcrt = $ed->con->query("ALTER EVENT `$sp` ON SCHEDULE ".
 			($ed->post('evone','!e') ? "AT '".$ed->post('evsta')."'":"EVERY '".$ed->post('evevr1')."' ".$ed->post('evevr2')." STARTS '".$ed->post('evsta')."' ENDS '".$ed->post('evend')."'").
 			" ON COMPLETION".($ed->post('evpre','!e')?"":" NOT")." PRESERVE ".$ed->post('evendi')." COMMENT '".$ed->post('evcom')."' DO ".$ed->post('evstat'));
-			if(!$q_evcrt) $ed->redir("5/".$db,['err'=>"Update event failed"]);
+			if(!$q_evcrt) $ed->redir("5/$db",['err'=>"Update event failed"]);
 			if($sp != $evn) {
-			$q_evren = $ed->con->query("ALTER EVENT `".$sp."` RENAME TO ".$evn);
-			if(!$q_evren) $ed->redir("5/".$db,['err'=>"Rename event failed"]);
+			$q_evren = $ed->con->query("ALTER EVENT `$sp` RENAME TO $evn");
+			if(!$q_evren) $ed->redir("5/$db",['err'=>"Rename event failed"]);
 			}
-			$ed->redir("5/".$db,['ok'=>"Updated event"]);
+			$ed->redir("5/$db",['ok'=>"Updated event"]);
 		}
 		$r_eve= $ed->con->query("SELECT EVENT_NAME,STARTS,ENDS,EVENT_TYPE,INTERVAL_VALUE,INTERVAL_FIELD,EXECUTE_AT,STATUS,EVENT_COMMENT,ON_COMPLETION,EVENT_DEFINITION FROM information_schema.EVENTS WHERE `EVENT_SCHEMA`='$db' AND `EVENT_NAME`='$sp'")->fetch();
 		echo $head.$ed->menu($db,'',2,[$ty,$sp]).$ed->form("43/$db/$sp/$ty");
@@ -2500,7 +2505,7 @@ case "48"://execute
 	$db= $ed->sg[1];$sp= $ed->sg[2];$ty= $ed->sg[3];
 	$ed->priv("EXECUTE","5/$db");
 	echo $head.$ed->menu($db,'',1,[$ty,$sp]).$ed->form("48/$db/$sp/$ty");
-	$q_plist= $ed->con->query("SHOW CREATE $ty $db.$sp")->fetch();
+	$q_plist= $ed->con->query("SHOW CREATE $ty `$db`.`$sp`")->fetch();
 	preg_match('#\((([^()]*|(?R))*)\)#',$q_plist[2],$r_plist);
 	$plist= preg_split("/\(.*?\)(*SKIP)(*F)|,/", $r_plist[1]);
 	echo "<table><tr><th colspan='2'>Execute Routine</th></tr>";
@@ -2524,14 +2529,14 @@ case "48"://execute
 	$re= substr($re,0,-1);
 	$out=substr($out,0,-1);
 	if($ty=='function') {
-		$q_ex= $ed->con->query("SELECT ".$sp.(empty($fi)?"":"($re)"))->fetch();
+		$q_ex= $ed->con->query("SELECT `$sp`".(empty($fi)?"":"($re)"))->fetch();
 		echo "<tr><td><input type='text' value='".$q_ex[0]."'/></td></tr>";
 	} elseif($ty=='procedure') {
 		if($re!='' && $out!='') $c="($re,$out)";
 		elseif($re!='') $c="($re)";
 		elseif($out!='') $c="($out)";
 		else $c="";
-		$ed->con->query("CALL `".$sp."`".$c);
+		$ed->con->query("CALL `$sp`".$c);
 		$q_ex= $ed->con->query("SELECT $out")->fetch();
 		$j=0;
 		while($j<$i) {
@@ -2545,7 +2550,7 @@ break;
 
 case "49"://drop sp
 	$ed->check([1,5]);
-	$q_drosp= $ed->con->query("DROP ".$ed->sg[3]." ".$ed->sg[1].".".$ed->sg[2]);
+	$q_drosp= $ed->con->query("DROP ".$ed->sg[3]." `".$ed->sg[1]."`.`".$ed->sg[2]."`");
 	if($q_drosp) $ed->redir("5/".$ed->sg[1],['ok'=>"Successfully dropped"]);
 break;
 
@@ -2600,7 +2605,7 @@ case "53"://add,edit,update user
 		$passwd= ($ed->post('password','e') ? "":" IDENTIFIED BY '".$ed->post('password')."'");
 		$q_exist = $ed->con->query("SELECT EXISTS(SELECT 1 FROM information_schema.USER_PRIVILEGES WHERE `GRANTEE`='\'$uu\'@\'$hh\'');")->fetch();
 		if($q_exist[0]) $ed->redir("52",['err'=>"Username already exist"]);
-		$ed->con->query("CREATE USER '{$uu}'@'{$hh}'{$passwd}");
+		$ed->con->query("CREATE USER '$uu'@'$hh'".$passwd);
 		}
 	} else {
 		$ed->check([6]);
@@ -2618,8 +2623,8 @@ case "53"://add,edit,update user
 	$passwd= ($ed->post('password','e') ? "":" IDENTIFIED BY '".$ed->post('password')."'");
 	if($priall == 'on') $prs="ALL PRIVILEGES";
 	if($priall != 'on' && !empty($prialls)) $prs= implode(",",$prialls);
-	if(!empty($prs)) $ed->con->query("GRANT ".$prs." ON *.* TO '{$uu}'@'{$hh}'".$passwd.$with);
-	if(empty($prs)) $ed->con->query("GRANT USAGE ON *.* TO '{$uu}'@'{$hh}'".$passwd.$with);
+	if(!empty($prs)) $ed->con->query("GRANT $prs ON *.* TO '$uu'@'$hh'".$passwd.$with);
+	if(empty($prs)) $ed->con->query("GRANT USAGE ON *.* TO '$uu'@'$hh'".$passwd.$with);
 	if($ed->post('password','!e')) {
 	$ed->con->query("SET PASSWORD FOR '$uu'@'$hh' = PASSWORD('".$ed->post('password')."')");
 	}
@@ -2634,8 +2639,8 @@ case "53"://add,edit,update user
 	}
 	//revoke db
 	if($ed->post('rvkdb','!e')) {
-	$ed->con->query("REVOKE ALL PRIVILEGES ON ".$ed->post('rvkdb').".* FROM '$uu'@'$hh'");
-	$ed->con->query("REVOKE GRANT OPTION ON ".$ed->post('rvkdb').".* FROM '$uu'@'$hh'");
+	$ed->con->query("REVOKE ALL PRIVILEGES ON `".$ed->post('rvkdb')."`.* FROM '$uu'@'$hh'");
+	$ed->con->query("REVOKE GRANT OPTION ON `".$ed->post('rvkdb')."`.* FROM '$uu'@'$hh'");
 	$ed->con->query("FLUSH PRIVILEGES");
 	$ed->con->query("FLUSH USER_RESOURCES");
 	$ed->redir("53/$uu/$hh2");
@@ -2668,8 +2673,8 @@ case "53"://add,edit,update user
 	//form
 	$q_prs= $ed->con->query("SHOW PRIVILEGES")->fetch(1);
 	echo $head.$ed->menu(1,'',2).$ed->form("53/$uu/$hh2")."<table><tr><th colspan='2'>User Privileges</th></tr>
-	<tr><td>Host </td><td><input type='text' name='host' value='{$hh}'/></td></tr>
-	<tr><td>Name </td><td><input type='text' name='username' value='{$uu}'/></td></tr>
+	<tr><td>Host </td><td><input type='text' name='host' value='$hh'/></td></tr>
+	<tr><td>Name </td><td><input type='text' name='username' value='$uu'/></td></tr>
 	<tr><td>Password </td><td><input type='password' name='password'/></td></tr>";
 	echo "<tr><td>Global Privileges</td><td><input type='checkbox' name='priall' onclick='toggle(this,\"prialls[]\")' /> All privileges</td></tr>
 	<tr><td></td><td class='c1'><ul class='upr'>";
@@ -2687,8 +2692,9 @@ case "53"://add,edit,update user
 	if(!empty($hh)) {
 	echo "<table><tr><td class='c1'>Select DB<br/>".$ed->form("54/$uu/$hh2")."<select name='dbn'><option value=''>--select--</option>";
 	foreach($ed->u_db as $r_dbs) {
-	if(!in_array($r_dbs[0],$ed->deny)) {
-	echo "<option value='".$r_dbs[0]."'>".$r_dbs[0]."</option>";
+	$r_dbs0=$r_dbs[0];
+	if(!in_array($r_dbs0,$ed->deny)) {
+	echo "<option value='$r_dbs0'>$r_dbs0</option>";
 	}
 	}
 	echo "</select><br/><button type='submit' name='adddbpri'>Add</button></form></td></tr>";
@@ -2716,10 +2722,10 @@ case "54"://db priv
 	elseif($ed->post('dbn','!e')) $dbn= $_SESSION['_dbn']= $ed->post('dbn');
 	else $dbn= $_SESSION['_dbn'];
 	if($ed->post('savedb','i') || $ed->post('savedbc','i')) {
-		$ed->con->query("REVOKE ALL PRIVILEGES ON $dbn.* FROM '$uu'@'$hh'");
-		$ed->con->query("REVOKE GRANT OPTION ON $dbn.* FROM '$uu'@'$hh'");
+		$ed->con->query("REVOKE ALL PRIVILEGES ON `$dbn`.* FROM '$uu'@'$hh'");
+		$ed->con->query("REVOKE GRANT OPTION ON `$dbn`.* FROM '$uu'@'$hh'");
 		$ed->con->query("DELETE FROM mysql.db WHERE `User`='$uu' AND `Host`='$hh' AND `Db`='$dbn'");
-		$ed->con->query("GRANT ".($ed->post("pridbs","!e")?implode(", ",$ed->post("pridbs")):"")." ON $dbn.* TO '$uu'@'$hh'".($ed->post('dbgrant','!e')?" WITH GRANT OPTION":""));
+		$ed->con->query("GRANT ".($ed->post("pridbs","!e")?implode(", ",$ed->post("pridbs")):"")." ON `$dbn`.* TO '$uu'@'$hh'".($ed->post('dbgrant','!e')?" WITH GRANT OPTION":""));
 		$ed->con->query("FLUSH PRIVILEGES");
 		$ed->con->query("FLUSH USER_RESOURCES");
 		if($ed->post('savedbc','i')) $ed->redir("54/$uu/$hh2");
@@ -2727,8 +2733,8 @@ case "54"://db priv
 	}
 	//revoke tb
 	if($ed->post('rvktb','!e')) {
-	$ed->con->query("REVOKE ALL PRIVILEGES ON $dbn.".$ed->post('rvktb')." FROM '$uu'@'$hh'");
-	$ed->con->query("REVOKE GRANT OPTION ON $dbn.".$ed->post('rvktb')." FROM '$uu'@'$hh'");
+	$ed->con->query("REVOKE ALL PRIVILEGES ON `$dbn`.`".$ed->post('rvktb')."` FROM '$uu'@'$hh'");
+	$ed->con->query("REVOKE GRANT OPTION ON `$dbn`.`".$ed->post('rvktb')."` FROM '$uu'@'$hh'");
 	$ed->con->query("FLUSH PRIVILEGES");
 	$ed->con->query("FLUSH USER_RESOURCES");
 	$ed->redir("54/$uu/$hh2");
@@ -2751,7 +2757,7 @@ case "54"://db priv
 
 	$q_db= call_user_func_array('array_merge',$ed->u_db);
 	if(!in_array($dbn,$q_db)) $ed->redir("52",['err'=>"DB not exist"]);
-	$q_tb= $ed->con->query("SHOW TABLES FROM ".$dbn)->fetch(1);
+	$q_tb= $ed->con->query("SHOW TABLES FROM `$dbn`")->fetch(1);
 	$q_prs= $ed->con->query("SHOW PRIVILEGES")->fetch(1);
 	echo $head.$ed->menu(1,'',2).$ed->form("54/$uu/$hh2").
 	"<table><tr><th colspan='2'>Database Privileges</th></tr>
@@ -2798,8 +2804,8 @@ case "55"://tb priv
 	if($ed->post('tbn','e')) $ed->redir("54/$uu/$hh2",['err'=>"Table not exist"]);
 	$tbn= $ed->post('tbn');
 	if($ed->post("savetb","i")) {
-		$ed->con->query("REVOKE ALL PRIVILEGES ON $dbn.$tbn FROM '$uu'@'$hh'");
-		$ed->con->query("REVOKE GRANT OPTION ON $dbn.$tbn FROM '$uu'@'$hh'");
+		$ed->con->query("REVOKE ALL PRIVILEGES ON `$dbn`.`$tbn` FROM '$uu'@'$hh'");
+		$ed->con->query("REVOKE GRANT OPTION ON `$dbn`.`$tbn` FROM '$uu'@'$hh'");
 		$ed->con->query("DELETE FROM mysql.tables_priv WHERE `User`='$uu' AND `Host`='$hh' AND `Db`='$dbn' AND `Table_name`='$tbn'");
 		$ed->con->query("DELETE FROM mysql.columns_priv WHERE `User`='$uu' AND `Host`='$hh' AND `Db`='$dbn' AND `Table_name`='$tbn'");
 		$f1=($ed->post('fi1','!e')?" SELECT(`".implode("`,`",$ed->post('fi1'))."`),":"");
@@ -2813,7 +2819,7 @@ case "55"://tb priv
 		$ed->redir("54/$uu/$hh2",['ok'=>"Added Table privileges"]);
 	}
 	$tblistpr= ['ALTER','CREATE','DELETE','DROP','INDEX','CREATE VIEW','SHOW VIEW','TRIGGER'];
-	$q_fi= $ed->con->query("SHOW COLUMNS FROM $dbn.$tbn")->fetch(2);
+	$q_fi= $ed->con->query("SHOW COLUMNS FROM `$dbn`.`$tbn`")->fetch(2);
 	//tb priv
 	$q_tbpr= $ed->con->query("SELECT PRIVILEGE_TYPE,IS_GRANTABLE FROM information_schema.TABLE_PRIVILEGES WHERE `TABLE_SCHEMA`='$dbn' AND `TABLE_NAME`='$tbn' AND `GRANTEE`='\'$uu\'@\'$hh\''")->fetch(1);
 	$r_tpr=[];$gr=[0=>''];
