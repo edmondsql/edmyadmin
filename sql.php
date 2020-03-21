@@ -11,7 +11,7 @@ $bbs= ['False','True'];
 $js= (file_exists('jquery.js')?"/jquery.js":"http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js");
 class DBT {
 	public static $sqltype= ['mysqli','pdo_mysql'];
-	private $_cnx, $_query, $_fetch = [], $_num_col, $dbty;
+	private $_cnx, $_query, $_fetch=[], $_num_col, $dbty;
 	private static $instance = NULL;
 	public static function factory($host,$user,$pwd,$db='') {
 		if(!isset(self::$instance))
@@ -382,7 +382,7 @@ class ED {
 		}
 		$lft= ($pg>1?"<a href='$link/1'>First</a><a href='$link/".($pg-1)."'>Prev</a>":"");
 		$rgt= ($pg < $totalpg?"<a href='$link/".($pg+1)."'>Next</a><a href='$link/$totalpg'>Last</a>":"");
-		return "<div class='pg'>".$lft."<select onchange='location=this.value;'>$pgs</select>".$rgt."</div>";
+		return "<div class='pg'>$lft<select onchange='location=this.value;'>$pgs</select>$rgt</div>";
 		}
 	}
 	public function imp_csv($fname, $fbody) {
@@ -570,7 +570,7 @@ class ED {
 }
 $ed= new ED;
 $head= '<!DOCTYPE html><html lang="en"><head>
-<title>EdMyAdmin</title><meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>EdMyAdmin</title><meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge" />
 <style>
 * {margin:0;padding:0;font-size:12px;color:#333;font-family:Arial}
@@ -684,7 +684,7 @@ item.removeClass("drag");
 pre="x";
 if(item.prev().is("tr")) pre=item.prev("tr").prop("id");
 drag=false;
-$.ajax({type:"POST", url:"'.$ed->path.'9/'.(empty($ed->sg[1])?"":$ed->sg[1]).'/'.(empty($ed->sg[2])?"":$ed->sg[2]).'", data:"n1="+item.prop("id")+"&n2="+pre, success:function(){$(this).load(location.reload())}});
+$.ajax({type:"POST", url:"'.$ed->path.'9/'.(empty($ed->sg[1])?"":$ed->sg[1].'/').(empty($ed->sg[2])?"":$ed->sg[2]).'", data:"n1="+item.prop("id")+"&n2="+pre, success:function(){$(this).load(location.reload())}});
 });
 });
 }
@@ -745,7 +745,7 @@ for(var i=0;i<to;i++) opt[i].parentElement.style.display="none";
 }
 }
 </script>
-</head><body><noscript><h1 class="msg err">Please activate Javascript in your browser!</h1></noscript>'.(empty($_SESSION['ok'])?'':'<div class="msg ok">'.$_SESSION['ok'].'</div>').(empty($_SESSION['err'])?'':'<div class="msg err">'.$_SESSION['err'].'</div>').'<div class="l1"><b><a href="https://github.com/edmondsql/edmyadmin">EdMyAdmin '.$version.'</a></b>'.(isset($ed->sg[0]) && $ed->sg[0]==50 ? "": '<ul class="mn m1"><li>More <small>&#9660;</small><ul><li><a href="'.$ed->path.'60">Info</a></li><li><a href="'.$ed->path.'60/var">Variables</a></li><li><a href="'.$ed->path.'60/status">Status</a></li><li><a href="'.$ed->path.'60/process">Processes</a></li></ul></li><li><a href="'.$ed->path.'52">Users</a></li><li><a href="'.$ed->path.'51">Logout ['.(isset($_SESSION['user']) ? $_SESSION['user']:"").']</a></li></ul>').'</div>';
+</head><body><noscript><h1 class="msg err">Please enable Javascript in your browser!</h1></noscript>'.(empty($_SESSION['ok'])?'':'<div class="msg ok">'.$_SESSION['ok'].'</div>').(empty($_SESSION['err'])?'':'<div class="msg err">'.$_SESSION['err'].'</div>').'<div class="l1"><b><a href="https://github.com/edmondsql/edmyadmin">EdMyAdmin '.$version.'</a></b>'.(isset($ed->sg[0]) && $ed->sg[0]==50 ? "": '<ul class="mn m1"><li>More <small>&#9660;</small><ul><li><a href="'.$ed->path.'60">Info</a></li><li><a href="'.$ed->path.'60/var">Variables</a></li><li><a href="'.$ed->path.'60/status">Status</a></li><li><a href="'.$ed->path.'60/process">Processes</a></li></ul></li><li><a href="'.$ed->path.'52">Users</a></li><li><a href="'.$ed->path.'51">Logout ['.(isset($_SESSION['user']) ? $_SESSION['user']:"").']</a></li></ul>').'</div>';
 $stru= "<table><caption>TABLE STRUCTURE</caption><tr><th>FIELD</th><th>TYPE</th><th>VALUE</th><th>ATTRIBUTES</th><th>NULL</th><th>DEFAULT</th><th>COLLATION</th><th>AI <input type='radio' name='ex[]'/></th>".(isset($ed->sg[0]) && $ed->sg[0]==11?"<th>POSITION</th>":"")."</tr>";
 $inttype= [''=>'&nbsp;','UNSIGNED'=>'unsigned','ZEROFILL'=>'zerofill','UNSIGNED ZEROFILL'=>'unsigned zerofill','on update CURRENT_TIMESTAMP'=>'on update'];
 
@@ -839,7 +839,7 @@ case "3"://rename DB
 	if($q_tg->num_row()) {
 	foreach($q_tg->fetch(1) as $r_tg) {
 	$ed->con->query("USE `$ndb`");
-	$ed->con->query("CREATE TRIGGER `".$r_tg[0]."` ".$r_tg[4]." ".$r_tg[1]." ON `".$ndb."`.`".$r_tg[2]."` FOR EACH ROW ".$r_tg[3]);
+	$ed->con->query("CREATE TRIGGER `".$r_tg[0]."` ".$r_tg[4]." ".$r_tg[1]." ON `$ndb`.`".$r_tg[2]."` FOR EACH ROW ".$r_tg[3]);
 	}
 	}
 	}
@@ -876,7 +876,7 @@ case "5"://Show Tables
 		$pg= 1;
 	} else {
 		$pg= $ed->sg[2];
-		$ed->check([4],['pg'=>$pg,'total'=>$ttalpg,'redir'=>'5/'.$db]);
+		$ed->check([4],['pg'=>$pg,'total'=>$ttalpg,'redir'=>"5/$db"]);
 	}
 	}
 	echo $head.$ed->menu($db,'',1);
@@ -1009,7 +1009,7 @@ case "6"://create table
 		<tr><td colspan='8'><button type='submit' name='crtb'>Create Table</button></td></tr></table></form>";
 	}
 	} else {
-		$ed->redir("5/".$db,['err'=>"Create table failed"]);
+		$ed->redir("5/$db",['err'=>"Create table failed"]);
 	}
 break;
 
@@ -1063,7 +1063,7 @@ case "9":
 		//rename table in procedure
 		if($ed->priv("CREATE ROUTINE") && $ed->priv("ALTER ROUTINE")) {
 		$q_prs= $ed->con->query("SELECT ROUTINE_NAME,ROUTINE_TYPE FROM information_schema.ROUTINES WHERE `ROUTINE_SCHEMA`='$db'");
-		if($q_prs->num_row()) {
+		if($q_prs) {
 		foreach($q_prs->fetch(1) as $r_prs) {
 		$q_ros= $ed->con->query("SHOW CREATE ".$r_prs[1]." `$db`.`".$r_prs[0]."`")->fetch();
 		$retb= preg_replace("/\`".$tb."\`|\b".$tb."\b/i", "`".$ntb."`", $q_ros[2]);
@@ -1089,7 +1089,7 @@ case "9":
 		if($q_trg->num_row()) {
 		foreach($q_trg->fetch(1) as $r_trg) {
 		$ed->con->query("DROP TRIGGER IF EXISTS `$db`.`".$r_trg[0]."`");
-		$ed->con->query("CREATE TRIGGER `".$r_trg[0]."` ".$r_trg[4]." ".$r_trg[1]." ON `".$ntb."` FOR EACH ROW ".$r_trg[3]);
+		$ed->con->query("CREATE TRIGGER `".$r_trg[0]."` ".$r_trg[4]." ".$r_trg[1]." ON `$ntb` FOR EACH ROW ".$r_trg[3]);
 		}
 		}
 		}
@@ -1310,7 +1310,7 @@ case "12"://structure change
 		}
 		}
 		}
-		$ed->redir("10/$db/".$tb,['ok'=>"Successfully changed"]);
+		$ed->redir("10/$db/$tb",['ok'=>"Successfully changed"]);
 	} else {//structure form
 	echo $head.$ed->menu($db,$tb,2);
 	echo $ed->form("12/$db/$tb/".$ed->sg[3]).$stru;
@@ -1480,7 +1480,7 @@ case "21"://table insert
 			$enums = explode("','",preg_replace("/(enum|set)\('(.+?)'\)/","\\2", $colt[$j]));
 			echo "<select name='r{$j}'>";
 			foreach($enums as $enm) {
-			echo "<option value='{$enm}'>".$enm."</option>";
+			echo "<option value='{$enm}'>$enm</option>";
 			}
 			echo "</select>";
 			} elseif(substr($colt[$j],0,3)=='bit') {//bit
@@ -1519,7 +1519,7 @@ case "22"://table edit row
 	$colu=[];//null
 	$cols=[];
 	foreach($q_col->fetch(2) as $r_brw) {
-		$cols[] = (stristr($r_brw['Type'],'bit')?"BIN(".$r_brw['Field']." + 0) AS ".$r_brw['Field']:'`'.$r_brw['Field'].'`');
+		$cols[]= (stristr($r_brw['Type'],'bit')?"BIN(".$r_brw['Field']." + 0) AS ".$r_brw['Field']:'`'.$r_brw['Field'].'`');
 		$coln[]= $r_brw['Field'];
 		$colt[]= $r_brw['Type'];
 		$colu[]= $r_brw['Null'];
@@ -1564,7 +1564,7 @@ case "22"://table edit row
 				$enums = explode("','",preg_replace("/(enum|set)\('(.+?)'\)/","\\2", $colt[$k]));
 				echo "<select name='te{$k}'>";
 				foreach($enums as $enm) {
-				echo "<option value='{$enm}'".($r_rx[$k]==$enm ? " selected":"").">".$enm."</option>";
+				echo "<option value='{$enm}'".($r_rx[$k]==$enm ? " selected":"").">$enm</option>";
 				}
 				echo "</select>";
 			} elseif(stristr($colt[$k],'bit') == true) {//bit
@@ -1606,7 +1606,7 @@ case "24"://search
 	$ed->check([1,2]);
 	$db= $ed->sg[1];
 	$tb= $ed->sg[2];
-	unset($_SESSION['_sqlsearch_'.$db.'_'.$tb]);
+	unset($_SESSION["_sqlsearch_{$db}_{$tb}"]);
 	if(!empty($ed->sg[3]) && $ed->sg[3]=='reset') {
 	$ed->redir("20/$db/$tb",['ok'=>"Reset search"]);
 	}
@@ -1631,11 +1631,11 @@ case "24"://search
 		}
 		elseif(in_array($cd,$cond3)) $search_cond[]= $fd." ".$cd." ('".$po."')";
 		elseif(in_array($cd,$cond4)) $search_cond[]= $fd." ".$cd;
-		else $search_cond[]= $fd." ".html_entity_decode($ed->post('cond__'.$fd))." '".$po."'";
+		else $search_cond[]= $fd." ".html_entity_decode($ed->post('cond__'.$fd))." '$po'";
 		}
 	}
 	$se_str = ($search_cond?"WHERE ":"").implode(" AND ", $search_cond).($ed->post('order_field','!e')?" ORDER BY ".$ed->post('order_field')." ".$ed->post('order_ord')." ":"");
-	$_SESSION['_sqlsearch_'.$db.'_'.$tb]= $se_str;
+	$_SESSION["_sqlsearch_{$db}_{$tb}"]= $se_str;
 	$ed->redir("20/$db/$tb");
 	}
 
@@ -1962,7 +1962,7 @@ case "32"://export
 		}
 		$sqs='';
 		if(in_array('trigger',$fopt)) {//option trigger
-			$q_trg=$ed->con->query("SELECT TRIGGER_NAME,ACTION_TIMING,EVENT_MANIPULATION,EVENT_OBJECT_TABLE,ACTION_STATEMENT FROM information_schema.triggers WHERE TRIGGER_SCHEMA='".$db."'");
+			$q_trg=$ed->con->query("SELECT TRIGGER_NAME,ACTION_TIMING,EVENT_MANIPULATION,EVENT_OBJECT_TABLE,ACTION_STATEMENT FROM information_schema.triggers WHERE TRIGGER_SCHEMA='$db'");
 			if($q_trg->num_row()) {
 			$sqs.="\n";
 			foreach($q_trg->fetch(1) as $r_row) {
@@ -1974,7 +1974,7 @@ case "32"://export
 			}
 		}
 		if(in_array('procfunc',$fopt)) {//option proc
-			$q_pr = $ed->con->query("SELECT ROUTINE_TYPE, ROUTINE_NAME FROM information_schema.routines WHERE ROUTINE_SCHEMA='".$db."'");
+			$q_pr = $ed->con->query("SELECT ROUTINE_TYPE, ROUTINE_NAME FROM information_schema.routines WHERE ROUTINE_SCHEMA='$db'");
 			if($q_pr->num_row()) {
 			$sqs.="\n";
 			foreach($q_pr->fetch(1) as $r_px) {
@@ -1989,7 +1989,7 @@ case "32"://export
 			}
 		}
 		if(in_array('event',$fopt)) {//option event
-			$q_eev= $ed->con->query("SELECT EVENT_NAME FROM information_schema.EVENTS WHERE `EVENT_SCHEMA`='$db'");
+			$q_eev= $ed->con->query("SELECT EVENT_NAME FROM information_schema.EVENTS WHERE EVENT_SCHEMA='$db'");
 			if($q_eev->num_row()) {
 			$sqs.="\n";
 			foreach($q_eev->fetch(1) as $r_eev) {
@@ -2172,40 +2172,40 @@ case "32"://export
 	} elseif($ftype=="zip") {//zip
 		$zty = "application/x-zip";
 		$zext= ".zip";
-		$info = [];
-		$ctrl_dir = [];
-		$eof = "\x50\x4b\x05\x06\x00\x00\x00\x00";
-		$old_offset = 0;
+		$info= [];
+		$ctrl_dir= [];
+		$eof= "\x50\x4b\x05\x06\x00\x00\x00\x00";
+		$old_offset= 0;
 		if(is_array($sql)) $sqlx=$sql;
 		else $sqlx[$fname]=$sql;
 		foreach($sqlx as $qname=>$sqa) {
-		$ti = getdate();
+		$ti= getdate();
 		if($ti['year'] < 1980) {
-		$ti['year'] = 1980;$ti['mon'] = 1;$ti['mday'] = 1;$ti['hours'] = 0;$ti['minutes'] = 0;$ti['seconds'] = 0;
+		$ti['year']= 1980;$ti['mon']= 1;$ti['mday']= 1;$ti['hours']= 0;$ti['minutes']= 0;$ti['seconds']= 0;
 		}
-		$time = (($ti['year'] - 1980) << 25) | ($ti['mon'] << 21) | ($ti['mday'] << 16) | ($ti['hours'] << 11) | ($ti['minutes'] << 5) | ($ti['seconds'] >> 1);
-		$dtime = substr("00000000" . dechex($time), -8);
-		$hexdtime = '\x'.$dtime[6].$dtime[7].'\x'.$dtime[4].$dtime[5].'\x'.$dtime[2].$dtime[3].'\x'.$dtime[0].$dtime[1];
+		$time= (($ti['year'] - 1980) << 25) | ($ti['mon'] << 21) | ($ti['mday'] << 16) | ($ti['hours'] << 11) | ($ti['minutes'] << 5) | ($ti['seconds'] >> 1);
+		$dtime= substr("00000000" . dechex($time), -8);
+		$hexdtime= '\x'.$dtime[6].$dtime[7].'\x'.$dtime[4].$dtime[5].'\x'.$dtime[2].$dtime[3].'\x'.$dtime[0].$dtime[1];
 		eval('$hexdtime = "'.$hexdtime.'";');
-		$fr = "\x50\x4b\x03\x04\x14\x00\x00\x00\x08\x00".$hexdtime;
-		$unc_len = strlen($sqa);
-		$crc = crc32($sqa);
-		$zdata = gzcompress($sqa);
-		$zdata = substr(substr($zdata, 0, strlen($zdata) - 4), 2);
-		$c_len = strlen($zdata);
+		$fr= "\x50\x4b\x03\x04\x14\x00\x00\x00\x08\x00".$hexdtime;
+		$unc_len= strlen($sqa);
+		$crc= crc32($sqa);
+		$zdata= gzcompress($sqa);
+		$zdata= substr(substr($zdata, 0, strlen($zdata) - 4), 2);
+		$c_len= strlen($zdata);
 		$fr .= pack('V', $crc).pack('V', $c_len).pack('V', $unc_len).pack('v', strlen($qname)).pack('v', 0).$qname.$zdata;
-		$info[] = $fr;
-		$cdrec = "\x50\x4b\x01\x02\x00\x00\x14\x00\x00\x00\x08\x00".$hexdtime.
+		$info[]= $fr;
+		$cdrec= "\x50\x4b\x01\x02\x00\x00\x14\x00\x00\x00\x08\x00".$hexdtime.
 		pack('V', $crc).pack('V', $c_len).pack('V', $unc_len).pack('v', strlen($qname)).
 		pack('v', 0).pack('v', 0).pack('v', 0).pack('v', 0).pack('V', 32).pack('V', $old_offset);
 		$old_offset += strlen($fr);
 		$cdrec .= $qname;
-		$ctrl_dir[] = $cdrec;
+		$ctrl_dir[]= $cdrec;
 		}
-		$ctrldir = implode('', $ctrl_dir);
-		$end = $ctrldir.$eof.pack('v', sizeof($ctrl_dir)).pack('v', sizeof($ctrl_dir)).pack('V', strlen($ctrldir)).pack('V', $old_offset)."\x00\x00";
-		$datax = implode('', $info);
-		$sql = $datax.$end;
+		$ctrldir= implode('', $ctrl_dir);
+		$end= $ctrldir.$eof.pack('v', sizeof($ctrl_dir)).pack('v', sizeof($ctrl_dir)).pack('V', strlen($ctrldir)).pack('V', $old_offset)."\x00\x00";
+		$datax= implode('', $info);
+		$sql= $datax.$end;
 	}
 	header("Cache-Control: no-store, no-cache, must-revalidate, pre-check=0, post-check=0, max-age=0");
 	header("Content-Type: ".($ftype=="plain" ? $ffty."; charset=utf-8" : $zty));
@@ -2232,9 +2232,9 @@ case "33"://blob download
 	elseif($len >= 3 && substr($q_ph[0], 0, 3) == 'GIF') {$tp= 'image/gif';$xt='.gif';}
 	elseif($len >= 4 && substr($q_ph[0], 0, 4) == "\x89PNG") {$tp= 'image/png';$xt='.png';}
 	else {$tp= 'application/octet-stream';$xt='.bin';$q_ph[0]=addslashes($q_ph[0]);}
-	header("Content-type: ".$tp);
-	header("Content-Length: ".$len);
-	header("Content-Disposition: attachment; filename=".$tb."-blob".$xt);
+	header("Content-type: $tp");
+	header("Content-Length: $len");
+	header("Content-Disposition: attachment; filename={$tb}-blob{$xt}");
 	die($q_ph[0]);
 break;
 
@@ -2251,7 +2251,7 @@ case "40"://view
 			$vstat= $ed->post('uv2');
 			$stat= $ed->con->query($vstat);
 			if(!$stat) $ed->redir("5/$db",['err'=>"Wrong statement"]);
-			$v_cre= $ed->con->query("CREATE VIEW `$tb` AS ".$vstat);
+			$v_cre= $ed->con->query("CREATE VIEW `$tb` AS $vstat");
 			if($v_cre) $ed->redir("5/$db",['ok'=>"Successfully created"]);
 			else $ed->redir("5/$db",['err'=>"Create view failed"]);
 		}
@@ -2271,13 +2271,13 @@ case "40"://view
 			$stat= $ed->con->query($vstat);
 			if(!$stat) $ed->redir("5/$db",['err'=>"Wrong statement"]);
 			$ed->con->query("DROP VIEW IF EXISTS `$sp`");
-			$ed->con->query("CREATE VIEW `$tb` AS ".$vstat);
+			$ed->con->query("CREATE VIEW `$tb` AS $vstat");
 			$ed->redir("5/$db",['ok'=>"Successfully updated"]);
 		}
 		echo $head.$ed->menu($db,'',2,[$ty,$sp]).$ed->form("40/$db/$sp/$ty");
 		$b_lbl="Edit";
 	}
-	echo "<table><tr><th colspan='2'>{$b_lbl} View</th></tr>
+	echo "<table><tr><th colspan='2'>$b_lbl View</th></tr>
 	<tr><td>Name</td><td><input type='text' name='uv1' value='".$r_uv[0]."'/></td></tr>
 	<tr><td>Statement</td><td><textarea name='uv2'>".$r_uv[1]."</textarea></td></tr>
 	<tr><td class='c1' colspan='2'><button type='submit'>Save</button></td></tr></table></form>";
@@ -2293,7 +2293,7 @@ case "41"://trigger
 		$utg1= $ed->sanitize($ed->post('utg1'));
 		if(is_numeric(substr($t_nm,0,1))) $ed->redir("41/$db",['err'=>"Not a valid name"]);
 		$utg2= $ed->post('utg2');$utg3= $ed->post('utg3');$utg4= $ed->post('utg4');$utg5= $ed->post('utg5');
-		$q_tgcrt= $ed->con->query("CREATE TRIGGER `".$utg1."` ".$utg2." ".$utg3." ON `".$utg4."` FOR EACH ROW ".$utg5);
+		$q_tgcrt= $ed->con->query("CREATE TRIGGER `$utg1` $utg2 $utg3 ON `$utg4` FOR EACH ROW $utg5");
 		if($q_tgcrt) $ed->redir("5/$db",['ok'=>"Successfully created"]);
 		else $ed->redir("5/$db",['err'=>"Create failed"]);
 		}
@@ -2309,7 +2309,7 @@ case "41"://trigger
 			$sess= $ed->con->query("SHOW CREATE $ty `$db`.`$sp`")->fetch();
 			$_SESSION['t_tmp']= $sess[2];
 			$ed->con->query("DROP $ty IF EXISTS `$db`.`$sp`");
-			$q_tgcrt= $ed->con->query("CREATE TRIGGER `".$utg1."` ".$utg2." ".$utg3." ON `".$utg4."` FOR EACH ROW ".$utg5);
+			$q_tgcrt= $ed->con->query("CREATE TRIGGER `$utg1` $utg2 $utg3 ON `$utg4` FOR EACH ROW $utg5");
 			if($q_tgcrt) {
 			unset($_SESSION["t_tmp"]);
 			$ed->redir("5/$db",['ok'=>"Successfully updated"]);
@@ -2330,7 +2330,7 @@ case "41"://trigger
 	$tgtb[] = $r_trgt['Name'];
 	}
 	}
-	echo "<table><tr><th colspan='2'>{$t_lbl} Trigger</th></tr>
+	echo "<table><tr><th colspan='2'>$t_lbl Trigger</th></tr>
 	<tr><td>Trigger Name</td><td><input type='text' name='utg1' value='".$r_tge[0]."'/></td></tr>
 	<tr><td>Table</td><td><select name='utg4'>";
 	foreach($tgtb as $tgt) echo "<option value='$tgt'".($r_tge[1]==$tgt? " selected":"").">$tgt</option>";
@@ -2391,7 +2391,7 @@ case "42"://routine
 	$swcl= "<option value=''>&nbsp;</option>";
 	$q_swcl= $ed->con->query("SHOW CHARACTER SET")->fetch(1);
 	$pfs= ['PROCEDURE','FUNCTION'];
-	echo "<table><tr><th colspan='2'>{$t_lbl} Routine</th></tr>
+	echo "<table><tr><th colspan='2'>$t_lbl Routine</th></tr>
 	<tr><td>Name</td><td><input type='text' name='ronme' value='".$r_rou[0]."'/></td></tr>
 	<tr><td>Type</td><td><select id='rou' name='roty'>";
 	foreach($pfs as $pf) echo "<option value='$pf'".($pf==$r_rou[1]?" selected":"").">$pf</option>";
@@ -2482,7 +2482,7 @@ case "43"://event
 		$t_lbl="Edit";
 	}
 
-	echo "<table><tr><th colspan='2'>{$t_lbl} Event</th></tr>
+	echo "<table><tr><th colspan='2'>$t_lbl Event</th></tr>
 	<tr><td>Name</td><td><input type='text' name='evnme' value='".$r_eve[0]."'/></td></tr>
 	<tr><td>Start</td><td><input type='text' name='evsta' value='".($r_eve[3]=='ONE TIME'?$r_eve[6]:$r_eve[1])."'/></td></tr>
 	<tr id='evend'><td>End</td><td><input type='text' name='evend' value='".$r_eve[2]."'/></td></tr>
@@ -2885,7 +2885,7 @@ case "60"://info
 	if(empty($ed->sg[1])) {
 		$use=(extension_loaded('mysqli')?'mysqli':'pdo_mysql');
 		echo "<tr><th colspan='2'>INFO</th></tr>";
-		$q_var= ['Use extension'=>$use,'PHP'=>PHP_VERSION,'Software'=>$_SERVER['SERVER_SOFTWARE']];
+		$q_var= ['Extension'=>$use,'PHP'=>PHP_VERSION,'Software'=>$_SERVER['SERVER_SOFTWARE']];
 		foreach($q_var as $r_k=>$r_var) {
 		$bg=($bg==1)?2:1;
 		echo "<tr class='r c$bg'><td>$r_k</td><td>$r_var</td></tr>";
