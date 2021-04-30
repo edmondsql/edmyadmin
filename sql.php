@@ -6,7 +6,7 @@ session_name('SQL');
 session_start();
 $bg=2;
 $step=20;
-$version="3.15.4";
+$version="3.15.5";
 $bbs= ['False','True'];
 $js= (file_exists('jquery.js')?"/jquery.js":"http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js");
 class DBT {
@@ -472,8 +472,9 @@ class ED {
 		}
 		return array_merge($sq,$e);
 	}
-	public function tb_structure($tb,$fopt,$tab='',$r_st) {
+	public function tb_structure($tb,$fopt,$tab,$r_st) {
 		$sql='';
+		$tab=($tab==null ? '':$tab);
 		if(in_array('drop',$fopt)) {//option drop
 			$sql .= "\n{$tab}DROP TABLE IF EXISTS `$tb`;";
 		}
@@ -574,7 +575,7 @@ $head= '<!DOCTYPE html><html lang="en"><head>
 <meta http-equiv="X-UA-Compatible" content="IE=edge" />
 <style>
 * {margin:0;padding:0;font-size:12px;color:#333;font-family:Arial}
-html {-ms-text-size-adjust:100%;-webkit-text-size-adjust:100%}
+html {-ms-text-size-adjust:100%;-webkit-text-size-adjust:100%;background:#fff}
 html, textarea {overflow:auto}
 .container {overflow:auto;overflow-y:hidden;-ms-overflow-y:hidden;white-space:nowrap}
 [hidden],.mn ul{display:none}
@@ -1355,7 +1356,7 @@ case "20"://table browse
 	$ed->check([1,2]);
 	$db= $ed->sg[1];
 	$tb= $ed->sg[2];
-	$ed->con->query("SET NAMES utf8");
+	$ed->con->query("SET NAMES 'utf8'");
 	$where=(empty($_SESSION['_sqlsearch_'.$db.'_'.$tb])?"":" ".$_SESSION['_sqlsearch_'.$db.'_'.$tb]);
 	$q_cnt= $ed->con->query("SELECT COUNT(*) FROM `$tb`".$where)->fetch();
 	$totalr= $q_cnt[0];
