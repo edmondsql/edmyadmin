@@ -6,7 +6,7 @@ session_name('SQL');
 session_start();
 $bg=2;
 $step=20;
-$version="3.15.5";
+$version="3.15.6";
 $bbs= ['False','True'];
 $js= (file_exists('jquery.js')?"/jquery.js":"http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js");
 class DBT {
@@ -474,7 +474,6 @@ class ED {
 	}
 	public function tb_structure($tb,$fopt,$tab,$r_st) {
 		$sql='';
-		$tab=($tab==null ? '':$tab);
 		if(in_array('drop',$fopt)) {//option drop
 			$sql .= "\n{$tab}DROP TABLE IF EXISTS `$tb`;";
 		}
@@ -1905,7 +1904,7 @@ case "32"://export
 		foreach($tbs as $tb) {
 			$r_st= $ed->con->query("SHOW TABLE STATUS FROM `$db` like '$tb'")->fetch();
 			if(in_array('structure',$fopt)) {//structure
-				$sql .= $ed->tb_structure($tb,$fopt,$tab='',$r_st)."\n";
+				$sql .= $ed->tb_structure($tb,$fopt,'',$r_st)."\n";
 			}
 			if(in_array('data',$fopt)) {//option data
 				$q_fil= $ed->con->query("SHOW FIELDS FROM `$tb`");
@@ -2113,7 +2112,7 @@ case "32"://export
 		foreach($tbs as $tb) {
 			$sql .="\n\t\t\t<ed:table name=\"$tb\">";
 			$r_st= $ed->con->query("SHOW TABLE STATUS FROM `$db` like '$tb'")->fetch();
-			$sql .=	$ed->tb_structure($tb,$fopt,$tab="\t\t\t",$r_st);
+			$sql .=	$ed->tb_structure($tb,$fopt,"\t\t\t",$r_st);
 			$sql .="\n\t\t\t</ed:table>";
 		}
 		foreach($vws as $vw) {
