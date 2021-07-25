@@ -6,9 +6,9 @@ session_name('SQL');
 session_start();
 $bg=2;
 $step=20;
-$version="3.15.6";
+$version="3.15.7";
 $bbs= ['False','True'];
-$js= (file_exists('jquery.js')?"/jquery.js":"http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js");
+$js= (file_exists('jquery.js')?"/jquery.js":"https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js");
 class DBT {
 	public static $sqltype= ['mysqli','pdo_mysql'];
 	private $_cnx, $_query, $_fetch=[], $_num_col, $dbty;
@@ -85,15 +85,12 @@ class DBT {
 		}
 		return $res;
 	} else {
-		if($mode > 0) {
+		if($mode == 1 || $mode == 2) {
 			switch($mode){
 			case 1: $this->_query->setFetchMode(PDO::FETCH_NUM); break;
 			case 2: $this->_query->setFetchMode(PDO::FETCH_ASSOC); break;
 			}
-			while($row= $this->_query->fetch()) {
-			$res[]= $row;
-			}
-			return $res;
+			return $this->_query->fetchAll();
 		} else {
 			return $this->_query->fetch(PDO::FETCH_NUM);
 		}
@@ -571,11 +568,10 @@ class ED {
 $ed= new ED;
 $head= '<!DOCTYPE html><html lang="en"><head>
 <title>EdMyAdmin</title><meta charset="utf-8">
-<meta http-equiv="X-UA-Compatible" content="IE=edge" />
 <style>
 * {margin:0;padding:0;font-size:12px;color:#333;font-family:Arial}
 html {-ms-text-size-adjust:100%;-webkit-text-size-adjust:100%;background:#fff}
-html, textarea {overflow:auto}
+html,textarea {overflow:auto}
 .container {overflow:auto;overflow-y:hidden;-ms-overflow-y:hidden;white-space:nowrap}
 [hidden],.mn ul{display:none}
 .m1 {position:absolute;right:0;top:0}
@@ -594,28 +590,28 @@ a:hover {text-decoration:underline}
 a,a:active,a:hover {outline:0}
 table a,.l1 a,.l2 a,.col1 a {padding:0 3px}
 table {border-collapse:collapse;border-spacing:0;border-bottom:1px solid #555}
-td, th {padding:4px;vertical-align:top}
+td,th {padding:4px;vertical-align:top}
 input[type=checkbox],input[type=radio]{position:relative;vertical-align:middle;bottom:1px}
 input[type=text],input[type=password],input[type=file],textarea,button,select {width:100%;padding:2px 0;border:1px solid #bbb;outline:none;-webkit-border-radius:3px;-moz-border-radius:3px;border-radius:3px;-webkit-box-sizing:border-box;-moz-box-sizing:border-box;box-sizing:border-box}
 input[type=text],select {min-width:98px !important}
 select {padding:1px 0}
 optgroup option {padding-left:8px}
-textarea, .he {min-height:90px}
+textarea,.he {min-height:90px}
 textarea {white-space:pre-wrap}
 .msg {position:absolute;top:0;right:0;z-index:9}
-.ok, .err {padding:8px;font-weight:bold;font-size:13px}
+.ok,.err {padding:8px;font-weight:bold;font-size:13px}
 .ok {background:#efe;color:#080;border-bottom:2px solid #080}
 .err {background:#fee;color:#f00;border-bottom:2px solid #f00}
-.l1, th, caption, button {background:#9be}
+.l1,th,caption,button {background:#9be}
 .l2,.c1,.col1,h3 {background:#cdf}
 .c2,.mn ul {background:#fff}
-.l3, tr:hover.r, button:hover {background:#fe3 !important}
+.l3,tr:hover.r,button:hover {background:#fe3 !important}
 .ok,.err,.l2 li,.mn>li {display:inline-block;*display:inline;zoom:1}
 .col1,.col2 {display:table-cell}
 .col1 {vertical-align:top;padding:0 3px;min-width:180px}
 .col1,.dw {width:180px}
 .col2 table {margin:3px}
-.col3 table, .dw {margin:3px auto}
+.col3 table,.dw {margin:3px auto}
 .auto button,.auto input,.auto select {width:auto}
 .l3.auto select {border:0;padding:0;background:#fe3}
 .sort tbody tr {cursor:default;position:relative}
@@ -629,122 +625,6 @@ textarea {white-space:pre-wrap}
 .bb * {font:22px/18px Arial}
 .upr {list-style:none;overflow:auto;overflow-x:hidden;height:90px}
 </style>
-<script src="'.$js.'"></script>
-<script>
-$(document).ready(function(){
-$("#host").focus();
-$("noscript").remove();
-if($(".msg").text()!="") setTimeout(function(){$(".msg").fadeOut(1000,function(){$(this).remove();});}, 7000);
-$(".del").on("click",function(e){
-e.preventDefault();
-$(".msg").remove();
-var but=$(this),hrf=but.prop("href");
-$("body").fadeIn(1000).prepend("<div class=\"msg\"><div class=\"ok\">Yes<\/div><div class=\"err\">No<\/div><\/div>");
-$(".msg .ok").on("click",function(){window.location=hrf;});
-$(".msg .err").on("click",function(){$(".msg").remove();});
-$(document).on("keyup",function(e){
-if(e.which==89 || e.which==32) window.location=hrf;
-if(e.which==27 || e.which==78) $(".msg").remove();
-});
-});
-$(".msg").on("dblclick",function(){$(this).remove()});
-if($("#one:checked").val()=="on"){$("#every,#evend").hide();}else{$("#every,#evend").show();}
-$("#one").on("click",function(){if($("#one:checked").val()=="on"){$("#every,#evend").hide();}else{$("#every,#evend").show();}});//add event
-if($("#rou").val()=="FUNCTION"){$(".rou1").hide();$(".rou2").show();}else{$(".rou1").show();$(".rou2").hide();}
-$("#rou").on("change",function(){//routine
-if($(this).val()=="FUNCTION"){$(".rou1").hide();$(".rou2").show();}else{$(".rou1").show();$(".rou2").hide();}
-});
-//param rows
-var rou_p= $("[id^=\"pty_\"]").length;
-for(var i=1;i <= rou_p;i++) routine(i);
-//privs
-for(var a=1;a<5;a++){
-var fc=$("#fi"+a+" > option").length,fs=$("#fi"+a+" :selected").length;
-if(fc==fs) $("#fi"+a).prevAll(":checkbox").prop("checked","checked");
-}
-$(".sort").sort();
-});//end
-$.fn.sort=function(){
-var base=$(this),els=base.find("tr"),its=base.find(".handle"),drag=false,item;
-its.mousedown(function(event){
-base.css({"-webkit-touch-callout":"none","-webkit-user-select":"none","-khtml-user-select":"none","-moz-user-select":"none","-ms-user-select":"none","user-select":"none"});
-if(event.which===1){item=$(this).closest("tr");els.addClass("opacity");item.addClass("drag");drag=true;}
-});
-its.mousemove(function(e){
-var hoverItem=$(this).closest("tr"),overTop=false,overBottom=false,hoverItemHeight=hoverItem.outerHeight(),yPos=e.offsetY;
-yPos<(hoverItemHeight/2)?overTop=true:overBottom=true;
-if(item && hoverItem.parent().get(0)===item.parent().get(0)){
-if(drag && overTop) item.insertBefore(hoverItem);
-if(drag && overBottom) item.insertAfter(hoverItem);
-}
-$(document).mouseup(function(){
-base.css({"-webkit-touch-callout":"auto","-webkit-user-select":"auto","-khtml-user-select":"auto","-moz-user-select":"auto","-ms-user-select":"auto","user-select":"auto"});
-els.removeClass("opacity");
-item.removeClass("drag");
-pre="x";
-if(item.prev().is("tr")) pre=item.prev("tr").prop("id");
-drag=false;
-$.ajax({type:"POST", url:"'.$ed->path.'9/'.(empty($ed->sg[1])?"":$ed->sg[1].'/').(empty($ed->sg[2])?"":$ed->sg[2]).'", data:"n1="+item.prop("id")+"&n2="+pre, success:function(){$(this).load(location.reload())}});
-});
-});
-}
-function minus(el){//routine remove row
-var crr=$("[id^=\"rr_\"]").length;
-if(crr>1) $(el).closest("tr").remove();
-}
-function plus(el){//routine clone row
-var cid=$(el).closest("tr").prop("id");
-var cnt= $("[id^=\"rr_\"]").length + 1;
-$("#"+cid).clone(true).insertAfter("#"+cid).prop("id","rr_"+cnt);
-$("#rr_"+cnt).find("[id^=\"pty_\"]").prop("id","pty_"+cnt);
-$("[id^=\"rr_\"]").each(function(i){$(this).prop("id", "rr_" + (i + 1));});
-$("[id^=\"pty_\"]").each(function(i){$(this).prop("id", "pty_" + (i + 1));});
-routine(cnt);
-}
-var ar1=["INT","TINYINT","SMALLINT","MEDIUMINT","BIGINT","DOUBLE","DECIMAL","FLOAT"];
-var ar2=["VARCHAR","CHAR","TEXT","TINYTEXT","MEDIUMTEXT","LONGTEXT"];
-function routine(id){
-//function returns
-var ej=$("#pty2"),ej1=$("#px1"),ej2=$("#px2");
-routin2();
-ej.on("change",function(){routin2();});
-function routin2(){
-if($.inArray(ej.val(),ar1)!= -1){ej1.show();ej2.hide();}else if($.inArray(ej.val(),ar2)!= -1){ej1.hide();ej2.show();}else{ej1.hide();ej2.hide();}
-}
-//params
-function routin1(ix){
-var el=$("#pty_"+ix).val(),el1=$("#rr_"+ix).find(".pa1"),el2=$("#rr_"+ix).find(".pa2");
-if($.inArray(el,ar1)!= -1){el1.show();el2.hide();}else if($.inArray(el,ar2)!= -1){el1.hide();el2.show();}else{el1.hide();el2.hide();}
-}
-if(id === undefined) id=0;
-routin1(id);
-$("#pty_"+id).on("change",function(){routin1(id);});
-}
-function show(ex){$("#"+ex).fadeIn(1000);}
-function hide(ex){$("#"+ex).fadeOut(1000);}
-function selectall(cb,lb) {
-var multi=document.getElementById(lb);
-if(cb.checked) {for(var i=0;i<multi.options.length;i++) multi.options[i].selected=true;
-}else{multi.selectedIndex=-1;}
-}
-function toggle(cb, el){
-var cbox=document.getElementsByName(el);
-for(var i=0;i<cbox.length;i++) cbox[i].checked=cb.checked;
-if(el="fopt[]") opt();
-}
-function opt(){
-var opt=document.getElementsByName("fopt[]"),ft=document.getElementsByName("ffmt[]"),from=2,to=opt.length,ch="";
-for(var j=0; ft[j]; ++j){if(ft[j].checked) ch=ft[j].value;}
-if(ch=="sql"){
-for(var k=0;k<to;k++) opt[k].parentElement.style.display="block";
-}else if(ch=="doc" || ch=="xml"){
-for(var k=0;k<from;k++) opt[k].parentElement.style.display="block";
-for(var k=2;k<to;k++) {opt[k].parentElement.style.display="none";opt[k].checked=false;}
-}else{
-for(var i=0;i<to;i++) opt[i].parentElement.style.display="none";
-}
-}
-</script>
 </head><body><noscript><h1 class="msg err">Please enable Javascript in your browser!</h1></noscript>'.(empty($_SESSION['ok'])?'':'<div class="msg ok">'.$_SESSION['ok'].'</div>').(empty($_SESSION['err'])?'':'<div class="msg err">'.$_SESSION['err'].'</div>').'<div class="l1"><b><a href="https://github.com/edmondsql/edmyadmin">EdMyAdmin '.$version.'</a></b>'.(isset($ed->sg[0]) && $ed->sg[0]==50 ? "": '<ul class="mn m1"><li>More <small>&#9660;</small><ul><li><a href="'.$ed->path.'60">Info</a></li><li><a href="'.$ed->path.'60/var">Variables</a></li><li><a href="'.$ed->path.'60/status">Status</a></li><li><a href="'.$ed->path.'60/process">Processes</a></li></ul></li><li><a href="'.$ed->path.'52">Users</a></li><li><a href="'.$ed->path.'51">Logout ['.(isset($_SESSION['user']) ? $_SESSION['user']:"").']</a></li></ul>').'</div>';
 $stru= "<table><caption>TABLE STRUCTURE</caption><tr><th>FIELD</th><th>TYPE</th><th>VALUE</th><th>ATTRIBUTES</th><th>NULL</th><th>DEFAULT</th><th>COLLATION</th><th>AI <input type='radio' name='ex[]'/></th>".(isset($ed->sg[0]) && $ed->sg[0]==11?"<th>POSITION</th>":"")."</tr>";
 $inttype= [''=>'&nbsp;','UNSIGNED'=>'unsigned','ZEROFILL'=>'zerofill','UNSIGNED ZEROFILL'=>'unsigned zerofill','on update CURRENT_TIMESTAMP'=>'on update'];
@@ -1372,7 +1252,7 @@ case "20"://table browse
 	echo $head.$ed->menu($db, ($q_vic[17]=='VIEW'?'':$tb), 1,($q_vic[17]=='VIEW'?['view',$tb]:''));
 	echo "<table><tr>";
 	if($q_vic[17]!='VIEW') {echo "<th>ACTIONS</th>";}
-	$q_bro= $ed->con->query("SHOW FIELDS FROM `$tb`".(!empty($q_rcol)?" WHERE field IN ('".implode("','", $q_rcol)."')":""));
+	$q_bro= $ed->con->query("SHOW FIELDS FROM `$tb`");
 	$r_cl= $q_bro->num_row();
 	$coln=[];//field
 	$colt=[];//type
@@ -2924,4 +2804,121 @@ break;
 unset($_POST);
 unset($_SESSION["ok"]);
 unset($_SESSION["err"]);
-?></div></div><div class="l1 cntr"><a href="http://edmondsql.github.io">edmondsql</a></div></body></html>
+?></div></div><div class="l1 cntr"><a href="http://edmondsql.github.io">edmondsql</a></div>
+<script src="<?=$js?>"></script>
+<script>
+$(function(){
+$("#host").focus();
+$("noscript").remove();
+if($(".msg").text()!="") setTimeout(function(){$(".msg").fadeOut(1000,function(){$(this).remove();});}, 7000);
+$(".del").on("click",function(e){
+e.preventDefault();
+$(".msg").remove();
+var but=$(this),hrf=but.prop("href");
+$("body").fadeIn(1000).prepend('<div class="msg"><div class="ok">Yes<\/div><div class="err">No<\/div><\/div>');
+$(".msg .ok").on("click",function(){window.location=hrf;});
+$(".msg .err").on("click",function(){$(".msg").remove();});
+$(document).on("keyup",function(e){
+if(e.which==89 || e.which==32) window.location=hrf;
+if(e.which==27 || e.which==78) $(".msg").remove();
+});
+});
+$(".msg").on("dblclick",function(){$(this).remove()});
+if($("#one:checked").val()=="on"){$("#every,#evend").hide();}else{$("#every,#evend").show();}
+$("#one").on("click",function(){if($("#one:checked").val()=="on"){$("#every,#evend").hide();}else{$("#every,#evend").show();}});//add event
+if($("#rou").val()=="FUNCTION"){$(".rou1").hide();$(".rou2").show();}else{$(".rou1").show();$(".rou2").hide();}
+$("#rou").on("change",function(){//routine
+if($(this).val()=="FUNCTION"){$(".rou1").hide();$(".rou2").show();}else{$(".rou1").show();$(".rou2").hide();}
+});
+//param rows
+var rou_p= $('[id^="pty_"]').length;
+for(var i=1;i <= rou_p;i++) routine(i);
+//privs
+for(var a=1;a<5;a++){
+var fc=$("#fi"+a+" > option").length,fs=$("#fi"+a+" :selected").length;
+if(fc==fs) $("#fi"+a).prevAll(":checkbox").prop("checked","checked");
+}
+$(".sort").sort();
+});//end
+$.fn.sort=function(){
+var base=$(this),els=base.find("tr"),its=base.find(".handle"),drag=false,item;
+its.mousedown(function(event){
+base.css({"-webkit-touch-callout":"none","-webkit-user-select":"none","-khtml-user-select":"none","-moz-user-select":"none","-ms-user-select":"none","user-select":"none"});
+if(event.which===1){item=$(this).closest("tr");els.addClass("opacity");item.addClass("drag");drag=true;}
+});
+its.mousemove(function(e){
+var hoverItem=$(this).closest("tr"),overTop=false,overBottom=false,hoverItemHeight=hoverItem.outerHeight(),yPos=e.offsetY;
+yPos<(hoverItemHeight/2)?overTop=true:overBottom=true;
+if(item && hoverItem.parent().get(0)===item.parent().get(0)){
+if(drag && overTop) item.insertBefore(hoverItem);
+if(drag && overBottom) item.insertAfter(hoverItem);
+}
+$(document).mouseup(function(){
+base.css({"-webkit-touch-callout":"auto","-webkit-user-select":"auto","-khtml-user-select":"auto","-moz-user-select":"auto","-ms-user-select":"auto","user-select":"auto"});
+els.removeClass("opacity");
+item.removeClass("drag");
+pre="x";
+if(item.prev().is("tr")) pre=item.prev("tr").prop("id");
+drag=false;
+$.ajax({type:"POST", url:"<?=$ed->path.'9/'.(empty($ed->sg[1])?"":$ed->sg[1].'/').(empty($ed->sg[2])?"":$ed->sg[2])?>", data:"n1="+item.prop("id")+"&n2="+pre, success:function(){$(this).load(location.reload())}});
+});
+});
+}
+function minus(el){//routine remove row
+var crr=$('[id^="rr_"]').length;
+if(crr>1) $(el).closest("tr").remove();
+}
+function plus(el){//routine clone row
+var cid=$(el).closest("tr").prop("id");
+var cnt=$('[id^="rr_"]').length + 1;
+$("#"+cid).clone(true).insertAfter("#"+cid).prop("id","rr_"+cnt);
+$("#rr_"+cnt).find('[id^="pty_"]').prop("id","pty_"+cnt);
+$('[id^="rr_"]').each(function(i){$(this).prop("id","rr_"+(i+1));});
+$('[id^="pty_"]').each(function(i){$(this).prop("id","pty_"+(i+1));});
+routine(cnt);
+}
+var ar1=["INT","TINYINT","SMALLINT","MEDIUMINT","BIGINT","DOUBLE","DECIMAL","FLOAT"];
+var ar2=["VARCHAR","CHAR","TEXT","TINYTEXT","MEDIUMTEXT","LONGTEXT"];
+function routine(id){
+//function returns
+var ej=$("#pty2"),ej1=$("#px1"),ej2=$("#px2");
+routin2();
+ej.on("change",function(){routin2();});
+function routin2(){
+if($.inArray(ej.val(),ar1)!= -1){ej1.show();ej2.hide();}else if($.inArray(ej.val(),ar2)!= -1){ej1.hide();ej2.show();}else{ej1.hide();ej2.hide();}
+}
+//params
+function routin1(ix){
+var el=$("#pty_"+ix).val(),el1=$("#rr_"+ix).find(".pa1"),el2=$("#rr_"+ix).find(".pa2");
+if($.inArray(el,ar1)!= -1){el1.show();el2.hide();}else if($.inArray(el,ar2)!= -1){el1.hide();el2.show();}else{el1.hide();el2.hide();}
+}
+if(id === undefined) id=0;
+routin1(id);
+$("#pty_"+id).on("change",function(){routin1(id);});
+}
+function show(ex){$("#"+ex).fadeIn(1000);}
+function hide(ex){$("#"+ex).fadeOut(1000);}
+function selectall(cb,lb) {
+var multi=document.getElementById(lb);
+if(cb.checked) {for(var i=0;i<multi.options.length;i++) multi.options[i].selected=true;
+}else{multi.selectedIndex=-1;}
+}
+function toggle(cb, el){
+var cbox=document.getElementsByName(el);
+for(var i=0;i<cbox.length;i++) cbox[i].checked=cb.checked;
+if(el="fopt[]") opt();
+}
+function opt(){
+var opt=document.getElementsByName("fopt[]"),ft=document.getElementsByName("ffmt[]"),from=2,to=opt.length,ch="";
+for(var j=0; ft[j]; ++j){if(ft[j].checked) ch=ft[j].value;}
+if(ch=="sql"){
+for(var k=0;k<to;k++) opt[k].parentElement.style.display="block";
+}else if(ch=="doc" || ch=="xml"){
+for(var k=0;k<from;k++) opt[k].parentElement.style.display="block";
+for(var k=2;k<to;k++) {opt[k].parentElement.style.display="none";opt[k].checked=false;}
+}else{
+for(var i=0;i<to;i++) opt[i].parentElement.style.display="none";
+}
+}
+</script>
+</body></html>
