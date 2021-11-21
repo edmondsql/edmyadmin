@@ -6,7 +6,7 @@ session_name('SQL');
 session_start();
 $bg=2;
 $step=20;
-$version="3.15.7";
+$version="3.15.8";
 $bbs= ['False','True'];
 $js= (file_exists('jquery.js')?"/jquery.js":"https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js");
 class DBT {
@@ -569,63 +569,63 @@ $ed= new ED;
 $head= '<!DOCTYPE html><html lang="en"><head>
 <title>EdMyAdmin</title><meta charset="utf-8">
 <style>
-* {margin:0;padding:0;font-size:12px;color:#333;font-family:Arial}
-html {-ms-text-size-adjust:100%;-webkit-text-size-adjust:100%;background:#fff}
-html,textarea {overflow:auto}
-.container {overflow:auto;overflow-y:hidden;-ms-overflow-y:hidden;white-space:nowrap}
+*{margin:0;padding:0;font-size:12px;color:#333;font-family:Arial}
+html{-ms-text-size-adjust:100%;-webkit-text-size-adjust:100%;background:#fff}
+html,textarea{overflow:auto}
+.container{overflow:auto;overflow-y:hidden;-ms-overflow-y:hidden;white-space:nowrap}
 [hidden],.mn ul{display:none}
-.m1 {position:absolute;right:0;top:0}
-.mn li:hover ul {display:block;position:absolute}
-small {font-size:9px}
-.cntr {text-align:center}
-.link {float:right;padding:3px 0}
-.pg * {padding:0 2px;width:auto}
-caption {font-weight:bold;text-decoration:underline}
-.l1 ul,.l2 ul {list-style:none}
-.left {float:left}
-.left button {margin:0 1px}
-h3 {margin:2px 0 1px;padding:2px 0}
-a {color:#842;text-decoration:none}
-a:hover {text-decoration:underline}
-a,a:active,a:hover {outline:0}
-table a,.l1 a,.l2 a,.col1 a {padding:0 3px}
-table {border-collapse:collapse;border-spacing:0;border-bottom:1px solid #555}
-td,th {padding:4px;vertical-align:top}
+.m1{position:absolute;right:0;top:0}
+.mn li:hover ul{display:block;position:absolute}
+small{font-size:9px}
+.cntr{text-align:center}
+.link{float:right;padding:3px 0}
+.pg *{padding:0 2px;width:auto}
+caption{font-weight:bold;text-decoration:underline}
+.l1 ul,.l2 ul{list-style:none}
+.left{float:left}
+.left button{margin:0 1px}
+h3{margin:2px 0 1px;padding:2px 0}
+a{color:#842;text-decoration:none}
+a:hover{text-decoration:underline}
+a,a:active,a:hover{outline:0}
+table a,.l1 a,.l2 a,.col1 a{padding:0 3px}
+table{border-collapse:collapse;border-spacing:0;border-bottom:1px solid #555}
+td,th{padding:4px;vertical-align:top}
 input[type=checkbox],input[type=radio]{position:relative;vertical-align:middle;bottom:1px}
-input[type=text],input[type=password],input[type=file],textarea,button,select {width:100%;padding:2px 0;border:1px solid #bbb;outline:none;-webkit-border-radius:3px;-moz-border-radius:3px;border-radius:3px;-webkit-box-sizing:border-box;-moz-box-sizing:border-box;box-sizing:border-box}
-input[type=text],select {min-width:98px !important}
-select {padding:1px 0}
-optgroup option {padding-left:8px}
-textarea,.he {min-height:90px}
-textarea {white-space:pre-wrap}
-.msg {position:absolute;top:0;right:0;z-index:9}
-.ok,.err {padding:8px;font-weight:bold;font-size:13px}
-.ok {background:#efe;color:#080;border-bottom:2px solid #080}
-.err {background:#fee;color:#f00;border-bottom:2px solid #f00}
-.l1,th,caption,button {background:#9be}
-.l2,.c1,.col1,h3 {background:#cdf}
-.c2,.mn ul {background:#fff}
-.l3,tr:hover.r,button:hover {background:#fe3 !important}
-.ok,.err,.l2 li,.mn>li {display:inline-block;*display:inline;zoom:1}
-.col1,.col2 {display:table-cell}
-.col1 {vertical-align:top;padding:0 3px;min-width:180px}
-.col1,.dw {width:180px}
-.col2 table {margin:3px}
-.col3 table,.dw {margin:3px auto}
-.auto button,.auto input,.auto select {width:auto}
-.l3.auto select {border:0;padding:0;background:#fe3}
-.sort tbody tr {cursor:default;position:relative}
-.handle {font:18px/12px Arial;vertical-align:middle}
-.handle:hover {cursor:move}
-.opacity {opacity:0.7;filter:Alpha(opacity=70)}
-.drag {opacity:1;top:3px;left:0}
-.l1,.l2,.l3,.wi {width:100%}
-.msg,.a,.bb {cursor:pointer}
-[class^=pa],[id^=px],.rou2 {display:none}
-.bb * {font:22px/18px Arial}
-.upr {list-style:none;overflow:auto;overflow-x:hidden;height:90px}
+input[type=text],input[type=password],input[type=file],textarea,button,select{width:100%;padding:2px 0;border:1px solid #bbb;outline:none;-webkit-border-radius:3px;-moz-border-radius:3px;border-radius:3px;-webkit-box-sizing:border-box;-moz-box-sizing:border-box;box-sizing:border-box}
+input[type=text],select{min-width:98px !important}
+select{padding:1px 0}
+optgroup option{padding-left:8px}
+textarea,.he{min-height:90px}
+textarea{white-space:pre-wrap}
+.msg{position:absolute;top:0;right:0;z-index:9}
+.ok,.err{padding:8px;font-weight:bold;font-size:13px}
+.ok{background:#efe;color:#080;border-bottom:2px solid #080}
+.err{background:#fee;color:#f00;border-bottom:2px solid #f00}
+.l1,th,caption,button{background:#9be}
+.l2,.c1,.col1,h3{background:#cdf}
+.c2,.mn ul{background:#fff}
+.l3,tr:hover.r,button:hover{background:#fe3 !important}
+.ok,.err,.l2 li,.mn>li{display:inline-block;zoom:1}
+.col1,.col2{display:table-cell}
+.col1{vertical-align:top;padding:0 3px;min-width:180px}
+.col1,.dw{width:180px}
+.col2 table{margin:3px}
+.col3 table,.dw{margin:3px auto}
+.auto button,.auto input,.auto select{width:auto}
+.l3.auto select{border:0;padding:0;background:#fe3}
+.sort tbody tr{cursor:default;position:relative}
+.handle{font:18px/12px Arial;vertical-align:middle}
+.handle:hover{cursor:move}
+.opacity{opacity:0.7}
+.drag{opacity:1;top:3px;left:0}
+.l1,.l2,.l3,.wi{width:100%}
+.msg,.a,.bb{cursor:pointer}
+[class^=pa],[id^=px],.rou2{display:none}
+.bb *{font:22px/18px Arial}
+.upr{list-style:none;overflow:auto;overflow-x:hidden;height:90px}
 </style>
-</head><body><noscript><h1 class="msg err">Please enable Javascript in your browser!</h1></noscript>'.(empty($_SESSION['ok'])?'':'<div class="msg ok">'.$_SESSION['ok'].'</div>').(empty($_SESSION['err'])?'':'<div class="msg err">'.$_SESSION['err'].'</div>').'<div class="l1"><b><a href="https://github.com/edmondsql/edmyadmin">EdMyAdmin '.$version.'</a></b>'.(isset($ed->sg[0]) && $ed->sg[0]==50 ? "": '<ul class="mn m1"><li>More <small>&#9660;</small><ul><li><a href="'.$ed->path.'60">Info</a></li><li><a href="'.$ed->path.'60/var">Variables</a></li><li><a href="'.$ed->path.'60/status">Status</a></li><li><a href="'.$ed->path.'60/process">Processes</a></li></ul></li><li><a href="'.$ed->path.'52">Users</a></li><li><a href="'.$ed->path.'51">Logout ['.(isset($_SESSION['user']) ? $_SESSION['user']:"").']</a></li></ul>').'</div>';
+</head><body><noscript><h1 class="msg err">Please enable Javascript in your browser!</h1></noscript>'.(empty($_SESSION['ok'])?'':'<div class="msg ok">'.$_SESSION['ok'].'</div>').(empty($_SESSION['err'])?'':'<div class="msg err">'.$_SESSION['err'].'</div>').'<div class="l1"><b><a href="https://github.com/edmondsql/edmyadmin">EdMyAdmin '.$version.'</a></b>'.(isset($ed->sg[0]) && $ed->sg[0]==50 ? "":'<ul class="mn m1"><li>More <small>&#9660;</small><ul><li><a href="'.$ed->path.'60">Info</a></li><li><a href="'.$ed->path.'60/var">Variables</a></li><li><a href="'.$ed->path.'60/status">Status</a></li><li><a href="'.$ed->path.'60/process">Processes</a></li></ul></li><li><a href="'.$ed->path.'52">Users</a></li><li><a href="'.$ed->path.'51">Logout ['.(isset($_SESSION['user']) ? $_SESSION['user']:"").']</a></li></ul>').'</div>';
 $stru= "<table><caption>TABLE STRUCTURE</caption><tr><th>FIELD</th><th>TYPE</th><th>VALUE</th><th>ATTRIBUTES</th><th>NULL</th><th>DEFAULT</th><th>COLLATION</th><th>AI <input type='radio' name='ex[]'/></th>".(isset($ed->sg[0]) && $ed->sg[0]==11?"<th>POSITION</th>":"")."</tr>";
 $inttype= [''=>'&nbsp;','UNSIGNED'=>'unsigned','ZEROFILL'=>'zerofill','UNSIGNED ZEROFILL'=>'unsigned zerofill','on update CURRENT_TIMESTAMP'=>'on update'];
 
@@ -1025,7 +1025,7 @@ case "10"://table structure
 	$db= $ed->sg[1];
 	$tb= $ed->sg[2];
 	echo $head.$ed->menu($db, $tb, 1);
-	echo $ed->form("9/$db/$tb")."<table><caption>TABLE STRUCTURE</caption><tr><th><input type='checkbox' onclick='toggle(this,\"idx[]\")'/></th><th>FIELD</th><th>TYPE</th><th>NULL</th><th>COLLATION</th><th>DEFAULT</th><th>EXTRA</th><th>ACTIONS</th></tr><tbody class='sort'>";
+	echo $ed->form("9/$db/$tb")."<table><caption>TABLE STRUCTURE</caption><thead><tr><th><input type='checkbox' onclick='toggle(this,\"idx[]\")'/></th><th>FIELD</th><th>TYPE</th><th>NULL</th><th>COLLATION</th><th>DEFAULT</th><th>EXTRA</th><th>ACTIONS</th></tr></thead><tbody class='sort'>";
 	$q_fi= $ed->con->query("SHOW FULL FIELDS FROM `$tb`");
 	$r_flds= $q_fi->num_row();
 	foreach($q_fi->fetch(2) as $r_fi) {
@@ -1035,8 +1035,8 @@ case "10"://table structure
 		echo "<td>".$r_fi['Default']."</td><td>".$r_fi['Extra']."</td><td><a href='{$ed->path}12/$db/$tb/".$r_fi['Field']."'>change</a><a class='del' href='{$ed->path}13/$db/$tb/".$r_fi['Field']."'>drop</a><a href='{$ed->path}11/$db/$tb/".$r_fi['Field']."'>add</a><span class='handle' title='move'>&#10021;</span></td></tr>";
 	}
 	$q_comm= $ed->con->query("SELECT TABLE_COMMENT FROM INFORMATION_SCHEMA.TABLES WHERE `TABLE_SCHEMA`='$db' AND `TABLE_NAME`='$tb'")->fetch();
-	echo "</tbody><tr><td colspan='3'><button type='submit' name='changeb'>Change Comment</button></td><td colspan='5'><input type='text' name='changec' value='".$q_comm[0]."'/></td></tr>
-	<tr><td class='auto' colspan='8'><div class='left'><button type='submit' name='primary'>Primary</button><button type='submit' name='index'>Index</button><button type='submit' name='unique'>Unique</button><button type='submit' name='fulltext'>Fulltext</button></div><div class='link'><a href='{$ed->path}27/$db/$tb/analyze'>Analyze</a><a href='{$ed->path}27/$db/$tb/optimize'>Optimize</a><a href='{$ed->path}27/$db/$tb/check'>Check</a><a href='{$ed->path}27/$db/$tb/repair'>Repair</a></div></td></tr></table></form>
+	echo "</tbody><tfoot><tr><td colspan='3'><button type='submit' name='changeb'>Change Comment</button></td><td colspan='5'><input type='text' name='changec' value='".$q_comm[0]."'/></td></tr>
+	<tr><td class='auto' colspan='8'><div class='left'><button type='submit' name='primary'>Primary</button><button type='submit' name='index'>Index</button><button type='submit' name='unique'>Unique</button><button type='submit' name='fulltext'>Fulltext</button></div><div class='link'><a href='{$ed->path}27/$db/$tb/analyze'>Analyze</a><a href='{$ed->path}27/$db/$tb/optimize'>Optimize</a><a href='{$ed->path}27/$db/$tb/check'>Check</a><a href='{$ed->path}27/$db/$tb/repair'>Repair</a></div></td></tr></tfoot></table></form>
 	<table><caption>TABLE INDEX</caption><tr><th>KEY NAME</th><th>FIELD</th><th>TYPE</th><th>ACTIONS</th></tr>";
 	$q_idx= $ed->con->query("SHOW KEYS FROM `$tb`");
 	if($q_idx->num_row()) {
@@ -1274,7 +1274,7 @@ case "20"://table browse
 		}
 		$i=0;
 		while($i<$r_cl) {
-			$val= htmlentities($r_rw[$i]);
+			$val=($r_rw[$i]==''?'':htmlentities($r_rw[$i]));
 			echo "<td>";
 			if(stristr($colt[$i],"blob") == true && !in_array($db,$ed->deny)) {
 				$le= strlen($r_rw[$i]);
@@ -1459,9 +1459,9 @@ case "22"://table edit row
 			} elseif(stristr($colt[$k],"blob") == true && !in_array($db,$ed->deny)) {//blob
 			echo "[blob] ".number_format((strlen($r_rx[$k])/1024),2)." KB<br/><input type='file' name='te{$k}'/>";
 			} elseif(stristr($colt[$k],"text") == true) {//text
-			echo "<textarea name='te{$k}'>".htmlentities($r_rx[$k],ENT_QUOTES)."</textarea>";
+			echo "<textarea name='te{$k}'>".($r_rx[$k]==''?'':htmlentities($r_rx[$k],ENT_QUOTES))."</textarea>";
 			} else {
-			echo "<input type='text' name='te{$k}' value='".htmlentities($r_rx[$k],ENT_QUOTES)."'/>";
+			echo "<input type='text' name='te{$k}' value='".($r_rx[$k]==''?'':htmlentities($r_rx[$k],ENT_QUOTES))."'/>";
 			}
 			echo "</td></tr>";
 			++$k;
@@ -1812,7 +1812,7 @@ case "32"://export
 							} elseif(is_numeric($r_rx[$e])){
 							$inn .= $r_rx[$e].", ";
 							} else {
-							$inn .= "'".preg_replace(["/\r\n|\r|\n/","/'/"],["\\n","\'"],$r_rx[$e])."', ";
+							$inn .= ($r_rx[$e]==''?'':"'".preg_replace(["/\r\n|\r|\n/","/'/"],["\\n","\'"],$r_rx[$e])."', ");
 							}
 							++$e;
 						}
@@ -2256,8 +2256,8 @@ case "42"://routine
 		}
 		$r_rou= $ed->con->query("SELECT routine_name,routine_type,character_set_client,dtd_identifier,routine_definition,is_deterministic,security_type,sql_data_access,routine_comment FROM information_schema.ROUTINES WHERE `ROUTINE_SCHEMA`='$db' AND `ROUTINE_NAME`='$sp'")->fetch();
 		//function return
-		if(stripos($r_rou[3],') ')) $retrn= preg_split('/[()]\s*/', $r_rou[3]);
-		else $retrn= explode(" ",$r_rou[3]);
+		if($r_rou[3] && stripos($r_rou[3],') ')) $retrn= preg_split('/[()]\s*/', $r_rou[3]);
+		else $retrn= ($r_rou[3]=='' ? '':explode(" ",$r_rou[3]));
 		if(empty($retrn[2]) && !empty($r_rou[2])) $retrn[2]=$r_rou[2];
 		if(!empty($retrn[2])) $retrn[2]= str_replace("CHARSET ","",$retrn[2]);
 		//param_list
@@ -2843,7 +2843,7 @@ $(".sort").sort();
 $.fn.sort=function(){
 var base=$(this),els=base.find("tr"),its=base.find(".handle"),drag=false,item;
 its.mousedown(function(event){
-base.css({"-webkit-touch-callout":"none","-webkit-user-select":"none","-khtml-user-select":"none","-moz-user-select":"none","-ms-user-select":"none","user-select":"none"});
+base.css({"-webkit-touch-callout":"none","-webkit-user-select":"none","-moz-user-select":"none","-ms-user-select":"none","user-select":"none"});
 if(event.which===1){item=$(this).closest("tr");els.addClass("opacity");item.addClass("drag");drag=true;}
 });
 its.mousemove(function(e){
@@ -2854,7 +2854,7 @@ if(drag && overTop) item.insertBefore(hoverItem);
 if(drag && overBottom) item.insertAfter(hoverItem);
 }
 $(document).mouseup(function(){
-base.css({"-webkit-touch-callout":"auto","-webkit-user-select":"auto","-khtml-user-select":"auto","-moz-user-select":"auto","-ms-user-select":"auto","user-select":"auto"});
+base.css({"-webkit-touch-callout":"auto","-webkit-user-select":"auto","-moz-user-select":"auto","-ms-user-select":"auto","user-select":"auto"});
 els.removeClass("opacity");
 item.removeClass("drag");
 pre="x";
