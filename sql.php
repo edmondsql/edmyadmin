@@ -6,9 +6,9 @@ session_name('SQL');
 session_start();
 $bg=2;
 $step=20;
-$version="3.16.1";
+$version="3.16.2";
 $bbs=['False','True'];
-$js=(file_exists('jquery.js')?"/jquery.js":"https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js");
+$js=(file_exists('jquery.js')?"/jquery.js":"https://code.jquery.com/jquery-1.12.4.min.js");
 class DBT {
 	public static $sqltype=['mysqli','pdo_mysql'];
 	private $_cnx,$_query,$_fetch=[],$_num_col,$dbty;
@@ -576,7 +576,7 @@ $head='<!DOCTYPE html><html lang="en"><head>
 *{margin:0;padding:0;font-size:12px;color:#333;font-family:Arial}
 html{-ms-text-size-adjust:100%;-webkit-text-size-adjust:100%;background:#fff}
 html,textarea{overflow:auto}
-.container{overflow:auto;overflow-y:hidden;-ms-overflow-y:hidden;white-space:nowrap}
+.container{overflow:auto;overflow-y:hidden;-ms-overflow-y:hidden;white-space:nowrap;scrollbar-width:thin}
 [hidden],.mn ul{display:none}
 .m1{position:absolute;right:0;top:0}
 .mn li:hover ul{display:block;position:absolute}
@@ -627,7 +627,7 @@ textarea{white-space:pre-wrap}
 .bb *{font:22px/18px Arial}
 .upr{list-style:none;overflow:auto;overflow-x:hidden;height:90px}
 </style>
-</head><body><noscript><h1 class="msg err">Please enable the javascript in your browser</h1></noscript>'.(empty($_SESSION['ok'])?'':'<div class="msg ok">'.$_SESSION['ok'].'</div>').(empty($_SESSION['err'])?'':'<div class="msg err">'.$_SESSION['err'].'</div>').'<div class="l1"><b><a href="https://github.com/edmondsql/edmyadmin">EdMyAdmin '.$version.'</a></b>'.(isset($ed->sg[0]) && $ed->sg[0]==50 ? "":'<ul class="mn m1"><li>More <small>&#9660;</small><ul><li><a href="'.$ed->path.'60">Info</a></li><li><a href="'.$ed->path.'60/var">Variables</a></li><li><a href="'.$ed->path.'60/status">Status</a></li><li><a href="'.$ed->path.'60/process">Processes</a></li></ul></li><li><a href="'.$ed->path.'52">Users</a></li><li><a href="'.$ed->path.'51">Logout ['.(isset($_SESSION['user']) ? $_SESSION['user']:"").']</a></li></ul>').'</div>';
+</head><body>'.(empty($_SESSION['ok'])?'':'<div class="msg ok">'.$_SESSION['ok'].'</div>').(empty($_SESSION['err'])?'':'<div class="msg err">'.$_SESSION['err'].'</div>').'<div class="l1"><b><a href="https://github.com/edmondsql/edmyadmin">EdMyAdmin '.$version.'</a></b>'.(isset($ed->sg[0]) && $ed->sg[0]==50 ? "":'<ul class="mn m1"><li>More <small>&#9660;</small><ul><li><a href="'.$ed->path.'60">Info</a></li><li><a href="'.$ed->path.'60/var">Variables</a></li><li><a href="'.$ed->path.'60/status">Status</a></li><li><a href="'.$ed->path.'60/process">Processes</a></li></ul></li><li><a href="'.$ed->path.'52">Users</a></li><li><a href="'.$ed->path.'51">Logout ['.(isset($_SESSION['user']) ? $_SESSION['user']:"").']</a></li></ul>').'</div>';
 $stru="<table><caption>TABLE STRUCTURE</caption><tr><th>FIELD</th><th>TYPE</th><th>VALUE</th><th>ATTRIBUTES</th><th>NULL</th><th>DEFAULT</th><th>COLLATION</th><th>AI <input type='radio' name='ex[]'/></th>".(isset($ed->sg[0]) && $ed->sg[0]==11?"<th>POSITION</th>":"")."</tr>";
 $inttype=[''=>'&nbsp;','UNSIGNED'=>'unsigned','ZEROFILL'=>'zerofill','UNSIGNED ZEROFILL'=>'unsigned zerofill','on update CURRENT_TIMESTAMP'=>'on update'];
 
@@ -1005,7 +1005,7 @@ case "9":
 	if(isset($ed->sg[3])) {//drop index
 		if($ed->sg[3]=="PRIMARY") {
 		$q_alt=$ed->con->query("ALTER TABLE `$tb` DROP PRIMARY KEY");
-		} elseif($ed->sg[4]=='fk') {
+		} elseif(!empty($ed->sg[4]) && $ed->sg[4]=='fk') {
 		$q_alt=$ed->con->query("ALTER TABLE `$tb` DROP FOREIGN KEY ".$ed->sg[3]);
 		} else {
 		$q_key=$ed->con->query("SHOW KEYS FROM `$tb`");
@@ -2852,7 +2852,6 @@ unset($_SESSION["err"]);
 <script>
 $(function(){
 $("#host").focus();
-$("noscript").remove();
 if($(".msg").text()!="") setTimeout(function(){$(".msg").fadeOut(900,function(){$(this).remove();});},7000);
 $(".del").on("click",function(e){
 e.preventDefault();
@@ -2881,12 +2880,9 @@ for(var a=1;a<5;a++){
 var fc=$("#fi"+a+" > option").length,fs=$("#fi"+a+" :selected").length;
 if(fc==fs) $("#fi"+a).siblings(":checkbox").prop("checked",true);
 }
-$(".sort").sort();
-});//end
-$.fn.sort=function(){
-var base=$(this),els=base.find("tr"),its=base.find(".handle"),drag=false,item;
+var base=$(".sort"),els=base.find("tr"),its=base.find(".handle"),drag=false,item;
 its.on('mousedown',function(e){
-base.css({"-webkit-touch-callout":"none","-webkit-user-select":"none","-moz-user-select":"none","-ms-user-select":"none","user-select":"none"});
+base.css({"-webkit-touch-callout":"none","-webkit-user-select":"none","-moz-user-select":"none","user-select":"none"});
 if(e.which===1){item=$(this).closest("tr");els.addClass("opacity");item.addClass("drag");drag=true;}
 });
 its.on('mousemove',function(e){
@@ -2897,7 +2893,7 @@ if(drag && overTop) hoverItem.before(item);
 if(drag && overBottom) hoverItem.after(item);
 }
 $(document).on('mouseup',function(){
-base.css({"-webkit-touch-callout":"auto","-webkit-user-select":"auto","-moz-user-select":"auto","-ms-user-select":"auto","user-select":"auto"});
+base.css({"-webkit-touch-callout":"auto","-webkit-user-select":"auto","-moz-user-select":"auto","user-select":"auto"});
 els.removeClass("opacity");
 item.removeClass("drag");
 pre="x";
@@ -2906,7 +2902,7 @@ drag=false;
 $.ajax({type:"POST",url:"<?=$ed->path.'9/'.(empty($ed->sg[1])?"":$ed->sg[1].'/').(empty($ed->sg[2])?"":$ed->sg[2])?>",data:"n1="+item.prop("id")+"&n2="+pre,success:function(){$(this).load(location.reload())}});
 });
 });
-}
+});//end
 function minus(el){//routine remove row
 var crr=$('[id^="rr_"]').length;
 if(crr>1) $(el).closest("tr").remove();
