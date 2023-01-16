@@ -6,7 +6,7 @@ session_name('SQL');
 session_start();
 $bg=2;
 $step=20;
-$version="3.16.2";
+$version="3.17.0";
 $bbs=['False','True'];
 $js=(file_exists('jquery.js')?"/jquery.js":"https://code.jquery.com/jquery-1.12.4.min.js");
 class DBT {
@@ -242,7 +242,8 @@ class ED {
 			$ho=$_SESSION['host'];
 			$this->con=DBT::factory($ho,$usr,$pwd);
 			if($this->con===false) $this->redir("50",['err'=>"Can't connect to the server"]);
-			if(empty($_SERVER['HTTP_X_REQUESTED_WITH'])) session_regenerate_id(true);
+			$h = 'HTTP_X_REQUESTED_WITH';
+			if(isset($_SERVER[$h]) && !empty($_SERVER[$h]) && strtolower($_SERVER[$h]) == 'xmlhttprequest') session_regenerate_id(true);
 		} else {
 			$this->redir("50");
 		}
@@ -2850,9 +2851,10 @@ unset($_SESSION["err"]);
 ?></div></div><div class="l1 ce"><a href="http://edmondsql.github.io">edmondsql</a></div>
 <script src="<?=$js?>"></script>
 <script>
+var host=document.getElementById("host");
+host?host.focus():'';
 $(function(){
-$("#host").focus();
-if($(".msg").text()!="") setTimeout(function(){$(".msg").fadeOut(900,function(){$(this).remove();});},7000);
+if($(".msg").text()!="") setTimeout(function(){$(".msg").remove();},7000);
 $(".del").on("click",function(e){
 e.preventDefault();
 $(".msg").remove();
@@ -2861,8 +2863,10 @@ $("body").prepend('<div class="msg"><div class="ok">Yes<\/div><div class="err">N
 $(".msg .ok").on("click",function(){window.location=hrf;});
 $(".msg .err").on("click",function(){$(".msg").remove();});
 $(document).on("keyup",function(e){
-if(e.which==89 || e.which==32) window.location=hrf;
+if($(".msg").is("div")){
+if(e.which==32 || e.which==89) window.location=hrf;
 if(e.which==27 || e.which==78) $(".msg").remove();
+}
 });
 });
 $(".msg").on("dblclick",function(){$(this).remove()});
@@ -2877,8 +2881,8 @@ var rou_p=$('[id^="pty_"]').length;
 for(var i=1;i <=rou_p;i++) routine(i);
 //priv all
 for(var a=1;a<5;a++){
-var fc=$("#fi"+a+" > option").length,fs=$("#fi"+a+" :selected").length;
-if(fc==fs) $("#fi"+a).siblings(":checkbox").prop("checked",true);
+var fc=$("#fi"+a).children("option").length,fs=($("#fi"+a).val()||'').length;
+if(fc==fs) $("#fi"+a).siblings("[type=checkbox]").prop("checked",true);
 }
 var base=$(".sort"),els=base.find("tr"),its=base.find(".handle"),drag=false,item;
 its.on('mousedown',function(e){
@@ -2892,14 +2896,20 @@ if(item && hoverItem.parent().get(0)===item.parent().get(0)){
 if(drag && overTop) hoverItem.before(item);
 if(drag && overBottom) hoverItem.after(item);
 }
-$(document).on('mouseup',function(){
+its.on('mouseup',function(){
 base.css({"-webkit-touch-callout":"auto","-webkit-user-select":"auto","-moz-user-select":"auto","user-select":"auto"});
 els.removeClass("opacity");
 item.removeClass("drag");
 pre="x";
 if(item.prev().is("tr")) pre=item.prev("tr").prop("id");
 drag=false;
-$.ajax({type:"POST",url:"<?=$ed->path.'9/'.(empty($ed->sg[1])?"":$ed->sg[1].'/').(empty($ed->sg[2])?"":$ed->sg[2])?>",data:"n1="+item.prop("id")+"&n2="+pre,success:function(){$(this).load(location.reload())}});
+var xhr=new window.XMLHttpRequest();
+xhr.open("POST","<?=$ed->path.'9/'.(empty($ed->sg[1])?"":$ed->sg[1].'/').(empty($ed->sg[2])?"":$ed->sg[2])?>");
+xhr.setRequestHeader("Content-type","application/x-www-form-urlencoded");
+xhr.onload=function(){
+(xhr.readyState == 4 && xhr.status == 200) ? location.reload() : alert('Error: ' + xhr.status);
+}
+xhr.send("n1="+item.prop("id")+"&n2="+pre);
 });
 });
 });//end
@@ -2924,19 +2934,17 @@ var ej=$("#pty2"),ej1=$("#px1"),ej2=$("#px2");
 routin2();
 ej.on("change",function(){routin2();});
 function routin2(){
-if($.inArray(ej.val(),ar1)!=-1){ej1.show();ej2.hide();}else if($.inArray(ej.val(),ar2)!=-1){ej1.hide();ej2.show();}else{ej1.hide();ej2.hide();}
+if(ar1.includes(ej.val())){ej1.show();ej2.hide();}else if(ar2.includes(ej.val())){ej1.hide();ej2.show();}else{ej1.hide();ej2.hide();}
 }
 //params
 function routin1(ix){
 var el=$("#pty_"+ix).val(),el1=$("#rr_"+ix).find(".pa1"),el2=$("#rr_"+ix).find(".pa2");
-if($.inArray(el,ar1)!=-1){el1.show();el2.hide();}else if($.inArray(el,ar2)!=-1){el1.hide();el2.show();}else{el1.hide();el2.hide();}
+if(ar1.includes(el)){el1.show();el2.hide();}else if(ar2.includes(el)){el1.hide();el2.show();}else{el1.hide();el2.hide();}
 }
 if(id===undefined) id=0;
 routin1(id);
 $("#pty_"+id).on("change",function(){routin1(id);});
 }
-function show(ex){$("#"+ex).fadeIn(900);}
-function hide(ex){$("#"+ex).fadeOut(900);}
 function selectall(cb,lb) {
 var multi=document.getElementById(lb);
 if(cb.checked) {for(var i=0;i<multi.options.length;i++) multi.options[i].selected=true;
