@@ -6,7 +6,7 @@ session_name('SQL');
 session_start();
 $bg=2;
 $step=20;
-$version="3.17.1";
+$version="3.17.2";
 $bbs=['False','True'];
 $js=(file_exists('jquery.js')?"/jquery.js":"https://code.jquery.com/jquery-1.12.4.min.js");
 class DBT {
@@ -342,7 +342,8 @@ class ED {
 		if($qtype !='') $sl2.='</optgroup>';
 		$sl2.='<optgroup label="'.$r_tbs[1].'s">';
 		}
-		$sl2.="<option value='{$this->path}{$this->sg[0]}/$db/".$r_tbs[0]."'".($r_tbs[0]==$tb || ($c_sp >1 && $r_tbs[0]==$sp[1])?" selected":"").">".$r_tbs[0]."</option>";
+		$in=($r_tbs[1]=='VIEW'?[20,40]:[10,20,21,24]);
+		$sl2.="<option value='{$this->path}".(in_array($this->sg[0],$in)?$this->sg[0]:20)."/$db/".$r_tbs[0]."'".($r_tbs[0]==$tb || ($c_sp >1 && $r_tbs[0]==$sp[1])?" selected":"").">".$r_tbs[0]."</option>";
 		$qtype=$r_tbs[1];
 		}
 		if($qtype!='') $sl2.='</optgroup>';
