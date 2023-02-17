@@ -6,7 +6,7 @@ session_name('SQL');
 session_start();
 $bg=2;
 $step=20;
-$version="3.17.0";
+$version="3.17.1";
 $bbs=['False','True'];
 $js=(file_exists('jquery.js')?"/jquery.js":"https://code.jquery.com/jquery-1.12.4.min.js");
 class DBT {
@@ -342,7 +342,7 @@ class ED {
 		if($qtype !='') $sl2.='</optgroup>';
 		$sl2.='<optgroup label="'.$r_tbs[1].'s">';
 		}
-		$sl2.="<option value='{$this->path}20/$db/".$r_tbs[0]."'".($r_tbs[0]==$tb || ($c_sp >1 && $r_tbs[0]==$sp[1])?" selected":"").">".$r_tbs[0]."</option>";
+		$sl2.="<option value='{$this->path}{$this->sg[0]}/$db/".$r_tbs[0]."'".($r_tbs[0]==$tb || ($c_sp >1 && $r_tbs[0]==$sp[1])?" selected":"").">".$r_tbs[0]."</option>";
 		$qtype=$r_tbs[1];
 		}
 		if($qtype!='') $sl2.='</optgroup>';
@@ -801,9 +801,9 @@ case "5"://Show Tables
 	$spps=['procedure','function'];
 	$q_sp=[];
 	foreach($spps as $spp){
-		$q_spp=$ed->con->query("SHOW {$spp} STATUS")->fetch(1);
+		$q_spp=$ed->con->query("SHOW {$spp} STATUS");
 		if($q_spp) {
-		foreach($q_spp as $r_spp) {
+		foreach($q_spp->fetch(1) as $r_spp) {
 		if($r_spp[0]==$db) {
 		$tsp=1;
 		$q_sp[]=$r_spp;
