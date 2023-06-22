@@ -6,7 +6,7 @@ session_name('SQL');
 session_start();
 $bg=2;
 $step=20;
-$version="3.17.2";
+$version="3.18.0";
 $bbs=['False','True'];
 $js=(file_exists('jquery.js')?"/jquery.js":"https://code.jquery.com/jquery-1.12.4.min.js");
 class DBT {
@@ -35,7 +35,6 @@ class DBT {
 			$this->_cnx->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
 		}
 	}
-	private function __clone() {}
 	public function db($db) {
 		return $this->_cnx->query("USE `$db`");
 	}
@@ -329,7 +328,7 @@ class ED {
 
 		if($db!="" && $db!=1) {//db select
 		$str.="<div class='l3 auto'><select onchange='location=this.value;'><optgroup label='Databases'>";
-		foreach($this->u_db as $udb) $str.="<option value='{$this->path}5/".$udb[0]."'".($udb[0]==$db?" selected":"").">".$udb[0]."</option>";
+		foreach($this->u_db as $udb) $str.="<option value='{$this->path}{$this->sg[0]}/".$udb[0]."'".($udb[0]==$db?" selected":"").">".$udb[0]."</option>";
 		$str.="</optgroup></select>";
 
 		$q_tbs=[]; $c_sp=empty($sp) ? "":count($sp);
@@ -426,7 +425,7 @@ class ED {
 		$e=[];
 		if(@is_file($fbody)) $fbody=file_get_contents($fbody);
 		$fbody=$this->utf($fbody);
-		$rgxj="~^\xEF\xBB\xBF|^\xFE\xFF|^\xFF\xFE|(\/\/).*\n*|(\/\*)*.*(\*\/)\n*|((\"*.*\")*('*.*'))(*SKIP)(*F)~";
+		$rgxj="~^\xEF\xBB\xBF|^\xFE\xFF|^\xFF\xFE|(\/\/).*\n*|(\/\*)*.*(\*\/)\n*|((\"*.*\")*('*.*')*)(*SKIP)(*F)~";
 		$ex=preg_split($rgxj,$fbody,-1,PREG_SPLIT_NO_EMPTY);
 		$lines=json_decode($ex[0],true);
 		$jr='';
@@ -442,8 +441,7 @@ class ED {
 		$e=[];
 		if(@is_file($fbody)) $fbody=file_get_contents($fbody);
 		$fbody=$this->utf($fbody);
-		if(!function_exists('libxml_disable_entity_loader')) return;
-		libxml_disable_entity_loader();
+		libxml_use_internal_errors(false);
 		$xml=simplexml_load_string($fbody,"SimpleXMLElement",LIBXML_COMPACT);
 		$nspace=$xml->getNameSpaces(true);
 		$ns=key($nspace);
@@ -479,23 +477,28 @@ class ED {
 		if(in_array('ifnot',$fopt)) {//option if not exist
 			$ifnot.="IF NOT EXISTS ";
 		}
+		$q_ex=$this->con->query("SHOW FULL FIELDS FROM `$tb` FROM `$db`");
+		if($q_ex) {
 		$sq="\n{$tab}CREATE TABLE ".$ifnot."`".$tb."` (";
-		$q_ex=$this->con->query("SHOW FULL FIELDS FROM `$tb`");
 		foreach($q_ex->fetch(2) as $r_ex) {
 			$nul=($r_ex['Null']=='YES' ? "NULL" : "NOT NULL");
-			$def=($r_ex['Default']!='' ? " default '".$r_ex['Default']."'" : "");
-			if($r_ex['Default']=='CURRENT_TIMESTAMP') $def=" default ".$r_ex['Default'];
+			$def='';
+			if($r_ex['Default']!='') {
+			$def.=" default ".(stristr($r_ex['Default'],'CURRENT_TIMESTAMP') ? $r_ex['Default']:"'".$r_ex['Default']."'");
+			}
 			$clls=(($r_ex['Collation']!='' && $r_ex['Collation']!='NULL' && $r_ex['Collation']!=$r_st[14]) ? " COLLATE '".$r_ex['Collation']."'" : "");
 			$xtr=($r_ex['Extra']!='' ? " ".$r_ex['Extra'] : "");
 			$sq.="\n{$tab}`".$r_ex['Field']."` ".$r_ex['Type']." ".$nul.$clls.$def.$xtr.",";
 		}
 		$idx1=[];$idx2=[];$idx3=[];$idx4=[];
-		$q_sidx=$this->con->query("SHOW KEYS FROM `$tb`");
+		$q_sidx=$this->con->query("SHOW KEYS FROM `$tb` FROM `$db`");
+		if($q_sidx) {
 		foreach($q_sidx->fetch(2) as $r_sidx) {
 		if($r_sidx['Key_name']=='PRIMARY') $idx1[]=$r_sidx['Column_name'];
 		elseif($r_sidx['Index_type']=='FULLTEXT') $idx4[$r_sidx['Key_name']][]=$r_sidx['Column_name'];
 		elseif($r_sidx['Non_unique']==1) $idx2[$r_sidx['Key_name']][]=$r_sidx['Column_name'];
 		elseif($r_sidx['Non_unique']==0) $idx3[$r_sidx['Key_name']][]=$r_sidx['Column_name'];
+		}
 		}
 		$sq.=(count($idx1) > 0 ? "\n{$tab}PRIMARY KEY(`".implode("`,`",$idx1)."`),":"");
 		foreach($idx2 as $k2=>$q2) {
@@ -517,10 +520,31 @@ class ED {
 		}
 		}
 		$sql.=substr($sq,0,-1)."\n{$tab})";
-		$co=($r_st[17]=='' ? "":" COMMENT='".$r_st[17]."'");
+		$co=($r_st[17]=='' ? "":" COMMENT='".addslashes($r_st[17])."'");
 		$auto=(in_array('auto',$fopt) && $r_st[10] > 1 ? " AUTO_INCREMENT=".$r_st[10] : "");//option auto
-		$sql.=($r_st[17]!='VIEW' ? " ENGINE=".$r_st[1]." DEFAULT CHARSET=".strtok($r_st[14],'_').$co.$auto:"").";";
+		$sql.=($r_st[17]!='VIEW' ? " ENGINE=".$r_st[1].(empty($r_st[14])?"":" DEFAULT CHARSET=".strtok($r_st[14],'_')).$co.$auto:"").";";
+		}
 		return $sql;
+	}
+	public function getTables($db) {
+		$tbs=[];$vws=[];
+		if($this->post('tables')=='' && $this->post('dbs')!='') {
+			$tabs=$this->con->query("SHOW TABLES FROM `$db`")->fetch(1);
+			$tabs=empty($tabs) ? []:call_user_func_array('array_merge',$tabs);
+		} else {
+			$tabs=$this->post('tables');
+		}
+		foreach($tabs as $tb) {
+			$r_st=$this->con->query("SHOW TABLE STATUS FROM `$db` like '$tb'")->fetch();
+			if($r_st) {
+			if(preg_match('/view/i',$r_st[17])) {
+				array_push($vws,$tb);
+			} else {
+				array_push($tbs,$tb);
+			}
+			}
+		}
+		return [$tbs, $vws];
 	}
 	public function create_ro($db,$pn) {
 		if(is_numeric(substr($pn,0,1))) $this->redir("5/".$db,['err'=>"Not a valid name"]);
@@ -640,7 +664,7 @@ case ""://show DBs
 	$ed->check();
 	echo $head.$ed->menu()."<div class='col1'>Create Database".$ed->form("2").
 	"<input type='text' name='dbc'/><p>Collation</p>".$ed->collate("dbcll").
-	"<br/><button type='submit'>Create</button></form></div><div class='col2'><table><tr><th>DATABASES</th><th>COLLATION</th><th>TABLES</th><th>ACTIONS</th></tr>";
+	"<br/><button type='submit'>Create</button></form></div><div class='col2'><table><tr><th>DATABASES</th><th>COLLATION</th><th>TABLES</th><th><a href='{$ed->path}31'>EXP</a> ACTIONS</th></tr>";
 	foreach($ed->u_db as $r_db) {
 	$db0=$r_db[0];
 	$bg=($bg==1)?2:1;
@@ -919,7 +943,7 @@ case "9":
 		$ed->redir("10/$db/$tb",['err'=>"Copy table failed"]);
 	}
 	if($ed->post('changeb','i') && $ed->post('changec','i')) {//table comment
-		$ed->con->query("ALTER TABLE `$tb` COMMENT=\"".htmlentities($ed->post('changec'),ENT_QUOTES)."\"");
+		$ed->con->query("ALTER TABLE `$tb` COMMENT=\"".addslashes($ed->post('changec'))."\"");
 		$ed->redir("10/$db/$tb",['ok'=>"Changed table comment"]);
 	}
 	if($ed->post('rtab','!e')) {//rename table
@@ -1039,7 +1063,7 @@ case "10"://table structure
 		echo "<td>".$r_fi['Default']."</td><td>".$r_fi['Extra']."</td><td><a href='{$ed->path}12/$db/$tb/".$r_fi['Field']."'>change</a><a class='del' href='{$ed->path}13/$db/$tb/".$r_fi['Field']."'>drop</a><a href='{$ed->path}11/$db/$tb/".$r_fi['Field']."'>add</a><span class='handle' title='move'>&#10070;</span></td></tr>";
 	}
 	$q_comm=$ed->con->query("SELECT TABLE_COMMENT FROM INFORMATION_SCHEMA.TABLES WHERE `TABLE_SCHEMA`='$db' AND `TABLE_NAME`='$tb'")->fetch();
-	echo "</tbody><tfoot><tr><td colspan='3'><button type='submit' name='changeb'>Change Comment</button></td><td colspan='5'><input type='text' name='changec' value='".$q_comm[0]."'/></td></tr>
+	echo "</tbody><tfoot><tr><td colspan='3'><button type='submit' name='changeb'>Change Comment</button></td><td colspan='5'><input type='text' name='changec' value=\"".$q_comm[0]."\"/></td></tr>
 	<tr><td class='auto' colspan='8'><div class='left'><button type='submit' name='primary'>Primary</button><button type='submit' name='index'>Index</button><button type='submit' name='unique'>Unique</button><button type='submit' name='fulltext'>Fulltext</button></div><div class='link'><a href='{$ed->path}27/$db/$tb/analyze'>Analyze</a><a href='{$ed->path}27/$db/$tb/optimize'>Optimize</a><a href='{$ed->path}27/$db/$tb/check'>Check</a><a href='{$ed->path}27/$db/$tb/repair'>Repair</a></div></td></tr></tfoot></table></form>
 	<table><caption>INDEX</caption><tr><th>KEY NAME</th><th>FIELD</th><th>TYPE</th><th>ACTIONS</th></tr>";
 	$q_idx=$ed->con->query("SHOW KEYS FROM `$tb`");
@@ -1672,18 +1696,18 @@ case "30"://import
 		$ed->redir("5/$db",['err'=>"No file to upload"]);
 		} else {
 		$tmp=$_FILES['importfile']['tmp_name'];
-		$file=pathinfo($_FILES['importfile']['name']);
-		$ext=strtolower($file['extension']);
-		if($ext=='sql') {
+		$file=$_FILES['importfile']['name'];
+		preg_match("/^(.*)\.(sql|csv|json|xml|gz|zip)$/i",$file,$ext);
+		if($ext[2]=='sql') {
 			$fi=$ed->utf(file_get_contents($tmp));
 			$e=preg_split($rgex,$fi,-1,PREG_SPLIT_NO_EMPTY);
-		} elseif($ext=='csv') {
-			$e=$ed->imp_csv($file['filename'],$tmp);
-		} elseif($ext=='json') {
-			$e=$ed->imp_json($file['filename'],$tmp);
-		} elseif($ext=='xml') {
-			$e=$ed->imp_xml($file['filename'],$tmp);
-		} elseif($ext=='gz') {
+		} elseif($ext[2]=='csv') {
+			$e=$ed->imp_csv($ext[1],$tmp);
+		} elseif($ext[2]=='json') {
+			$e=$ed->imp_json($ext[1],$tmp);
+		} elseif($ext[2]=='xml') {
+			$e=$ed->imp_xml($ext[1],$tmp);
+		} elseif($ext[2]=='gz') {
 			if(($fgz=fopen($tmp,'r')) !==FALSE) {
 				if(@fread($fgz,3) !="\x1F\x8B\x08") {
 				$ed->redir("5/$db",['err'=>"Not a valid GZ file"]);
@@ -1691,50 +1715,66 @@ case "30"://import
 				fclose($fgz);
 			}
 			if(@function_exists('gzopen')) {
+				preg_match("/^(.*)\.(sql|csv|json|xml|tar)$/i",$ext[1],$ex);
+				if($ex[2]!='tar') {
 				$gzfile=@gzopen($tmp,'rb');
-				if (!$gzfile) {
+				if(!$gzfile) {
 				$ed->redir("5/$db",['err'=>"Open GZ failed"]);
 				}
 				$e='';
-				while (!gzeof($gzfile)) {
+				while(!gzeof($gzfile)) {
 				$e.=gzgetc($gzfile);
 				}
 				gzclose($gzfile);
-				$entr=pathinfo($file['filename']);
-				$e_ext=$entr['extension'];
-				if($e_ext=='sql') $e=preg_split($rgex,$ed->utf($e),-1,PREG_SPLIT_NO_EMPTY);
-				elseif($e_ext=='csv') $e=$ed->imp_csv($entr['filename'],$e);
-				elseif($e_ext=='json') $e=$ed->imp_json($entr['filename'],$e);
-				elseif($e_ext=='xml') $e=$ed->imp_xml($entr['filename'],$e);
-				else $ed->redir("5/$db",['err'=>"Disallowed extension"]);
+				}
+				if($ex[2]=='sql') $e=preg_split($rgex,$ed->utf($e),-1,PREG_SPLIT_NO_EMPTY);
+				elseif($ex[2]=='csv') $e=$ed->imp_csv($ex[1],$e);
+				elseif($ex[2]=='json') $e=$ed->imp_json($ex[1],$e);
+				elseif($ex[2]=='xml') $e=$ed->imp_xml($ex[1],$e);
+				elseif($ex[2]=='tar') {
+					$e=[];$tmpTar='./_tmp.tar';
+					file_put_contents($tmpTar, gzdecode(file_get_contents($tmp)));
+					$pd=new PharData($tmpTar);
+					foreach($pd as $en) {
+					$tn=$en->getFilename();$buf=$en->getPathName();
+					preg_match("/^(.*)\.(sql|csv|json|xml)$/i",$tn,$tx);
+					if($tx[2]=='sql') $e[]=preg_split($rgex,$ed->utf($buf),-1,PREG_SPLIT_NO_EMPTY);
+					elseif($tx[2]=='csv') $e[]=$ed->imp_csv($tx[1],$buf);
+					elseif($tx[2]=='json') $e[]=$ed->imp_json($tx[1],$buf);
+					elseif($tx[2]=='xml') $e[]=$ed->imp_xml($tx[1],$buf);
+					}
+					@unlink($tmpTar);
+					$e=call_user_func_array('array_merge',$e);
+				}
 			} else {
 				$ed->redir("5/$db",['err'=>"Open GZ failed"]);
 			}
-		} elseif($ext=='zip') {
+		} elseif($ext[2]=='zip') {
 			if(($fzip=fopen($tmp,'r')) !==FALSE) {
 				if(@fread($fzip,4) !="\x50\x4B\x03\x04") {
 				$ed->redir("5/$db",['err'=>"Not a valid ZIP file"]);
 				}
 				fclose($fzip);
 			}
-			$e='';
-			$zip=zip_open($tmp);
-			if(is_resource($zip)) {
-				$zip_entry=zip_read($zip);
-				if(zip_entry_open($zip,$zip_entry,"rb")) {
-				$zentry=zip_entry_name($zip_entry);
-				if($file['filename']==$zentry) {
-				$buf=zip_entry_read($zip_entry,zip_entry_filesize($zip_entry));
+			$e=[];
+			$zip=new ZipArchive;
+			$res=$zip->open($tmp);
+			if($res === TRUE) {
+				$i=0;
+				while($i < $zip->numFiles) {
+				$zentry=$zip->getNameIndex($i);
+				$buf=$zip->getFromName($zentry);
 				preg_match("/^(.*)\.(sql|csv|json|xml)$/i",$zentry,$zn);
-				if(!empty($zn[2]) && $zn[2]=='sql') $e=preg_split($rgex,$ed->utf($buf),-1,PREG_SPLIT_NO_EMPTY);
-				elseif(!empty($zn[2]) && $zn[2]=='csv') $e=$ed->imp_csv($zn[1],$buf);
-				elseif(!empty($zn[2]) && $zn[2]=='json') $e=$ed->imp_json($zn[1],$buf);
-				elseif(!empty($zn[2]) && $zn[2]=='xml') $e=$ed->imp_xml($zn[1],$buf);
-				else $ed->redir("5/$db",['err'=>"Disallowed extension"]);
-				zip_entry_close($zip_entry);
+				if(!empty($zn[2])) {
+				if($zn[2]=='sql') $e[]=preg_split($rgex,$ed->utf($buf),-1,PREG_SPLIT_NO_EMPTY);
+				elseif($zn[2]=='csv') $e[]=$ed->imp_csv($zn[1],$buf);
+				elseif($zn[2]=='json') $e[]=$ed->imp_json($zn[1],$buf);
+				elseif($zn[2]=='xml') $e[]=$ed->imp_xml($zn[1],$buf);
 				}
+				++$i;
 				}
-				zip_close($zip);
+				$zip->close();
+				if(count($e) != count($e, COUNT_RECURSIVE)) $e=call_user_func_array('array_merge',$e);
 			}
 		} else {
 			$ed->redir("5/$db",['err'=>"Disallowed extension"]);
@@ -1743,7 +1783,7 @@ case "30"://import
 	} else {
 		$ed->redir("5/$db",['err'=>"Query failed"]);
 	}
-	if(is_array($e)) {
+	if(!empty($e) && is_array($e)) {
 		$ed->con->begin();
 		foreach($e as $qry) {
 			$qry=trim($qry);
@@ -1763,22 +1803,39 @@ case "30"://import
 break;
 
 case "31"://export form
-	$ed->check([1]);
+	$ed->check();
+	echo $head;
+	$div="<div class='dw'><h3 class='l1'>Export</h3>";
+	if(empty($ed->sg[1])) {
+	echo $ed->menu(1,'',2).$ed->form("32").$div."<h3>Select database(s)</h3>
+	<p><input type='checkbox' onclick='selectall(this,\"dbs\")'/> All/None</p>
+	<select id='dbs' name='dbs[]' multiple='multiple'>";
+	foreach($ed->u_db as $udb) {
+	$udb = $udb[0];
+	if(!in_array($udb,$ed->deny)) echo "<option value='$udb'>$udb</option>";
+	}
+	echo "</select>";
+	} else {
 	$db=$ed->sg[1];
 	$q_tts=$ed->con->query("SHOW TABLES FROM `$db`");
 	if($q_tts->num_row()) {
-	echo $head.$ed->menu($db,'',2).$ed->form("32/$db")."<div class='dw'><h3 class='l1'>Export</h3><h3>Select table(s)</h3>
+	echo $ed->menu($db,'',2).$ed->form("32/$db").$div."<h3>Select table(s)</h3>
 	<p><input type='checkbox' onclick='selectall(this,\"tables\")'/> All/None</p>
 	<select id='tables' name='tables[]' multiple='multiple'>";
 	foreach($q_tts->fetch(1) as $r_tt) echo "<option value='".$r_tt[0]."'>".$r_tt[0]."</option>";
-	echo "</select>
-	<h3><input type='checkbox' onclick='toggle(this,\"fopt[]\")'/> Options</h3>";
+	echo "</select>";
+	} else {
+	$ed->redir("5/$db",["err"=>"No export empty DB"]);
+	}
+	}
+	echo "<h3><input type='checkbox' onclick='toggle(this,\"fopt[]\")'/> Options</h3>";
 	$opts=['structure'=>'Structure','data'=>'Data','cdb'=>'Create DB','auto'=>'Auto Increment','drop'=>'Drop if exist','ifnot'=>'If not exist','lock'=>'Lock table','trigger'=>'Triggers','procfunc'=>'Routines','event'=>'Events'];
 	foreach($opts as $k=> $opt) {
 	echo "<p><input type='checkbox' name='fopt[]' value='$k'".($k=='structure' ? ' checked':'')." /> $opt</p>";
 	}
 	echo "<h3>File format</h3>";
-	$ffo=['sql'=>'SQL','csv1'=>'CSV,','csv2'=>'CSV;','json'=>'JSON','xls'=>'Excel Spreadsheet','doc'=>'Word Web','xml'=>'XML'];
+	$ffo=['sql'=>'SQL'];
+	if(!empty($ed->sg[1])) $ffo=array_merge($ffo,['json'=>'JSON','csv1'=>'CSV,','csv2'=>'CSV;','xls'=>'Excel Spreadsheet','doc'=>'Word 2000','xml'=>'XML']);
 	foreach($ffo as $k=> $ff) {
 	echo "<p><input type='radio' name='ffmt[]' onclick='opt()' value='$k'".($k=='sql' ? ' checked':'')." /> $ff</p>";
 	}
@@ -1788,41 +1845,25 @@ case "31"://export form
 	echo "<option value='$k'>$ft</option>";
 	}
 	echo "</select></p><button type='submit' name='exp'>Export</button></div></form>";
-	} else {
-	$ed->redir("5/$db",["err"=>"No export empty DB"]);
-	}
 break;
 
 case "32"://export
 	if($ed->post('exp','i')) {
-	$ed->check([1]);
-	$db=$ed->sg[1];
-	$tbs=[];
-	$vws=[];
-	$ffmt=$ed->post('ffmt');
-	if($ed->post('tables')=='' && $ffmt[0]!='sql') {
-		$ed->redir("31/$db",['err'=>"You didn't select any table"]);
-	} elseif($ed->post('tables','!e')) {//selected tables
-		$tabs=$ed->post('tables');
-		foreach($tabs as $tab) {
-			$r_com=$ed->con->query("SHOW TABLE STATUS FROM `$db` like '$tab'")->fetch();
-			if(preg_match('/view/i',$r_com[17])) {
-			array_push($vws,$r_com[0]);
-			} else {
-			array_push($tbs,$r_com[0]);
-			}
-		}
+	$ed->check();
+	$ffmt=$ed->post('ffmt'); $ftype=$ed->post('ftype');
+	$dbs=(empty($ed->sg[1])?($ed->post('dbs')?$ed->post('dbs'):[]):[$ed->sg[1]]);
+	if((!empty($ed->sg[1]) && $ed->post('tables')=='') || (empty($ed->sg[1]) && $ed->post('dbs')=='')) {
+		$ed->redir("31".(empty($ed->sg[1])?'':'/'.$ed->sg[1]),['err'=>"You didn't selected any DB/Table"]);
 	}
-	//check export options
-	if($ed->post('fopt')=='') {
-		$ed->redir("31/$db",['err'=>"You didn't select any option"]);
+	if($ed->post('fopt')=='' && in_array($ffmt[0],['sql','doc','xml'])) {//export options
+		$ed->redir("31".(empty($ed->sg[1])?'':'/'.$ed->sg[1]),['err'=>"You didn't selected any option"]);
 	} else {
 		$fopt=$ed->post('fopt');
 	}
-	$ftype=$ed->post('ftype');
 	if($ffmt[0]=='sql') {//sql format
-		$ffty="text/plain"; $ffext=".sql"; $fname=$db.$ffext;
+		$ffty="text/plain"; $ffext=".sql"; $fname=(count($dbs)>1 ? 'all':$dbs[0]).$ffext;
 		$sql="-- EdMyAdmin $version SQL Dump\n\n";
+		foreach($dbs as $db) {
 		if(in_array('cdb',$fopt)) {//option create db
 			$sql.="CREATE DATABASE ";
 			if(in_array('ifnot',$fopt)) {//option if not exist
@@ -1830,17 +1871,18 @@ case "32"://export
 			}
 			$sql.="`$db`;\nUSE `$db`;\n\n";
 		}
+		list($tbs,$vws)=$ed->getTables($db);
 		foreach($tbs as $tb) {
 			$r_st=$ed->con->query("SHOW TABLE STATUS FROM `$db` like '$tb'")->fetch();
 			if(in_array('structure',$fopt)) {//structure
 				$sql.=$ed->tb_structure($db,$tb,$fopt,'',$r_st)."\n";
 			}
 			if(in_array('data',$fopt)) {//option data
-				$q_fil=$ed->con->query("SHOW FIELDS FROM `$tb`");
+				$q_fil=$ed->con->query("SHOW FIELDS FROM `$db`.`$tb`");
 				$cols=$q_fil->num_row();
 				$r_fil=$q_fil->fetch(1);
-				$q_rx=$ed->con->query("SELECT * FROM `$tb`");
-				if($q_rx->num_row()) {
+				$q_rx=$ed->con->query("SELECT * FROM `$db`.`$tb`");
+				if($q_rx) {
 					if($r_st[17] !='VIEW') {
 					$sql.="\n";
 					if(in_array('lock',$fopt)) $sql.="LOCK TABLES `$tb` WRITE;\n";
@@ -1878,11 +1920,10 @@ case "32"://export
 				}
 			}//end option data
 		}
-
 		if($vws !='' && in_array('structure',$fopt)) {//export views
 		foreach($vws as $vw) {
-			$q_rw=$ed->con->query("SHOW CREATE VIEW `$vw`");
-			if($q_rw->num_row()) {
+			$q_rw=$ed->con->query("SHOW CREATE VIEW `$db`.`$vw`");
+			if($q_rw) {
 			if(in_array('drop',$fopt)) {//option drop
 			$sql.="\nDROP VIEW IF EXISTS `$vw`;\n";
 			}
@@ -1896,7 +1937,7 @@ case "32"://export
 		$sqs='';
 		if(in_array('trigger',$fopt)) {//option trigger
 			$q_trg=$ed->con->query("SELECT TRIGGER_NAME,ACTION_TIMING,EVENT_MANIPULATION,EVENT_OBJECT_TABLE,ACTION_STATEMENT FROM information_schema.triggers WHERE TRIGGER_SCHEMA='$db'");
-			if($q_trg->num_row()) {
+			if($q_trg) {
 			$sqs.="\n";
 			foreach($q_trg->fetch(1) as $r_row) {
 				if(in_array('drop',$fopt)) {//option drop
@@ -1908,13 +1949,13 @@ case "32"://export
 		}
 		if(in_array('procfunc',$fopt)) {//option proc
 			$q_pr=$ed->con->query("SELECT ROUTINE_TYPE,ROUTINE_NAME FROM information_schema.routines WHERE ROUTINE_SCHEMA='$db'");
-			if($q_pr->num_row()) {
+			if($q_pr) {
 			$sqs.="\n";
 			foreach($q_pr->fetch(1) as $r_px) {
 				if(in_array('drop',$fopt)) {//option drop
 				$sqs.="DROP ".$r_px[0]." IF EXISTS `".$r_px[1]."`;\n";
 				}
-				$q_rs=$ed->con->query("SHOW CREATE ".$r_px[0]." `".$r_px[1]."`");
+				$q_rs=$ed->con->query("SHOW CREATE ".$r_px[0]." `$db`.`".$r_px[1]."`");
 				foreach($q_rs->fetch(1) as $r_rs) {
 				$sqs.=$r_rs[2]."$$\n\n";
 				}
@@ -1923,13 +1964,13 @@ case "32"://export
 		}
 		if(in_array('event',$fopt)) {//option event
 			$q_eev=$ed->con->query("SELECT EVENT_NAME FROM information_schema.EVENTS WHERE EVENT_SCHEMA='$db'");
-			if($q_eev->num_row()) {
+			if($q_eev) {
 			$sqs.="\n";
 			foreach($q_eev->fetch(1) as $r_eev) {
 				if(in_array('drop',$fopt)) {//option drop
 				$sqs.="DROP EVENT IF EXISTS `".$r_eev[0]."`;\n";
 				}
-				$q_rev=$ed->con->query("SHOW CREATE EVENT `".$r_eev[0]."`")->fetch(1);
+				$q_rev=$ed->con->query("SHOW CREATE EVENT `$db`.`".$r_eev[0]."`")->fetch(1);
 				foreach($q_rev as $r_rev) {
 				$sqs.=$r_rev[3]."$$\n\n";
 				}
@@ -1937,8 +1978,10 @@ case "32"://export
 			}
 		}
 		$sql.=(trim($sqs)!=''?"\nDELIMITER $$\n".$sqs."DELIMITER ;\n":"");
+		}
 	} elseif($ffmt[0]=='csv1' || $ffmt[0]=='csv2') {//csv format
-		$tbs=array_merge($tbs,$vws);
+		$db=$dbs[0];
+		list($tbs)=$ed->getTables($db);
 		$ffty="text/csv"; $ffext=".csv"; $fname=$db.$ffext;
 		$sql=[];
 		if(count($tbs)==1 || $ftype=="plain") {
@@ -1946,13 +1989,13 @@ case "32"://export
 			$fname=$tbs[0].$ffext;
 		}
 		$sign=($ffmt[0]=='csv1'?',':';');
-		if(empty($tbs[0])) $ed->redir("31/".$db,['err'=>"Select a table/view"]);
+		if(empty($tbs[0])) $ed->redir("31/".$db,['err'=>"Select a table"]);
 		foreach($tbs as $tb) {
 			$sq='';
-			$q_csv=$ed->con->query("SHOW FIELDS FROM `$tb`")->fetch(2);
+			$q_csv=$ed->con->query("SHOW FIELDS FROM `$db`.`$tb`")->fetch(2);
 			foreach($q_csv as $r_csv) $sq.=$r_csv['Field'].$sign;
 			$sq=substr($sq,0,-1)."\n";
-			$q_rs=$ed->con->query("SELECT * FROM `$tb`")->fetch(1);
+			$q_rs=$ed->con->query("SELECT * FROM `$db`.`$tb`")->fetch(1);
 			foreach($q_rs as $r_rs) {
 			foreach($r_rs as $r_r) $sq.=(is_numeric($r_r) ? $r_r : "\"".preg_replace(["/\r\n|\r|\n/","/'/","/\"/"],["\\n","\'","\"\""],$r_r)."\"").$sign;
 			$sq=substr($sq,0,-1)."\n";
@@ -1961,21 +2004,21 @@ case "32"://export
 		}
 		if(count($tbs)==1 || $ftype=="plain") $sql=$sql[$fname];
 	} elseif($ffmt[0]=='json') {//json format
-		$tbs=array_merge($tbs,$vws);
+		$db=$dbs[0];
+		list($tbs)=$ed->getTables($db);
 		$ffty="text/json"; $ffext=".json"; $fname=$db.$ffext;
 		$sql=[];
 		if(count($tbs)==1 || $ftype=="plain") {
-			$tbs=[$tbs[0]];
 			$fname=$tbs[0].$ffext;
 		}
 		foreach($tbs as $tb) {
-			$sq="// EdMyAdmin $version JSON Dump\n\n";
-			$q_jso=$ed->con->query("SELECT * FROM `$tb`");
+			$sq='';
+			$q_jso=$ed->con->query("SELECT * FROM `$db`.`$tb`");
 			if($q_jso->num_row() > 0) {
 			$sq.='[';
 			foreach($q_jso->fetch(2) as $k_jso=>$r_jso) {
 			$jh='{';
-			foreach($r_jso as $k_jo=>$r_jo) $jh.='"'.$k_jo.'":'.(is_numeric($r_jo)?$r_jo:'"'.preg_replace(["/\r\n|\r|\n/","/\t/","/'/","/\"/"],["\\n","\\t","''","&quot;"],$r_jo).'"').',';
+			foreach($r_jso as $k_jo=>$r_jo) $jh.='"'.$k_jo.'":'.(is_numeric($r_jo)?$r_jo:'"'.preg_replace(["/\r\n|\r|\n/","/\t/","/'/","/\"/"],["\\n","\\t","''","\\\""],$r_jo).'"').',';
 			$sq.=substr($jh,0,-1).'},';
 			}
 			$sq=substr($sq,0,-1).']';
@@ -1984,11 +2027,12 @@ case "32"://export
 		}
 		if(count($tbs)==1 || $ftype=="plain") $sql=$sql[$fname];
 	} elseif($ffmt[0]=='doc') {//doc format
-		$tbs=array_merge($tbs,$vws);
+		$db=$dbs[0];
+		list($tbs)=$ed->getTables($db);
 		$ffty="application/msword"; $ffext=".doc"; $fname=$db.$ffext;
 		$sql='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:word" 	xmlns="http://www.w3.org/TR/REC-html40"><!DOCTYPE html><html><head><meta http-equiv="Content-type" content="text/html;charset=utf-8"></head><body>';
 		foreach($tbs as $tb) {
-		$q_doc=$ed->con->query("SHOW FIELDS FROM `$tb`")->fetch(2);
+		$q_doc=$ed->con->query("SHOW FIELDS FROM `$db`.`$tb`")->fetch(2);
 		if(in_array('structure',$fopt)) {
 			$wh='<table border=1 cellpadding=0 cellspacing=0 style="border-collapse: collapse"><tr bgcolor="#eeeeee">';
 			foreach($q_doc[0] as $r_k=>$r_doc) $wh.='<th>'.$r_k.'</th>';
@@ -2005,7 +2049,7 @@ case "32"://export
 			$wb='<table border=1 cellpadding=0 cellspacing=0 style="border-collapse: collapse"><tr>';
 			foreach($q_doc as $r_dc) $wb.='<th>'.$r_dc['Field'].'</th>';
 			$wb.="</tr>";
-			$q_dc2=$ed->con->query("SELECT * FROM `$tb`")->fetch(1);
+			$q_dc2=$ed->con->query("SELECT * FROM `$db`.`$tb`")->fetch(1);
 			foreach($q_dc2 as $r_dc2) {
 			$wb.="<tr>";
 			foreach($r_dc2 as $r_d2) $wb.='<td>'.$r_d2.'</td>';
@@ -2017,17 +2061,18 @@ case "32"://export
 		}
 		$sql.='</body></html>';
 	} elseif($ffmt[0]=='xls') {//xls format
-		$tbs=array_merge($tbs,$vws);
+		$db=$dbs[0];
+		list($tbs)=$ed->getTables($db);
 		$ffty="application/excel"; $ffext=".xls"; $fname=$db.$ffext;
 		$sql='<?xml version="1.0"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet" xmlns:html="http://www.w3.org/TR/REC-html40">';
 		foreach($tbs as $tb) {
 			$xh='<Worksheet ss:Name="'.$tb.'"><Table><Row>';
-			$q_xl1=$ed->con->query("SHOW FIELDS FROM `$tb`")->fetch(2);
+			$q_xl1=$ed->con->query("SHOW FIELDS FROM `$db`.`$tb`")->fetch(2);
 			foreach($q_xl1 as $r_xl1) {
 			$xh.='<Cell><Data ss:Type="String">'.$r_xl1['Field'].'</Data></Cell>';
 			}
 			$xh.='</Row>';
-			$q_xl2=$ed->con->query("SELECT * FROM `$tb`")->fetch(1);
+			$q_xl2=$ed->con->query("SELECT * FROM `$db`.`$tb`")->fetch(1);
 			foreach($q_xl2 as $r_xl2) {
 			$xh.='<Row>';
 			foreach($r_xl2 as $r_x2) $xh.='<Cell><Data ss:Type="'.(is_numeric($r_x2)?'Number':'String').'">'.htmlentities($r_x2).'</Data></Cell>';
@@ -2037,6 +2082,8 @@ case "32"://export
 		}
 		$sql.='</Workbook>';
 	} elseif($ffmt[0]=='xml') {//xml format
+		$db=$dbs[0];
+		list($tbs,$vws)=$ed->getTables($db);
 		$ffty="application/xml"; $ffext=".xml"; $fname=$db.$ffext;
 		$sql="<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<!-- EdMyAdmin $version XML Dump -->\n<export version=\"1.0\" xmlns:ed=\"https://github.com/edmondsql\">";
 		if(in_array('structure',$fopt)) {
@@ -2059,8 +2106,8 @@ case "32"://export
 		if(in_array('data',$fopt)) {
 		$sq="\n\t<database name=\"$db\">";
 		foreach($tbs as $tb) {
-		$q_xm1=$ed->con->query("SHOW FIELDS FROM `$tb`")->fetch(1);
-		$q_xm2=$ed->con->query("SELECT * FROM `$tb`")->fetch(1);
+		$q_xm1=$ed->con->query("SHOW FIELDS FROM `$db`.`$tb`")->fetch(1);
+		$q_xm2=$ed->con->query("SELECT * FROM `$db`.`$tb`")->fetch(1);
 		foreach($q_xm2 as $r_=>$r_xm2) {
 			$sq.="\n\t\t<table name=\"$tb\">";
 			$x=0;
@@ -2073,7 +2120,7 @@ case "32"://export
 		}
 		$sq.="\n\t</database>";
 		}
-		$sql.=(empty($tbs)?'':$sq)."\n</export>";
+		$sql.=(empty($sq)?'':$sq)."\n</export>";
 	}
 
 	if($ftype=="gzip") {//gzip
@@ -2101,7 +2148,7 @@ case "32"://export
 		$sql=$sq.pack('a1024','');
 		}
 		$sql=gzencode($sql,9);
-		header('Content-Encoding: gzip');
+		header('Accept-Encoding: gzip;q=0,deflate;q=0');
 	} elseif($ftype=="zip") {//zip
 		$zty="application/x-zip";
 		$zext=".zip";
