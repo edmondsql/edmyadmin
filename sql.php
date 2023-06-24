@@ -6,7 +6,7 @@ session_name('SQL');
 session_start();
 $bg=2;
 $step=20;
-$version="3.18.0";
+$version="3.18.1";
 $bbs=['False','True'];
 $js=(file_exists('jquery.js')?"/jquery.js":"https://code.jquery.com/jquery-1.12.4.min.js");
 class DBT {
@@ -1716,7 +1716,6 @@ case "30"://import
 			}
 			if(@function_exists('gzopen')) {
 				preg_match("/^(.*)\.(sql|csv|json|xml|tar)$/i",$ext[1],$ex);
-				if($ex[2]!='tar') {
 				$gzfile=@gzopen($tmp,'rb');
 				if(!$gzfile) {
 				$ed->redir("5/$db",['err'=>"Open GZ failed"]);
@@ -1726,24 +1725,33 @@ case "30"://import
 				$e.=gzgetc($gzfile);
 				}
 				gzclose($gzfile);
-				}
 				if($ex[2]=='sql') $e=preg_split($rgex,$ed->utf($e),-1,PREG_SPLIT_NO_EMPTY);
 				elseif($ex[2]=='csv') $e=$ed->imp_csv($ex[1],$e);
 				elseif($ex[2]=='json') $e=$ed->imp_json($ex[1],$e);
 				elseif($ex[2]=='xml') $e=$ed->imp_xml($ex[1],$e);
 				elseif($ex[2]=='tar') {
-					$e=[];$tmpTar='./_tmp.tar';
-					file_put_contents($tmpTar, gzdecode(file_get_contents($tmp)));
-					$pd=new PharData($tmpTar);
-					foreach($pd as $en) {
-					$tn=$en->getFilename();$buf=$en->getPathName();
-					preg_match("/^(.*)\.(sql|csv|json|xml)$/i",$tn,$tx);
+					$fh=gzopen($tmp,'rb');
+					$fsize=strlen($e);
+					$total=0;$e=[];
+					while(false !== ($block=gzread($fh,512))) {
+					$total+=512;
+					$t=unpack("a100name/a8mode/a8uid/a8gid/a12size/a12mtime",$block);
+					$file=['name'=>$t['name'],'mode'=>@octdec($t['mode']),'uid'=>@octdec($t['uid']),'size'=>@octdec($t['size']),'mtime'=>@octdec($t['mtime'])];
+					$file['bytes']=($file['size'] + 511) & ~511;
+					if($file['bytes'] > 0) {
+					$block=gzread($fh,$file['bytes']);
+					$buf=substr($block,0,$file['size']);
+					$fi=trim($file['name']);
+					preg_match("/^(.*)\.(sql|csv|json|xml)$/i",$fi,$tx);
 					if($tx[2]=='sql') $e[]=preg_split($rgex,$ed->utf($buf),-1,PREG_SPLIT_NO_EMPTY);
 					elseif($tx[2]=='csv') $e[]=$ed->imp_csv($tx[1],$buf);
 					elseif($tx[2]=='json') $e[]=$ed->imp_json($tx[1],$buf);
 					elseif($tx[2]=='xml') $e[]=$ed->imp_xml($tx[1],$buf);
+					$total+=$file['bytes'];
 					}
-					@unlink($tmpTar);
+					if($total >= $fsize-1024) break;
+					}
+					gzclose($fh);
 					$e=call_user_func_array('array_merge',$e);
 				}
 			} else {
