@@ -6,7 +6,7 @@ session_name('SQL');
 session_start();
 $bg=2;
 $step=20;
-$version="3.18.1";
+$version="3.18.2";
 $bbs=['False','True'];
 $js=(file_exists('jquery.js')?"/jquery.js":"https://code.jquery.com/jquery-1.12.4.min.js");
 class DBT {
@@ -609,7 +609,7 @@ html,textarea{overflow:auto}
 .ce{text-align:center}
 .link{float:right;padding:3px 0}
 .pg *{margin:0 2px;width:auto}
-caption{font-weight:bold;text-decoration:underline}
+caption{font-weight:bold;border:2px solid #9be}
 .l1 ul,.l2 ul{list-style:none}
 .left{float:left}
 .left button{margin:0 1px}
@@ -630,7 +630,7 @@ textarea{white-space:pre-wrap}
 .ok,.err{padding:8px;font-weight:bold;font-size:13px}
 .ok{background:#efe;color:#080;border-bottom:2px solid #080}
 .err{background:#fee;color:#f00;border-bottom:2px solid #f00}
-.l1,th,caption,button{background:#9be}
+.l1,th,button{background:#9be}
 .l2,.c1,.col1,h3{background:#cdf}
 .c2,.mn ul{background:#fff}
 .l3,tr:hover.r,button:hover{background:#fe3 !important}
@@ -654,7 +654,7 @@ textarea{white-space:pre-wrap}
 .upr{list-style:none;overflow:auto;overflow-x:hidden;height:90px}
 </style>
 </head><body>'.(empty($_SESSION['ok'])?'':'<div class="msg ok">'.$_SESSION['ok'].'</div>').(empty($_SESSION['err'])?'':'<div class="msg err">'.$_SESSION['err'].'</div>').'<div class="l1"><b><a href="https://github.com/edmondsql/edmyadmin">EdMyAdmin '.$version.'</a></b>'.(isset($ed->sg[0]) && $ed->sg[0]==50 ? "":'<ul class="mn m1"><li>More <small>&#9660;</small><ul><li><a href="'.$ed->path.'60">Info</a></li><li><a href="'.$ed->path.'60/var">Variables</a></li><li><a href="'.$ed->path.'60/status">Status</a></li><li><a href="'.$ed->path.'60/process">Processes</a></li></ul></li><li><a href="'.$ed->path.'52">Users</a></li><li><a href="'.$ed->path.'51">Logout ['.(isset($_SESSION['user']) ? $_SESSION['user']:"").']</a></li></ul>').'</div>';
-$stru="<table><caption>TABLE STRUCTURE</caption><tr><th>FIELD</th><th>TYPE</th><th>VALUE</th><th>ATTRIBUTES</th><th>NULL</th><th>DEFAULT</th><th>COLLATION</th><th>AI <input type='radio' name='ex[]'/></th>".(isset($ed->sg[0]) && $ed->sg[0]==11?"<th>POSITION</th>":"")."</tr>";
+$stru="<table><caption>Structure</caption><tr><th>Field</th><th>Type</th><th>Value</th><th>Attributes</th><th>Null</th><th>Default</th><th>Collation</th><th>AI <input type='radio' name='ex[]'/></th>".(isset($ed->sg[0]) && $ed->sg[0]==11?"<th>Position</th>":"")."</tr>";
 $inttype=[''=>'&nbsp;','UNSIGNED'=>'unsigned','ZEROFILL'=>'zerofill','UNSIGNED ZEROFILL'=>'unsigned zerofill','on update CURRENT_TIMESTAMP'=>'on update'];
 
 if(!isset($ed->sg[0])) $ed->sg[0]=0;
@@ -664,7 +664,7 @@ case ""://show DBs
 	$ed->check();
 	echo $head.$ed->menu()."<div class='col1'>Create Database".$ed->form("2").
 	"<input type='text' name='dbc'/><p>Collation</p>".$ed->collate("dbcll").
-	"<br/><button type='submit'>Create</button></form></div><div class='col2'><table><tr><th>DATABASES</th><th>COLLATION</th><th>TABLES</th><th><a href='{$ed->path}31'>EXP</a> ACTIONS</th></tr>";
+	"<br/><button type='submit'>Create</button></form></div><div class='col2'><table><tr><th>Databases</th><th>Collation</th><th>Tables</th><th><a href='{$ed->path}31'>EXP</a> Actions</th></tr>";
 	foreach($ed->u_db as $r_db) {
 	$db0=$r_db[0];
 	$bg=($bg==1)?2:1;
@@ -789,7 +789,7 @@ case "5"://Show Tables
 	}
 	echo $head.$ed->menu($db,'',1);
 	if($ttalr > 0) {//start rows
-	echo "<table><tr><th>TABLE</th><th>ROWS</th><th>ENGINE</th><th>COLLATE</th><th>COMMENTS</th><th>ACTIONS</th></tr>";
+	echo "<table><tr><th>Table</th><th>Rows</th><th>Engine</th><th>Collate</th><th>Comments</th><th>Actions</th></tr>";
 	$ofset=($pg - 1) * $step;
 	$max=$step + $ofset;
 	while($ofset < $max) {
@@ -814,7 +814,7 @@ case "5"://Show Tables
 	//triggers
 	$q_trg=$ed->con->query("SHOW TRIGGERS FROM `$db`");
 	if($q_trg->num_row()) {
-		echo "<table><tr><th>TRIGGER</th><th>TABLE</th><th>TIMING</th><th>EVENT</th><th>ACTIONS</th></tr>";
+		echo "<table><tr><th>Trigger</th><th>Table</th><th>Timing</th><th>Event</th><th>Actions</th></tr>";
 		foreach($q_trg->fetch(1) as $r_tg) {
 		$bg=($bg==1)?2:1;
 		echo "<tr class='r c$bg'><td>".$r_tg[0]."</td><td>".$r_tg[2]."</td><td>".$r_tg[4]."</td><td>".$r_tg[1]."</td><td><a href='{$ed->path}41/$db/".$r_tg[0]."/trigger'>Edit</a><a class='del' href='{$ed->path}49/$db/".$r_tg[0]."/trigger'>Drop</a></td></tr>";
@@ -837,7 +837,7 @@ case "5"://Show Tables
 		}
 	}
 	if($tsp==1) {
-	echo "<table><tr><th>ROUTINE</th><th>TYPE</th><th>COMMENTS</th><th>ACTIONS</th></tr>";
+	echo "<table><tr><th>Routine</th><th>Type</th><th>Comments</th><th>Actions</th></tr>";
 	foreach($q_sp as $r_sp){
 		$bg=($bg==1)?2:1;
 		if($r_sp[0]==$db) {
@@ -852,7 +852,7 @@ case "5"://Show Tables
 	$q_eve=$ed->con->query("SHOW EVENTS FROM `$db`");
 	if($q_eve)
 	if($q_eve->num_row()) {
-	echo "<table><tr><th>EVENT</th><th>SCHEDULE</th><th>START</th><th>END</th><th>ACTIONS</th></tr>";
+	echo "<table><tr><th>Event</th><th>Schedule</th><th>Start</th><th>End</th><th>Actions</th></tr>";
 	foreach($q_eve->fetch(2) as $r_eve) {
 	$bg=($bg==1)?2:1;
 	echo "<tr class='r c$bg'><td>".$r_eve['Name']."</td><td>".
@@ -1048,12 +1048,12 @@ case "9":
 	$ed->redir("5/$db",['err'=>"Action failed"]);
 break;
 
-case "10"://table structure
+case "10"://structure
 	$ed->check([1,2]);
 	$db=$ed->sg[1];
 	$tb=$ed->sg[2];
 	echo $head.$ed->menu($db,$tb,1);
-	echo $ed->form("9/$db/$tb")."<table><caption>TABLE STRUCTURE</caption><thead><tr><th><input type='checkbox' onclick='toggle(this,\"idx[]\")'/></th><th>FIELD</th><th>TYPE</th><th>NULL</th><th>COLLATION</th><th>DEFAULT</th><th>EXTRA</th><th>ACTIONS</th></tr></thead><tbody class='sort'>";
+	echo $ed->form("9/$db/$tb")."<table><caption>Structure</caption><thead><tr><th><input type='checkbox' onclick='toggle(this,\"idx[]\")'/></th><th>Field</th><th>Type</th><th>Null</th><th>Collation</th><th>Default</th><th>Extra</th><th>Actions</th></tr></thead><tbody class='sort'>";
 	$q_fi=$ed->con->query("SHOW FULL FIELDS FROM `$tb`");
 	$r_flds=$q_fi->num_row();
 	foreach($q_fi->fetch(2) as $r_fi) {
@@ -1065,7 +1065,7 @@ case "10"://table structure
 	$q_comm=$ed->con->query("SELECT TABLE_COMMENT FROM INFORMATION_SCHEMA.TABLES WHERE `TABLE_SCHEMA`='$db' AND `TABLE_NAME`='$tb'")->fetch();
 	echo "</tbody><tfoot><tr><td colspan='3'><button type='submit' name='changeb'>Change Comment</button></td><td colspan='5'><input type='text' name='changec' value=\"".$q_comm[0]."\"/></td></tr>
 	<tr><td class='auto' colspan='8'><div class='left'><button type='submit' name='primary'>Primary</button><button type='submit' name='index'>Index</button><button type='submit' name='unique'>Unique</button><button type='submit' name='fulltext'>Fulltext</button></div><div class='link'><a href='{$ed->path}27/$db/$tb/analyze'>Analyze</a><a href='{$ed->path}27/$db/$tb/optimize'>Optimize</a><a href='{$ed->path}27/$db/$tb/check'>Check</a><a href='{$ed->path}27/$db/$tb/repair'>Repair</a></div></td></tr></tfoot></table></form>
-	<table><caption>INDEX</caption><tr><th>KEY NAME</th><th>FIELD</th><th>TYPE</th><th>ACTIONS</th></tr>";
+	<table><caption>Index</caption><tr><th>Key name</th><th>Field</th><th>Type</th><th>Actions</th></tr>";
 	$q_idx=$ed->con->query("SHOW KEYS FROM `$tb`");
 	if($q_idx->num_row()) {
 	foreach($q_idx->fetch(2) as $r_idx) {
@@ -1090,7 +1090,7 @@ case "10"://table structure
 	}
 	}
 	$q_rf=$ed->con->query("SELECT * FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE WHERE `CONSTRAINT_SCHEMA`='$db' AND `TABLE_NAME`='$tb' AND `REFERENCED_COLUMN_NAME` IS NOT NULL");
-	echo "</table><table><caption>FOREIGN KEYS</caption><tr><th>FIELD</th><th>TARGET</th><th>ON DELETE</th><th>ON UPDATE</th><th>ACTIONS <a href='{$ed->path}14/$db/$tb'>add</a></th></tr>";
+	echo "</table><table><caption>Foreign keys</caption><tr><th>Field</th><th>Target</th><th>On delete</th><th>On update</th><th>Actions <a href='{$ed->path}14/$db/$tb'>add</a></th></tr>";
 	if($q_rf->num_row()) {
 	$q_ref=$ed->con->query("SELECT * FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE ke JOIN INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS re on ke.constraint_name=re.constraint_name WHERE ke.`CONSTRAINT_SCHEMA`='$db' AND ke.`TABLE_NAME`='$tb' AND ke.`REFERENCED_COLUMN_NAME` IS NOT NULL");
 	foreach($q_ref->fetch(2) as $r_ref) {
@@ -1324,7 +1324,7 @@ case "20"://table browse
 	$q_vic=$ed->con->query("SHOW TABLE STATUS FROM `$db` like '$tb'")->fetch();//17-comment=view
 	echo $head.$ed->menu($db,($q_vic[17]=='VIEW'?'':$tb),1,($q_vic[17]=='VIEW'?['view',$tb]:''));
 	echo "<table><tr>";
-	if($q_vic[17]!='VIEW') {echo "<th>ACTIONS</th>";}
+	if($q_vic[17]!='VIEW') {echo "<th>Actions</th>";}
 	$q_bro=$ed->con->query("SHOW FIELDS FROM `$tb`");
 	$r_cl=$q_bro->num_row();
 	$coln=[];//field
@@ -1601,7 +1601,7 @@ case "24"://search
 	$fields.="<option value='$fl'>$fl</option>";
 	echo "<tr><td>$fl</td><td><select name='cond__".$fl."'>$conds</select></td><td><input type='text' name='$fl'/></td></tr>";
 	}
-	echo "<tr class='c1'><td>ORDER</td><td><select name='order_field'>$fields</select></td><td><select name='order_ord'><option value='ASC'>ASC</option><option value='DESC'>DESC</option></select></td></tr>
+	echo "<tr class='c1'><td>Order</td><td><select name='order_field'>$fields</select></td><td><select name='order_ord'><option value='ASC'>ASC</option><option value='DESC'>DESC</option></select></td></tr>
 	<tr><td colspan='3'><button type='submit' name='search'>Search</button></td></tr></table></form>";
 break;
 
@@ -2358,7 +2358,10 @@ case "42"://routine
 		//function return
 		if($r_rou[3] && stripos($r_rou[3],') ')) $retrn=preg_split('/[()]\s*/',$r_rou[3]);
 		else $retrn=($r_rou[3]=='' ? '':explode(" ",$r_rou[3]));
-		if(empty($retrn[2]) && !empty($r_rou[2])) $retrn[2]=$r_rou[2];
+		if(empty($retrn[2]) && !empty($r_rou[2])) {
+		$retrn=is_array($retrn)?$retrn:[$retrn];
+		$retrn[2]=$r_rou[2];
+		}
 		if(!empty($retrn[2])) $retrn[2]=str_replace("CHARSET ","",$retrn[2]);
 		//param_list
 		$q_plist=$ed->con->query("SHOW CREATE $ty `$db`.`$sp`")->fetch();
@@ -2558,7 +2561,7 @@ break;
 
 case "52"://users
 	$ed->check();
-	echo $head.$ed->menu(1,'',2)."<table><tr><th>USER</th><th>HOST</th><th><a href='{$ed->path}53'>ADD</a></th></tr>";
+	echo $head.$ed->menu(1,'',2)."<table><tr><th>User</th><th>Host</th><th><a href='{$ed->path}53'>Add</a></th></tr>";
 	$q_usr=$ed->con->query("SELECT DISTINCT GRANTEE FROM information_schema.USER_PRIVILEGES ORDER BY GRANTEE")->fetch(1);
 	foreach($q_usr as $r_usr) {
 	$bg=($bg==1)?2:1;
@@ -2865,20 +2868,20 @@ case "60"://info
 	if(empty($ed->sg[1])) {
 		$use=(extension_loaded('mysqli')?'mysqli':'pdo_mysql');
 		echo "<tr><th colspan='2'>INFO</th></tr>";
-		$q_var=['Extension'=>$use,'PHP'=>PHP_VERSION,'Software'=>$_SERVER['SERVER_SOFTWARE']];
+		$q_var=['Extension'=>$use,'Php'=>PHP_VERSION,'Software'=>$_SERVER['SERVER_SOFTWARE']];
 		foreach($q_var as $r_k=>$r_var) {
 		$bg=($bg==1)?2:1;
 		echo "<tr class='r c$bg'><td>$r_k</td><td>$r_var</td></tr>";
 		}
 	} elseif($ed->sg[1]=='var') {
-		echo "<tr><th>VARIABLE</th><th>VALUE</th></tr>";
+		echo "<tr><th>Variable</th><th>Value</th></tr>";
 		$q_var=$ed->con->query("SHOW VARIABLES")->fetch(1);
 		foreach($q_var as $r_var) {
 		$bg=($bg==1)?2:1;
 		echo "<tr class='r c$bg'><td>".$r_var[0]."</td><td>".htmlspecialchars($r_var[1])."</td></tr>";
 		}
 	} elseif($ed->sg[1]=='status') {
-		echo "<tr><th>VARIABLE</th><th>VALUE</th></tr>";
+		echo "<tr><th>Variable</th><th>Value</th></tr>";
 		$q_sts=$ed->con->query("SHOW STATUS")->fetch(1);
 		foreach($q_sts as $r_sts) {
 		$bg=($bg==1)?2:1;
