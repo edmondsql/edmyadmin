@@ -6,7 +6,7 @@ session_name('SQL');
 session_start();
 $bg=2;
 $step=20;
-$version="3.18.2";
+$version="3.18.3";
 $bbs=['False','True'];
 $js=(file_exists('jquery.js')?"/jquery.js":"https://code.jquery.com/jquery-1.12.4.min.js");
 class DBT {
@@ -256,11 +256,11 @@ class ED {
 		if(!$this->priv("SHOW DATABASES")) unset($this->u_db[array_search('information_schema',$rem)]);
 		//check db
 		if(isset($this->sg[1])) $db=$this->sg[1];
-		if(in_array(1,$level)) {
+		if(in_array('1',$level)) {
 			$se=$this->con->db($db);
 			if(!$se) $this->redir();
 		}
-		if(in_array(2,$level)) {//check table
+		if(in_array('2',$level)) {//check table
 			$q_com=$this->con->query("SHOW TABLE STATUS FROM `$db` like '".$this->sg[2]."'");
 			if(!$q_com->num_row()) $this->redir("5/$db");
 			foreach($q_com->fetch(2) as $r_com) {
@@ -270,7 +270,7 @@ class ED {
 			$q_=$this->con->query("SELECT COUNT(*) FROM `".$this->sg[2]."`");
 			if(!$q_) $this->redir("5/$db",['err'=>"No records"]);
 		}
-		if(in_array(3,$level)) {//check field
+		if(in_array('3',$level)) {//check field
 			$tb=$this->sg[2];
 			$qr=$this->con->query("SHOW FIELDS FROM `$db`.`$tb` LIKE '".$this->sg[3]."'");
 			if(!$qr->num_row()) $this->redir($param['redir']."/$db/".$tb);
@@ -279,10 +279,10 @@ class ED {
 			if(!$qr2->num_row()) $this->redir($param['redir']."/$db/$tb");
 			}
 		}
-		if(in_array(4,$level)) {//check paginate
+		if(in_array('4',$level)) {//check paginate
 			if(!is_numeric($param['pg']) || $param['pg'] > $param['total'] || $param['pg'] < 1) $this->redir($param['redir']);
 		}
-		if(in_array(5,$level)) {//check spp
+		if(in_array('5',$level)) {//check spp
 			$sp=['view','trigger','procedure','function','event'];
 			$op=$this->sg[0];
 			$tb=$this->sg[2];
@@ -305,7 +305,7 @@ class ED {
 				if($tb !=$q[1]) $this->redir("5/$db");
 			}
 		}
-		if(in_array(6,$level)) {//check user
+		if(in_array('6',$level)) {//check user
 		$this->priv("CREATE USER","52");
 		if(empty($this->sg[2])) {
 		$u1='';$h1=base64_decode($this->sg[1]);
@@ -664,7 +664,7 @@ case ""://show DBs
 	$ed->check();
 	echo $head.$ed->menu()."<div class='col1'>Create Database".$ed->form("2").
 	"<input type='text' name='dbc'/><p>Collation</p>".$ed->collate("dbcll").
-	"<br/><button type='submit'>Create</button></form></div><div class='col2'><table><tr><th>Databases</th><th>Collation</th><th>Tables</th><th><a href='{$ed->path}31'>EXP</a> Actions</th></tr>";
+	"<br/><button type='submit'>Create</button></form></div><div class='col2'><table><tr><th>Databases</th><th>Collation</th><th>Tables</th><th><a href='{$ed->path}31'>EXP</a>/ Actions</th></tr>";
 	foreach($ed->u_db as $r_db) {
 	$db0=$r_db[0];
 	$bg=($bg==1)?2:1;
