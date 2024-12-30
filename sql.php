@@ -6,7 +6,7 @@ session_name('SQL');
 session_start();
 $bg=2;
 $step=20;
-$version="3.18.3";
+$version="3.18.5";
 $bbs=['False','True'];
 $js=(file_exists('jquery.js')?"/jquery.js":"https://code.jquery.com/jquery-1.12.4.min.js");
 class DBT {
@@ -528,11 +528,11 @@ class ED {
 	}
 	public function getTables($db) {
 		$tbs=[];$vws=[];
-		if($this->post('tables')=='' && $this->post('dbs')!='') {
+		if($this->post('tbs')=='' && $this->post('dbs')!='') {
 			$tabs=$this->con->query("SHOW TABLES FROM `$db`")->fetch(1);
 			$tabs=empty($tabs) ? []:call_user_func_array('array_merge',$tabs);
 		} else {
-			$tabs=$this->post('tables');
+			$tabs=$this->post('tbs');
 		}
 		foreach($tabs as $tb) {
 			$r_st=$this->con->query("SHOW TABLE STATUS FROM `$db` like '$tb'")->fetch();
@@ -1816,8 +1816,8 @@ case "31"://export form
 	$div="<div class='dw'><h3 class='l1'>Export</h3>";
 	if(empty($ed->sg[1])) {
 	echo $ed->menu(1,'',2).$ed->form("32").$div."<h3>Select database(s)</h3>
-	<p><input type='checkbox' onclick='selectall(this,\"dbs\")'/> All/None</p>
-	<select id='dbs' name='dbs[]' multiple='multiple'>";
+	<p><input type='checkbox' onclick='selectall(this,\"dbs\");dbx()'/> All/None</p>
+	<select id='dbs' name='dbs[]' multiple='multiple' onchange='dbx()'>";
 	foreach($ed->u_db as $udb) {
 	$udb = $udb[0];
 	if(!in_array($udb,$ed->deny)) echo "<option value='$udb'>$udb</option>";
@@ -1828,8 +1828,8 @@ case "31"://export form
 	$q_tts=$ed->con->query("SHOW TABLES FROM `$db`");
 	if($q_tts->num_row()) {
 	echo $ed->menu($db,'',2).$ed->form("32/$db").$div."<h3>Select table(s)</h3>
-	<p><input type='checkbox' onclick='selectall(this,\"tables\")'/> All/None</p>
-	<select id='tables' name='tables[]' multiple='multiple'>";
+	<p><input type='checkbox' onchange='selectall(this,\"tbs\");dbx(\"tbs\")'/> All/None</p>
+	<select id='tbs' name='tbs[]' multiple='multiple' onchange='dbx(\"tbs\")'>";
 	foreach($q_tts->fetch(1) as $r_tt) echo "<option value='".$r_tt[0]."'>".$r_tt[0]."</option>";
 	echo "</select>";
 	} else {
@@ -1842,13 +1842,13 @@ case "31"://export form
 	echo "<p><input type='checkbox' name='fopt[]' value='$k'".($k=='structure' ? ' checked':'')." /> $opt</p>";
 	}
 	echo "<h3>File format</h3>";
-	$ffo=['sql'=>'SQL'];
-	if(!empty($ed->sg[1])) $ffo=array_merge($ffo,['json'=>'JSON','csv1'=>'CSV,','csv2'=>'CSV;','xls'=>'Excel Spreadsheet','doc'=>'Word 2000','xml'=>'XML']);
+	$ffo=['sql'=>'SQL','xls'=>'Spreadsheet','xml'=>'XML','doc'=>'Word'];
+	if(!empty($ed->sg[1])) $ffo=array_merge($ffo,['json'=>'JSON','csv1'=>'CSV,','csv2'=>'CSV;']);
 	foreach($ffo as $k=> $ff) {
-	echo "<p><input type='radio' name='ffmt[]' onclick='opt()' value='$k'".($k=='sql' ? ' checked':'')." /> $ff</p>";
+	echo "<p><input type='radio' name='ffmt[]' onclick='fmt()' value='$k'".($k=='sql' ? ' checked':'')." /> $ff</p>";
 	}
 	echo "<h3>File compression</h3><p><select name='ftype'>";
-	$fty=['plain'=>'None','gzip'=>'GZ','zip'=>'Zip'];
+	$fty=['plain'=>'None','zip'=>'Zip','gzip'=>'GZ'];
 	foreach($fty as $k=> $ft) {
 	echo "<option value='$k'>$ft</option>";
 	}
@@ -1860,7 +1860,7 @@ case "32"://export
 	$ed->check();
 	$ffmt=$ed->post('ffmt'); $ftype=$ed->post('ftype');
 	$dbs=(empty($ed->sg[1])?($ed->post('dbs')?$ed->post('dbs'):[]):[$ed->sg[1]]);
-	if((!empty($ed->sg[1]) && $ed->post('tables')=='') || (empty($ed->sg[1]) && $ed->post('dbs')=='')) {
+	if((!empty($ed->sg[1]) && $ed->post('tbs')=='') || (empty($ed->sg[1]) && $ed->post('dbs')=='')) {
 		$ed->redir("31".(empty($ed->sg[1])?'':'/'.$ed->sg[1]),['err'=>"You didn't selected any DB/Table"]);
 	}
 	if($ed->post('fopt')=='' && in_array($ffmt[0],['sql','doc','xml'])) {//export options
@@ -1870,20 +1870,20 @@ case "32"://export
 	}
 	if($ffmt[0]=='sql') {//sql format
 		$ffty="text/plain"; $ffext=".sql"; $fname=(count($dbs)>1 ? 'all':$dbs[0]).$ffext;
-		$sql="-- EdMyAdmin $version SQL Dump\n\n";
 		foreach($dbs as $db) {
+		$sq="-- EdMyAdmin $version SQL Dump\n\n";
 		if(in_array('cdb',$fopt)) {//option create db
-			$sql.="CREATE DATABASE ";
+			$sq.="CREATE DATABASE ";
 			if(in_array('ifnot',$fopt)) {//option if not exist
-			$sql.="IF NOT EXISTS ";
+			$sq.="IF NOT EXISTS ";
 			}
-			$sql.="`$db`;\nUSE `$db`;\n\n";
+			$sq.="`$db`;\nUSE `$db`;\n";
 		}
 		list($tbs,$vws)=$ed->getTables($db);
 		foreach($tbs as $tb) {
 			$r_st=$ed->con->query("SHOW TABLE STATUS FROM `$db` like '$tb'")->fetch();
 			if(in_array('structure',$fopt)) {//structure
-				$sql.=$ed->tb_structure($db,$tb,$fopt,'',$r_st)."\n";
+				$sq.=$ed->tb_structure($db,$tb,$fopt,'',$r_st)."\n";
 			}
 			if(in_array('data',$fopt)) {//option data
 				$q_fil=$ed->con->query("SHOW FIELDS FROM `$db`.`$tb`");
@@ -1892,8 +1892,8 @@ case "32"://export
 				$q_rx=$ed->con->query("SELECT * FROM `$db`.`$tb`");
 				if($q_rx) {
 					if($r_st[17] !='VIEW') {
-					$sql.="\n";
-					if(in_array('lock',$fopt)) $sql.="LOCK TABLES `$tb` WRITE;\n";
+					$sq.="\n";
+					if(in_array('lock',$fopt)) $sq.="LOCK TABLES `$tb` WRITE;\n";
 					foreach($q_rx->fetch(1) as $r_rx) {
 						$ins="INSERT INTO `$tb` VALUES (";
 						$inn="";
@@ -1920,10 +1920,10 @@ case "32"://export
 							++$e;
 						}
 						$ins.=substr($inn,0,-2);
-						$sql.=$ins.");\n";
+						$sq.=$ins.");\n";
 					}
-					if(in_array('lock',$fopt)) $sql.="UNLOCK TABLES;\n";
-					$sql.="\n";
+					if(in_array('lock',$fopt)) $sq.="UNLOCK TABLES;\n";
+					$sq.="\n";
 					}
 				}
 			}//end option data
@@ -1933,12 +1933,12 @@ case "32"://export
 			$q_rw=$ed->con->query("SHOW CREATE VIEW `$db`.`$vw`");
 			if($q_rw) {
 			if(in_array('drop',$fopt)) {//option drop
-			$sql.="\nDROP VIEW IF EXISTS `$vw`;\n";
+			$sq.="\nDROP VIEW IF EXISTS `$vw`;\n";
 			}
 			foreach($q_rw->fetch(1) as $r_rr) {
-			$sql.=$r_rr[1].";\n";
+			$sq.=$r_rr[1].";\n";
 			}
-			$sql.="\n";
+			$sq.="\n";
 			}
 		}
 		}
@@ -1985,7 +1985,9 @@ case "32"://export
 			}
 			}
 		}
-		$sql.=(trim($sqs)!=''?"\nDELIMITER $$\n".$sqs."DELIMITER ;\n":"");
+		$sq.=(trim($sqs)!=''?"\nDELIMITER $$\n".$sqs."DELIMITER ;\n":"");
+		if($ftype!="plain") $sql[$db.$ffext]=$sq;
+		else $sql=$sq;
 		}
 	} elseif($ffmt[0]=='csv1' || $ffmt[0]=='csv2') {//csv format
 		$db=$dbs[0];
@@ -2035,10 +2037,10 @@ case "32"://export
 		}
 		if(count($tbs)==1 || $ftype=="plain") $sql=$sql[$fname];
 	} elseif($ffmt[0]=='doc') {//doc format
-		$db=$dbs[0];
+		$ffty="application/msword"; $ffext=".doc"; $fname=(count($dbs)>1 ? 'all':$dbs[0]).$ffext;
+		foreach($dbs as $db) {
 		list($tbs)=$ed->getTables($db);
-		$ffty="application/msword"; $ffext=".doc"; $fname=$db.$ffext;
-		$sql='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:word" 	xmlns="http://www.w3.org/TR/REC-html40"><!DOCTYPE html><html><head><meta http-equiv="Content-type" content="text/html;charset=utf-8"></head><body>';
+		$sq='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:word" 	xmlns="http://www.w3.org/TR/REC-html40"><!DOCTYPE html><html><head><meta http-equiv="Content-type" content="text/html;charset=utf-8"></head><body>';
 		foreach($tbs as $tb) {
 		$q_doc=$ed->con->query("SHOW FIELDS FROM `$db`.`$tb`")->fetch(2);
 		if(in_array('structure',$fopt)) {
@@ -2065,14 +2067,17 @@ case "32"://export
 			}
 			$wb.='</table><br>';
 		}
-		$sql.=$wh.$wb;
+		$sq.=$wh.$wb;
 		}
-		$sql.='</body></html>';
+		$sq.='</body></html>';
+		if($ftype!="plain") $sql[$db.$ffext]=$sq;
+		else $sql=$sq;
+		}
 	} elseif($ffmt[0]=='xls') {//xls format
-		$db=$dbs[0];
+		$ffty="application/excel"; $ffext=".xls"; $fname=(count($dbs)>1 ? 'all':$dbs[0]).$ffext;
+		foreach($dbs as $db) {
 		list($tbs)=$ed->getTables($db);
-		$ffty="application/excel"; $ffext=".xls"; $fname=$db.$ffext;
-		$sql='<?xml version="1.0"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet" xmlns:html="http://www.w3.org/TR/REC-html40">';
+		$sq='<?xml version="1.0"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet" xmlns:html="http://www.w3.org/TR/REC-html40">';
 		foreach($tbs as $tb) {
 			$xh='<Worksheet ss:Name="'.$tb.'"><Table><Row>';
 			$q_xl1=$ed->con->query("SHOW FIELDS FROM `$db`.`$tb`")->fetch(2);
@@ -2086,49 +2091,55 @@ case "32"://export
 			foreach($r_xl2 as $r_x2) $xh.='<Cell><Data ss:Type="'.(is_numeric($r_x2)?'Number':'String').'">'.htmlentities($r_x2).'</Data></Cell>';
 			$xh.='</Row>';
 			}
-			$sql.=$xh.'</Table></Worksheet>';
+			$sq.=$xh.'</Table></Worksheet>';
 		}
-		$sql.='</Workbook>';
+		$sq.='</Workbook>';
+		if($ftype!="plain") $sql[$db.$ffext]=$sq;
+		else $sql=$sq;
+		}
 	} elseif($ffmt[0]=='xml') {//xml format
-		$db=$dbs[0];
+		$ffty="application/xml"; $ffext=".xml"; $fname=(count($dbs)>1 ? 'all':$dbs[0]).$ffext;
+		foreach($dbs as $db) {
 		list($tbs,$vws)=$ed->getTables($db);
-		$ffty="application/xml"; $ffext=".xml"; $fname=$db.$ffext;
-		$sql="<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<!-- EdMyAdmin $version XML Dump -->\n<export version=\"1.0\" xmlns:ed=\"https://github.com/edmondsql\">";
+		$sq="<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<!-- EdMyAdmin $version XML Dump -->\n<export version=\"1.0\" xmlns:ed=\"https://github.com/edmondsql\">";
 		if(in_array('structure',$fopt)) {
-		$sql.="\n\t<ed:structure_schemas>";
-		$sql.="\n\t\t<ed:database name=\"$db\">";
+		$sq.="\n\t<ed:structure_schemas>";
+		$sq.="\n\t\t<ed:database name=\"$db\">";
 		foreach($tbs as $tb) {
-			$sql.="\n\t\t\t<ed:table name=\"$tb\">";
+			$sq.="\n\t\t\t<ed:table name=\"$tb\">";
 			$r_st=$ed->con->query("SHOW TABLE STATUS FROM `$db` like '$tb'")->fetch();
-			$sql.=	$ed->tb_structure($db,$tb,$fopt,"\t\t\t",$r_st);
-			$sql.="\n\t\t\t</ed:table>";
+			$sq.=	$ed->tb_structure($db,$tb,$fopt,"\t\t\t",$r_st);
+			$sq.="\n\t\t\t</ed:table>";
 		}
 		foreach($vws as $vw) {
-			$sql.="\n\t\t\t<ed:table name=\"$vw\">";
+			$sq.="\n\t\t\t<ed:table name=\"$vw\">";
 			$r_vi=$ed->con->query("SELECT VIEW_DEFINITION FROM information_schema.VIEWS WHERE `TABLE_SCHEMA`='$db' AND `TABLE_NAME`='$vw'")->fetch();
-			$sql.="\n\t\t\tCREATE VIEW `$vw` AS ".$r_vi[0];
-			$sql.="\n\t\t\t</ed:table>";
+			$sq.="\n\t\t\tCREATE VIEW `$vw` AS ".$r_vi[0];
+			$sq.="\n\t\t\t</ed:table>";
 		}
-		$sql.="\n\t\t</ed:database>\n\t</ed:structure_schemas>";
+		$sq.="\n\t\t</ed:database>\n\t</ed:structure_schemas>";
 		}
 		if(in_array('data',$fopt)) {
-		$sq="\n\t<database name=\"$db\">";
+		$sq2="\n\t<database name=\"$db\">";
 		foreach($tbs as $tb) {
 		$q_xm1=$ed->con->query("SHOW FIELDS FROM `$db`.`$tb`")->fetch(1);
 		$q_xm2=$ed->con->query("SELECT * FROM `$db`.`$tb`")->fetch(1);
 		foreach($q_xm2 as $r_=>$r_xm2) {
-			$sq.="\n\t\t<table name=\"$tb\">";
+			$sq2.="\n\t\t<table name=\"$tb\">";
 			$x=0;
 			foreach($r_xm2 as $r_x2) {
-			$sq.="\n\t\t\t<column name=\"".$q_xm1[$x][0]."\">".addslashes(htmlspecialchars($r_x2))."</column>";
+			$sq2.="\n\t\t\t<column name=\"".$q_xm1[$x][0]."\">".addslashes(htmlspecialchars($r_x2))."</column>";
 			++$x;
 			}
-			$sq.="\n\t\t</table>";
+			$sq2.="\n\t\t</table>";
 		}
 		}
-		$sq.="\n\t</database>";
+		$sq2.="\n\t</database>";
 		}
-		$sql.=(empty($sq)?'':$sq)."\n</export>";
+		$sq.=(empty($sq2)?'':$sq2)."\n</export>";
+		if($ftype!="plain") $sql[$db.$ffext]=$sq;
+		else $sql=$sq;
+		}
 	}
 
 	if($ftype=="gzip") {//gzip
@@ -2904,9 +2915,7 @@ case "60"://info
 	echo "</table>";
 break;
 }
-unset($_POST);
-unset($_SESSION["ok"]);
-unset($_SESSION["err"]);
+unset($_POST,$_SESSION["ok"],$_SESSION["err"]);
 ?></div></div><div class="l1 ce"><a href="http://edmondsql.github.io">edmondsql</a></div>
 <script src="<?=$js?>"></script>
 <script>
@@ -3012,11 +3021,11 @@ if(cb.checked) {for(var i=0;i<multi.options.length;i++) multi.options[i].selecte
 function toggle(cb,el){
 var cbox=document.getElementsByName(el);
 for(var i=0;i<cbox.length;i++) cbox[i].checked=cb.checked;
-if(el="fopt[]") opt();
 }
-function opt(){
-var opt=document.getElementsByName("fopt[]"),ft=document.getElementsByName("ffmt[]"),from=2,to=opt.length,ch="";
-for(var j=0; ft[j]; ++j){if(ft[j].checked) ch=ft[j].value;}
+function fmt(){
+var opt=document.getElementsByName("fopt[]"),ff=document.getElementsByName("ffmt[]"),from=2,to=opt.length,ch="",ft=document.getElementsByName("ftype")[0];
+for(var j=0; ff[j]; ++j){if(ff[j].checked) ch=ff[j].value;}
+if(document.getElementById('tbs'))dbx('tbs');
 if(ch=="sql"){
 for(var k=0;k<to;k++) opt[k].parentElement.style.display="block";
 }else if(ch=="doc"||ch=="xml"){
@@ -3025,6 +3034,19 @@ for(var k=2;k<to;k++) {opt[k].parentElement.style.display="none";opt[k].checked=
 }else{
 for(var i=0;i<to;i++) opt[i].parentElement.style.display="none";
 }
+}
+function dbx(el='dbs'){
+var ch="",ft=document.getElementsByName("ftype")[0],ff=document.getElementsByName("ffmt[]"),db=document.querySelectorAll("#"+el+" option:checked").length,dbs=document.getElementById('dbs'),arr=["json","csv1","csv2"];
+for(var j=0;ff[j];++j){if(ff[j].checked) ch=ff[j].value;}
+if(ft[0].value!="plain"){
+if((db<2 && (dbs||arr.indexOf(ch)>-1))||(db>1 && (dbs||arr.indexOf(ch)==-1))){
+var op=document.createElement("option");
+op.value="plain";op.text="None";
+ft.options.add(op,0);
+ft.options[0].selected=true;
+}
+}
+if(db>1 && ft[0].value=="plain" && (dbs||arr.indexOf(ch)>-1))ft[0].remove();
 }
 </script>
 </body></html>
