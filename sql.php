@@ -6,7 +6,7 @@ session_name('SQL');
 session_start();
 $bg=2;
 $step=20;
-$version="3.18.5";
+$version="3.18.6";
 $bbs=['False','True'];
 $js=(file_exists('jquery.js')?"/jquery.js":"https://code.jquery.com/jquery-1.12.4.min.js");
 class DBT {
@@ -445,8 +445,9 @@ class ED {
 		$xml=simplexml_load_string($fbody,"SimpleXMLElement",LIBXML_COMPACT);
 		$nspace=$xml->getNameSpaces(true);
 		$ns=key($nspace);
-		//load structure
-		$sq=[];
+		//structure
+		$db=(string)$xml->xpath('//database')[0]->attributes();
+		$sq[]=["USE `$db`"];
 		if(isset($nspace[$ns]) && isset($xml->children($nspace[$ns])->{'structure_schemas'}->{'database'}->{'table'})) {
 			$stru=$xml->children($nspace[$ns])->{'structure_schemas'}->{'database'}->{'table'};
 			foreach($stru as $st) {
@@ -454,7 +455,7 @@ class ED {
 			}
 		}
 		$sq=(empty($sq) ? $sq : call_user_func_array('array_merge',$sq));
-		//load data
+		//data
 		$data=$xml->xpath('//database/table');
 		foreach($data as $dt) {
 			$tt=$dt->attributes();
@@ -464,7 +465,7 @@ class ED {
 			$co.=(string)$tv['name'].",";
 			$va.="'".$dt2."',";
 			}
-			if($co!='' && $va!='') $e[]="INSERT INTO `".(string)$tt['name']."`(".substr($co,0,-1).") VALUES(".substr($va,0,-1).");";
+			if($co!='' && $va!='') $e[]="INSERT INTO `$db`.`".(string)$tt['name']."`(".substr($co,0,-1).") VALUES(".substr($va,0,-1).");";
 		}
 		return array_merge($sq,$e);
 	}
@@ -1836,10 +1837,10 @@ case "31"://export form
 	$ed->redir("5/$db",["err"=>"No export empty DB"]);
 	}
 	}
-	echo "<h3><input type='checkbox' onclick='toggle(this,\"fopt[]\")'/> Options</h3>";
-	$opts=['structure'=>'Structure','data'=>'Data','cdb'=>'Create DB','auto'=>'Auto Increment','drop'=>'Drop if exist','ifnot'=>'If not exist','lock'=>'Lock table','trigger'=>'Triggers','procfunc'=>'Routines','event'=>'Events'];
+	echo "<h3><input type='checkbox' onclick='toggle(this,\"fopt[]\");fmt()'/> Options</h3>";
+	$opts=['structure'=>'Structure','data'=>'Data','drop'=>'Drop if exist','ifnot'=>'If not exist','auto'=>'Auto Increment','lock'=>'Lock table','cdb'=>'Create DB','trigger'=>'Triggers','procfunc'=>'Routines','event'=>'Events'];
 	foreach($opts as $k=> $opt) {
-	echo "<p><input type='checkbox' name='fopt[]' value='$k'".($k=='structure' ? ' checked':'')." /> $opt</p>";
+	echo "<p><input type='checkbox' name='fopt[]' value='$k' /> $opt</p>";
 	}
 	echo "<h3>File format</h3>";
 	$ffo=['sql'=>'SQL','xls'=>'Spreadsheet','xml'=>'XML','doc'=>'Word'];
@@ -1994,10 +1995,6 @@ case "32"://export
 		list($tbs)=$ed->getTables($db);
 		$ffty="text/csv"; $ffext=".csv"; $fname=$db.$ffext;
 		$sql=[];
-		if(count($tbs)==1 || $ftype=="plain") {
-			$tbs=[$tbs[0]];
-			$fname=$tbs[0].$ffext;
-		}
 		$sign=($ffmt[0]=='csv1'?',':';');
 		if(empty($tbs[0])) $ed->redir("31/".$db,['err'=>"Select a table"]);
 		foreach($tbs as $tb) {
@@ -2012,15 +2009,15 @@ case "32"://export
 			}
 			$sql[$tb.$ffext]=$sq;
 		}
-		if(count($tbs)==1 || $ftype=="plain") $sql=$sql[$fname];
+		if($ftype=="plain") {
+		$fname=$tbs[0].$ffext;
+		$sql=$sql[$fname];
+		}
 	} elseif($ffmt[0]=='json') {//json format
 		$db=$dbs[0];
 		list($tbs)=$ed->getTables($db);
 		$ffty="text/json"; $ffext=".json"; $fname=$db.$ffext;
 		$sql=[];
-		if(count($tbs)==1 || $ftype=="plain") {
-			$fname=$tbs[0].$ffext;
-		}
 		foreach($tbs as $tb) {
 			$sq='';
 			$q_jso=$ed->con->query("SELECT * FROM `$db`.`$tb`");
@@ -2035,7 +2032,10 @@ case "32"://export
 			}
 			$sql[$tb.$ffext]=$sq;
 		}
-		if(count($tbs)==1 || $ftype=="plain") $sql=$sql[$fname];
+		if($ftype=="plain") {
+		$fname=$tbs[0].$ffext;
+		$sql=$sql[$fname];
+		}
 	} elseif($ffmt[0]=='doc') {//doc format
 		$ffty="application/msword"; $ffext=".doc"; $fname=(count($dbs)>1 ? 'all':$dbs[0]).$ffext;
 		foreach($dbs as $db) {
@@ -2119,6 +2119,7 @@ case "32"://export
 		}
 		$sq.="\n\t\t</ed:database>\n\t</ed:structure_schemas>";
 		}
+		$sq2='';
 		if(in_array('data',$fopt)) {
 		$sq2="\n\t<database name=\"$db\">";
 		foreach($tbs as $tb) {
@@ -2136,7 +2137,7 @@ case "32"://export
 		}
 		$sq2.="\n\t</database>";
 		}
-		$sq.=(empty($sq2)?'':$sq2)."\n</export>";
+		$sq.=$sq2."\n</export>";
 		if($ftype!="plain") $sql[$db.$ffext]=$sq;
 		else $sql=$sq;
 		}
@@ -3023,16 +3024,17 @@ var cbox=document.getElementsByName(el);
 for(var i=0;i<cbox.length;i++) cbox[i].checked=cb.checked;
 }
 function fmt(){
-var opt=document.getElementsByName("fopt[]"),ff=document.getElementsByName("ffmt[]"),from=2,to=opt.length,ch="",ft=document.getElementsByName("ftype")[0];
+var opt=document.getElementsByName("fopt[]"),ff=document.getElementsByName("ffmt[]"),to=opt.length,ch="",ft=document.getElementsByName("ftype")[0];
 for(var j=0; ff[j]; ++j){if(ff[j].checked) ch=ff[j].value;}
 if(document.getElementById('tbs'))dbx('tbs');
 if(ch=="sql"){
 for(var k=0;k<to;k++) opt[k].parentElement.style.display="block";
 }else if(ch=="doc"||ch=="xml"){
-for(var k=0;k<from;k++) opt[k].parentElement.style.display="block";
-for(var k=2;k<to;k++) {opt[k].parentElement.style.display="none";opt[k].checked=false;}
+var n=ch=="xml"?4:2;
+for(var k=0;k<n;k++) opt[k].parentElement.style.display="block";
+for(var k=n;k<to;k++) {opt[k].parentElement.style.display="none";opt[k].checked=false}
 }else{
-for(var i=0;i<to;i++) opt[i].parentElement.style.display="none";
+for(var i=0;i<to;i++) {opt[i].parentElement.style.display="none";opt[i].checked=false}
 }
 }
 function dbx(el='dbs'){
