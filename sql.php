@@ -6,7 +6,7 @@ session_name('SQL');
 session_start();
 $bg=2;
 $step=20;
-$version="3.18.6";
+$version="3.18.7";
 $bbs=['False','True'];
 $js=(file_exists('jquery.js')?"/jquery.js":"https://code.jquery.com/jquery-1.12.4.min.js");
 class DBT {
@@ -382,20 +382,20 @@ class ED {
 		return "<div class='pg'>$lft<select onchange='location=this.value;'>$pgs</select>$rgt</div>";
 		}
 	}
-	public function imp_csv($fname,$fbody) {
+	public function imp_csv($fname,$body) {
 		$exist=$this->con->query("SELECT 1 FROM `$fname`");
 		if(!$exist) $this->redir("5/".$this->sg[1],['err'=>"Table not exist"]);
 		$fname=$this->sanitize($fname);
 		$e=[];
-		if(@is_file($fbody)) $fbody=file_get_contents($fbody);
-		$fbody=$this->utf($fbody);
-		$fbody=preg_replace('/^\xEF\xBB\xBF|^\xFE\xFF|^\xFF\xFE/','',$fbody);
+		if(@is_file($body)) $body=file_get_contents($body);
+		$body=$this->utf($body);
+		$body=preg_replace('/^\xEF\xBB\xBF|^\xFE\xFF|^\xFF\xFE/','',$body);
 		//delimiter
 		$delims=[';'=> 0,','=> 0];
-		foreach($delims as $dl=> &$cnt) $cnt=count(str_getcsv($fbody,$dl));
+		foreach($delims as $dl=> &$cnt) $cnt=count(str_getcsv($body,$dl));
 		$mark=array_search(max($delims),$delims);
 		//data
-		$data=explode("\n",str_replace(["\r\n","\n\r","\r"],"\n",$fbody));
+		$data=explode("\n",str_replace(["\r\n","\n\r","\r"],"\n",$body));
 		$row=null;
 		foreach($data as $item) {
 			$row.=$item;
@@ -419,14 +419,14 @@ class ED {
 		if(empty($e)) $this->redir("5/".$this->sg[1],['err'=>"Query failed"]);
 		return $e;
 	}
-	public function imp_json($fname,$fbody) {
+	public function imp_json($fname,$body) {
 		$exist=$this->con->query("SELECT 1 FROM `$fname`");
 		if(!$exist) $this->redir("5/".$this->sg[1],['err'=>"Table not exist"]);
 		$e=[];
-		if(@is_file($fbody)) $fbody=file_get_contents($fbody);
-		$fbody=$this->utf($fbody);
+		if(@is_file($body)) $body=file_get_contents($body);
+		$body=$this->utf($body);
 		$rgxj="~^\xEF\xBB\xBF|^\xFE\xFF|^\xFF\xFE|(\/\/).*\n*|(\/\*)*.*(\*\/)\n*|((\"*.*\")*('*.*')*)(*SKIP)(*F)~";
-		$ex=preg_split($rgxj,$fbody,-1,PREG_SPLIT_NO_EMPTY);
+		$ex=preg_split($rgxj,$body,-1,PREG_SPLIT_NO_EMPTY);
 		$lines=json_decode($ex[0],true);
 		$jr='';
 		foreach($lines[0] as $k=>$li) $jr.=$k.",";
@@ -437,17 +437,19 @@ class ED {
 		}
 		return $e;
 	}
-	public function imp_xml($fname,$fbody) {
+	public function imp_xml($body) {
 		$e=[];
-		if(@is_file($fbody)) $fbody=file_get_contents($fbody);
-		$fbody=$this->utf($fbody);
+		if(@is_file($body)) $body=file_get_contents($body);
+		$body=$this->utf($body);
 		libxml_use_internal_errors(false);
-		$xml=simplexml_load_string($fbody,"SimpleXMLElement",LIBXML_COMPACT);
+		$xml=simplexml_load_string($body,"SimpleXMLElement",LIBXML_COMPACT);
 		$nspace=$xml->getNameSpaces(true);
 		$ns=key($nspace);
 		//structure
 		$db=(string)$xml->xpath('//database')[0]->attributes();
-		$sq[]=["USE `$db`"];
+		$se=$this->con->db($db);
+		if(!$se) $sq[]=["CREATE DATABASE `$db`;"];
+		$sq[]=["USE `$db`;"];
 		if(isset($nspace[$ns]) && isset($xml->children($nspace[$ns])->{'structure_schemas'}->{'database'}->{'table'})) {
 			$stru=$xml->children($nspace[$ns])->{'structure_schemas'}->{'database'}->{'table'};
 			foreach($stru as $st) {
@@ -1707,7 +1709,7 @@ case "30"://import
 		} elseif($ext[2]=='json') {
 			$e=$ed->imp_json($ext[1],$tmp);
 		} elseif($ext[2]=='xml') {
-			$e=$ed->imp_xml($ext[1],$tmp);
+			$e=$ed->imp_xml($tmp);
 		} elseif($ext[2]=='gz') {
 			if(($fgz=fopen($tmp,'r')) !==FALSE) {
 				if(@fread($fgz,3) !="\x1F\x8B\x08") {
@@ -1729,7 +1731,7 @@ case "30"://import
 				if($ex[2]=='sql') $e=preg_split($rgex,$ed->utf($e),-1,PREG_SPLIT_NO_EMPTY);
 				elseif($ex[2]=='csv') $e=$ed->imp_csv($ex[1],$e);
 				elseif($ex[2]=='json') $e=$ed->imp_json($ex[1],$e);
-				elseif($ex[2]=='xml') $e=$ed->imp_xml($ex[1],$e);
+				elseif($ex[2]=='xml') $e=$ed->imp_xml($e);
 				elseif($ex[2]=='tar') {
 					$fh=gzopen($tmp,'rb');
 					$fsize=strlen($e);
@@ -1747,7 +1749,7 @@ case "30"://import
 					if($tx[2]=='sql') $e[]=preg_split($rgex,$ed->utf($buf),-1,PREG_SPLIT_NO_EMPTY);
 					elseif($tx[2]=='csv') $e[]=$ed->imp_csv($tx[1],$buf);
 					elseif($tx[2]=='json') $e[]=$ed->imp_json($tx[1],$buf);
-					elseif($tx[2]=='xml') $e[]=$ed->imp_xml($tx[1],$buf);
+					elseif($tx[2]=='xml') $e[]=$ed->imp_xml($buf);
 					$total+=$file['bytes'];
 					}
 					if($total >= $fsize-1024) break;
@@ -1778,7 +1780,7 @@ case "30"://import
 				if($zn[2]=='sql') $e[]=preg_split($rgex,$ed->utf($buf),-1,PREG_SPLIT_NO_EMPTY);
 				elseif($zn[2]=='csv') $e[]=$ed->imp_csv($zn[1],$buf);
 				elseif($zn[2]=='json') $e[]=$ed->imp_json($zn[1],$buf);
-				elseif($zn[2]=='xml') $e[]=$ed->imp_xml($zn[1],$buf);
+				elseif($zn[2]=='xml') $e[]=$ed->imp_xml($buf);
 				}
 				++$i;
 				}
