@@ -6,8 +6,9 @@ session_name('SQL');
 session_start();
 $bg=2;
 $step=20;
-$version="3.18.7";
+$version="3.19";
 $bbs=['False','True'];
+$deny=['mysql','information_schema','performance_schema','sys'];
 $js=(file_exists('jquery.js')?"/jquery.js":"https://code.jquery.com/jquery-1.12.4.min.js");
 class DBT {
 	public static $sqltype=['mysqli','pdo_mysql'];
@@ -39,7 +40,7 @@ class DBT {
 		return $this->_cnx->query("USE `$db`");
 	}
 	public function query($sql) {
-		try{
+		try {
 		if($this->dbty==self::$sqltype[0]) {
 		mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 		$this->_query=$this->_cnx->query($sql);
@@ -105,8 +106,7 @@ class DBT {
 	}
 }
 class ED {
-	public $con,$path,$sg,$u_db,$fieldtype,$ver,$sqlda,$salt="#a1b2c3#";
-	public $deny=['mysql','information_schema','performance_schema','sys'];
+	public $con,$path,$sg,$u_db,$fieldtype,$ver,$sqlda;
 	public function __construct() {
 	$pi=(isset($_SERVER['PATH_INFO']) ? $_SERVER['PATH_INFO'] : @getenv('PATH_INFO'));
 	$this->sg=preg_split('!/!',$pi,-1,PREG_SPLIT_NO_EMPTY);
@@ -164,7 +164,7 @@ class ED {
 		header('Location: '.$this->path.$way);exit;
 	}
 	public function enco($str) {
-		$salt=$this->salt.$_SERVER['HTTP_USER_AGENT'];
+		$salt=$_SERVER['HTTP_USER_AGENT'];
 		$count=strlen($str);
 		$str=(string)$str;
 		$kount=strlen($salt);
@@ -181,7 +181,7 @@ class ED {
 		return base64_encode(base64_encode($eStr));
 	}
 	public function deco($str) {
-		$salt=$this->salt.$_SERVER['HTTP_USER_AGENT'];
+		$salt=$_SERVER['HTTP_USER_AGENT'];
 		$str=base64_decode(base64_decode($str));
 		$count=strlen($str);
 		$str=(string)$str;
@@ -199,7 +199,6 @@ class ED {
 		return $eStr;
 	}
 	public function priv($pr,$redir=NULL) {
-		$no=["err"=>"No Privileges"];
 		$usr=$_SESSION['user'];
 		$ho=$_SESSION['host'];
 		$u_pr=$this->con->query("SELECT PRIVILEGE_TYPE FROM information_schema.USER_PRIVILEGES WHERE `GRANTEE`='\'$usr\'@\'$ho\''")->fetch(1);
@@ -215,7 +214,7 @@ class ED {
 		foreach($u_pr as $u_p) $p[]=$u_p[0];
 		}
 		if((is_array($pr) && count(array_intersect($pr,$p))<1) || !in_array($pr,$p)) {
-		if($redir!==NULL) $this->redir($redir,$no);
+		if($redir!==NULL) $this->redir($redir,["err"=>"No Privileges"]);
 		return false;
 		}
 		return true;
@@ -241,15 +240,15 @@ class ED {
 			$ho=$_SESSION['host'];
 			$this->con=DBT::factory($ho,$usr,$pwd);
 			if($this->con===false) $this->redir("50",['err'=>"Can't connect to the server"]);
-			$h = 'HTTP_X_REQUESTED_WITH';
+			$h='HTTP_X_REQUESTED_WITH';
 			if(isset($_SERVER[$h]) && !empty($_SERVER[$h]) && strtolower($_SERVER[$h]) == 'xmlhttprequest') session_regenerate_id(true);
 		} else {
 			$this->redir("50");
 		}
-		//mysql version
+		//version
 		$this->ver=$this->con->query('select version()')->fetch();
 		$v2=preg_split("/[\-]+/",$this->ver[0],-1,PREG_SPLIT_NO_EMPTY);
-		if(version_compare($v2[0],'5.1.30','<')) die('Require MySQL 5.1.30 or higher');
+		if(version_compare($v2[0],'5.1.30','<')) die('Require DB 5.1.30 or higher');
 		//list DBs
 		$this->u_db=$this->con->query("select SCHEMA_NAME,DEFAULT_COLLATION_NAME from information_schema.SCHEMATA")->fetch(1);
 		$rem=call_user_func_array('array_merge',$this->u_db);
@@ -272,10 +271,11 @@ class ED {
 		}
 		if(in_array('3',$level)) {//check field
 			$tb=$this->sg[2];
-			$qr=$this->con->query("SHOW FIELDS FROM `$db`.`$tb` LIKE '".$this->sg[3]."'");
+			$sq="SHOW FIELDS FROM `$db`.`$tb` LIKE '";
+			$qr=$this->con->query($sq.$this->sg[3]."'");
 			if(!$qr->num_row()) $this->redir($param['redir']."/$db/".$tb);
 			if(isset($this->sg[5])) {
-			$qr2=$this->con->query("SHOW FIELDS FROM `$db`.`$tb` LIKE '".$this->sg[5]."'");
+			$qr2=$this->con->query($sq.$this->sg[5]."'");
 			if(!$qr2->num_row()) $this->redir($param['redir']."/$db/$tb");
 			}
 		}
@@ -299,7 +299,7 @@ class ED {
 				$this->priv("EVENT","5/$db");
 				$q=$this->con->query("SHOW EVENTS FROM `$db` LIKE '$tb'")->fetch();
 				if($tb !=$q[1]) $this->redir("5/$db");
-			} else {//check proc,func
+			} else {//check routine
 				$this->priv("CREATE ROUTINE","5/$db");
 				$q=$this->con->query("SHOW $sg3 STATUS WHERE `Db`='$db' AND `Name`='$tb'")->fetch();
 				if($tb !=$q[1]) $this->redir("5/$db");
@@ -359,7 +359,8 @@ class ED {
 		$nrf_op.="<option value='$f'>$f</option>";
 		++$f;
 		}
-		if($left==1) $str.="<div class='col1'><h3>Run sql</h3>".$this->form("30/$db")."<textarea name='qtxt'></textarea><br/><button type='submit'>Run</button></form>
+		if($left==1) $str.="<div class='col1'>".
+		$this->form("30/$db")."<textarea name='qtxt'></textarea><br/><button type='submit'>Run sql</button></form>
 		<h3>Import</h3><small>sql, csv, json, xml, gz, zip</small>".$this->form("30/$db",1)."<input type='file' name='importfile'/>
 		<input type='hidden' name='send' value='ja'/><br/><button type='submit'>Upload (&lt;".ini_get("upload_max_filesize")."B)</button></form>
 		<h3>Create Table</h3>".$this->form("6/$db")."<input type='text' name='ctab'/><br/>
@@ -373,7 +374,7 @@ class ED {
 		if($this->sg[0]==20) $link=$this->path."20/".$this->sg[1]."/".$this->sg[2];
 		elseif($this->sg[0]==5) $link=$this->path."5/".$this->sg[1];
 		$pgs='';$k=1;
-		while($k <=$totalpg) {
+		while($k <= $totalpg) {
 		$pgs.="<option ".(($k==$pg) ? "selected>":"value='$link/$k'>")."$k</option>";
 		++$k;
 		}
@@ -446,9 +447,11 @@ class ED {
 		$nspace=$xml->getNameSpaces(true);
 		$ns=key($nspace);
 		//structure
-		$db=(string)$xml->xpath('//database')[0]->attributes();
+		$db=$xml->children($nspace[$ns])->{'structure_schemas'}->{'database'}->attributes();
+		$cll=(string)$db->collate;
+		$db=(string)$db->name;
 		$se=$this->con->db($db);
-		if(!$se) $sq[]=["CREATE DATABASE `$db`;"];
+		if(!$se) $sq[]=["CREATE DATABASE `$db`".(empty($cll)?"":" COLLATE `{$cll}`").";"];
 		$sq[]=["USE `$db`;"];
 		if(isset($nspace[$ns]) && isset($xml->children($nspace[$ns])->{'structure_schemas'}->{'database'}->{'table'})) {
 			$stru=$xml->children($nspace[$ns])->{'structure_schemas'}->{'database'}->{'table'};
@@ -639,7 +642,7 @@ textarea{white-space:pre-wrap}
 .l3,tr:hover.r,button:hover{background:#fe3 !important}
 .ok,.err,.l2 li,.mn>li{display:inline-block;zoom:1}
 .col1,.col2{display:table-cell}
-.col1{vertical-align:top;padding:0 3px;min-width:180px}
+.col1{vertical-align:top;padding:3px}
 .col1,.dw{width:180px}
 .col2 table{margin:3px}
 .col3 table,.dw{margin:3px auto}
@@ -764,7 +767,7 @@ case "4"://Drop DB
 	$ed->check([1]);
 	$ed->priv("DROP","");
 	$db=$ed->sg[1];
-	if(!in_array($db,$ed->deny)) {
+	if(!in_array($db,$deny)) {
 	$q_drodb=$ed->con->query("DROP DATABASE `$db`");
 	if($q_drodb) $ed->redir("",['ok'=>"Succeful deleted DB"]);
 	}
@@ -851,7 +854,7 @@ case "5"://Show Tables
 	echo "</table>";
 	}
 	//events
-	if(!in_array($db,$ed->deny)) {
+	if(!in_array($db,$deny)) {
 	$q_eve=$ed->con->query("SHOW EVENTS FROM `$db`");
 	if($q_eve)
 	if($q_eve->num_row()) {
@@ -1104,7 +1107,7 @@ case "10"://structure
 	echo "</table><table class='c1'><tr><td>Rename Table<br/>".$ed->form("9/$db/$tb")."<input type='text' name='rtab'/><br/><button type='submit'>Rename</button></form><br/>Copy Table to Database<br/>".$ed->form("9/$db/$tb")."<select name='copytab'>";
 	foreach($ed->u_db as $r_ldb) {
 		$rdb=$r_ldb[0];
-		if(!in_array($rdb,$ed->deny)) echo "<option value='$rdb'".($rdb==$db?" selected":"").">$rdb</option>";
+		if(!in_array($rdb,$deny)) echo "<option value='$rdb'".($rdb==$db?" selected":"").">$rdb</option>";
 	}
 	echo "</select><br/><button type='submit'>Copy</button></form><br/>";
 	$q_cll=$ed->con->query("SHOW TABLE STATUS FROM `$db` like '$tb'");
@@ -1324,7 +1327,7 @@ case "20"://table browse
 	}
 	$offset=($pg - 1) * $step;
 
-	$q_vic=$ed->con->query("SHOW TABLE STATUS FROM `$db` like '$tb'")->fetch();//17-comment=view
+	$q_vic=$ed->con->query("SHOW TABLE STATUS FROM `$db` like '$tb'")->fetch();
 	echo $head.$ed->menu($db,($q_vic[17]=='VIEW'?'':$tb),1,($q_vic[17]=='VIEW'?['view',$tb]:''));
 	echo "<table><tr>";
 	if($q_vic[17]!='VIEW') {echo "<th>Actions</th>";}
@@ -1352,7 +1355,7 @@ case "20"://table browse
 		while($i<$r_cl) {
 			$val=($r_rw[$i]==''?'':htmlentities($r_rw[$i]));
 			echo "<td>";
-			if(stristr($colt[$i],"blob")==true && !in_array($db,$ed->deny)) {
+			if(stristr($colt[$i],"blob")==true && !in_array($db,$deny)) {
 				$le=strlen($r_rw[$i]);
 				echo "[blob] ";
 				if($le > 4) {
@@ -1448,7 +1451,7 @@ case "21"://table insert
 				echo "<input type='radio' name='r{$j}[]' value='$kj'/> $bb ";
 				}
 				}
-			} elseif(stristr($colt[$j],"blob")==true && !in_array($db,$ed->deny)) {//blob
+			} elseif(stristr($colt[$j],"blob")==true && !in_array($db,$deny)) {//blob
 			echo "<input type='file' name='r{$j}'/>";
 			} elseif(stristr($colt[$j],"text")==true) {//text
 			echo "<textarea name='r{$j}'></textarea>";
@@ -1532,7 +1535,7 @@ case "22"://table edit row
 				echo "<input type='radio' name='te{$k}[]' value='$kk'".($r_rx[$k]==$kk ? " checked":"")." /> $bb ";
 				}
 				}
-			} elseif(stristr($colt[$k],"blob")==true && !in_array($db,$ed->deny)) {//blob
+			} elseif(stristr($colt[$k],"blob")==true && !in_array($db,$deny)) {//blob
 			echo "[blob] ".number_format((strlen($r_rx[$k])/1024),2)." KB<br/><input type='file' name='te{$k}'/>";
 			} elseif(stristr($colt[$k],"text")==true) {//text
 			echo "<textarea name='te{$k}'>".($r_rx[$k]==''?'':htmlentities($r_rx[$k],ENT_QUOTES))."</textarea>";
@@ -1652,7 +1655,7 @@ case "27"://optimize,analyze,check,repair
 	$tb=$ed->sg[2];
 	$op=$ed->sg[3];
 	$ops=['optimize','analyze','check','repair'];
-	if(in_array($db,$ed->deny)) $ed->redir("10/$db/$tb",['err'=>"Action restricted on this table"]);
+	if(in_array($db,$deny)) $ed->redir("10/$db/$tb",['err'=>"Action restricted on this table"]);
 	if(!empty($op) && in_array($op,$ops)) {
 	$q_op=$ed->con->query($op." TABLE ".$tb);
 	if($op=='check' || $op=='repair') {
@@ -1810,7 +1813,7 @@ case "30"://import
 		$ed->con->commit();
 		echo $head.$ed->menu($db)."<div class='col2'><p>Successfully executed: <b>$q quer".($q>1?'ies':'y')."</b></p>$out";
 	}
-	} else $ed->redir("5/$db",['err'=>"Empty import"]);
+	} else $ed->redir("5/$db",[]);
 break;
 
 case "31"://export form
@@ -1822,8 +1825,8 @@ case "31"://export form
 	<p><input type='checkbox' onclick='selectall(this,\"dbs\");dbx()'/> All/None</p>
 	<select id='dbs' name='dbs[]' multiple='multiple' onchange='dbx()'>";
 	foreach($ed->u_db as $udb) {
-	$udb = $udb[0];
-	if(!in_array($udb,$ed->deny)) echo "<option value='$udb'>$udb</option>";
+	$udb=$udb[0];
+	if(!in_array($udb,$deny)) echo "<option value='$udb'>$udb</option>";
 	}
 	echo "</select>";
 	} else {
@@ -1841,20 +1844,14 @@ case "31"://export form
 	}
 	echo "<h3><input type='checkbox' onclick='toggle(this,\"fopt[]\");fmt()'/> Options</h3>";
 	$opts=['structure'=>'Structure','data'=>'Data','drop'=>'Drop if exist','ifnot'=>'If not exist','auto'=>'Auto Increment','lock'=>'Lock table','cdb'=>'Create DB','trigger'=>'Triggers','procfunc'=>'Routines','event'=>'Events'];
-	foreach($opts as $k=> $opt) {
-	echo "<p><input type='checkbox' name='fopt[]' value='$k' /> $opt</p>";
-	}
+	foreach($opts as $k=> $opt) echo "<p><input type='checkbox' name='fopt[]' value='$k' /> $opt</p>";
 	echo "<h3>File format</h3>";
 	$ffo=['sql'=>'SQL','xls'=>'Spreadsheet','xml'=>'XML','doc'=>'Word'];
 	if(!empty($ed->sg[1])) $ffo=array_merge($ffo,['json'=>'JSON','csv1'=>'CSV,','csv2'=>'CSV;']);
-	foreach($ffo as $k=> $ff) {
-	echo "<p><input type='radio' name='ffmt[]' onclick='fmt()' value='$k'".($k=='sql' ? ' checked':'')." /> $ff</p>";
-	}
+	foreach($ffo as $k=> $ff) echo "<p><input type='radio' name='ffmt[]' onclick='fmt()' value='$k'".($k=='sql' ? ' checked':'')." /> $ff</p>";
 	echo "<h3>File compression</h3><p><select name='ftype'>";
-	$fty=['plain'=>'None','zip'=>'Zip','gzip'=>'GZ'];
-	foreach($fty as $k=> $ft) {
-	echo "<option value='$k'>$ft</option>";
-	}
+	$fty=['plain'=>'None','zip'=>'Zip','gz'=>'GZ'];
+	foreach($fty as $k=> $ft) echo "<option value='$k'>$ft</option>";
 	echo "</select></p><button type='submit' name='exp'>Export</button></div></form>";
 break;
 
@@ -1876,11 +1873,12 @@ case "32"://export
 		foreach($dbs as $db) {
 		$sq="-- EdMyAdmin $version SQL Dump\n\n";
 		if(in_array('cdb',$fopt)) {//option create db
+			$cll=$ed->con->query("SELECT DEFAULT_COLLATION_NAME FROM information_schema.SCHEMATA WHERE SCHEMA_NAME='$db';")->fetch();
 			$sq.="CREATE DATABASE ";
 			if(in_array('ifnot',$fopt)) {//option if not exist
 			$sq.="IF NOT EXISTS ";
 			}
-			$sq.="`$db`;\nUSE `$db`;\n";
+			$sq.="`$db` COLLATE `{$cll[0]}`;\nUSE `$db`;\n";
 		}
 		list($tbs,$vws)=$ed->getTables($db);
 		foreach($tbs as $tb) {
@@ -1929,7 +1927,7 @@ case "32"://export
 					$sq.="\n";
 					}
 				}
-			}//end option data
+			}
 		}
 		if($vws !='' && in_array('structure',$fopt)) {//export views
 		foreach($vws as $vw) {
@@ -1958,7 +1956,7 @@ case "32"://export
 			}
 			}
 		}
-		if(in_array('procfunc',$fopt)) {//option proc
+		if(in_array('procfunc',$fopt)) {//option routine
 			$q_pr=$ed->con->query("SELECT ROUTINE_TYPE,ROUTINE_NAME FROM information_schema.routines WHERE ROUTINE_SCHEMA='$db'");
 			if($q_pr) {
 			$sqs.="\n";
@@ -1989,7 +1987,7 @@ case "32"://export
 			}
 		}
 		$sq.=(trim($sqs)!=''?"\nDELIMITER $$\n".$sqs."DELIMITER ;\n":"");
-		if($ftype!="plain") $sql[$db.$ffext]=$sq;
+		if($ftype!="plain" && count($dbs)>1) $sql[$db.$ffext]=$sq;
 		else $sql=$sq;
 		}
 	} elseif($ffmt[0]=='csv1' || $ffmt[0]=='csv2') {//csv format
@@ -2011,7 +2009,7 @@ case "32"://export
 			}
 			$sql[$tb.$ffext]=$sq;
 		}
-		if($ftype=="plain") {
+		if($ftype=="plain" || count($tbs)<2) {
 		$fname=$tbs[0].$ffext;
 		$sql=$sql[$fname];
 		}
@@ -2034,7 +2032,7 @@ case "32"://export
 			}
 			$sql[$tb.$ffext]=$sq;
 		}
-		if($ftype=="plain") {
+		if($ftype=="plain" || count($tbs)<2) {
 		$fname=$tbs[0].$ffext;
 		$sql=$sql[$fname];
 		}
@@ -2072,7 +2070,7 @@ case "32"://export
 		$sq.=$wh.$wb;
 		}
 		$sq.='</body></html>';
-		if($ftype!="plain") $sql[$db.$ffext]=$sq;
+		if($ftype!="plain" && count($dbs)>1) $sql[$db.$ffext]=$sq;
 		else $sql=$sq;
 		}
 	} elseif($ffmt[0]=='xls') {//xls format
@@ -2083,9 +2081,7 @@ case "32"://export
 		foreach($tbs as $tb) {
 			$xh='<Worksheet ss:Name="'.$tb.'"><Table><Row>';
 			$q_xl1=$ed->con->query("SHOW FIELDS FROM `$db`.`$tb`")->fetch(2);
-			foreach($q_xl1 as $r_xl1) {
-			$xh.='<Cell><Data ss:Type="String">'.$r_xl1['Field'].'</Data></Cell>';
-			}
+			foreach($q_xl1 as $r_xl1) $xh.='<Cell><Data ss:Type="String">'.$r_xl1['Field'].'</Data></Cell>';
 			$xh.='</Row>';
 			$q_xl2=$ed->con->query("SELECT * FROM `$db`.`$tb`")->fetch(1);
 			foreach($q_xl2 as $r_xl2) {
@@ -2096,7 +2092,7 @@ case "32"://export
 			$sq.=$xh.'</Table></Worksheet>';
 		}
 		$sq.='</Workbook>';
-		if($ftype!="plain") $sql[$db.$ffext]=$sq;
+		if($ftype!="plain" && count($dbs)>1) $sql[$db.$ffext]=$sq;
 		else $sql=$sq;
 		}
 	} elseif($ffmt[0]=='xml') {//xml format
@@ -2105,12 +2101,13 @@ case "32"://export
 		list($tbs,$vws)=$ed->getTables($db);
 		$sq="<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<!-- EdMyAdmin $version XML Dump -->\n<export version=\"1.0\" xmlns:ed=\"https://github.com/edmondsql\">";
 		if(in_array('structure',$fopt)) {
+		$cll=$ed->con->query("SELECT DEFAULT_COLLATION_NAME FROM information_schema.SCHEMATA WHERE SCHEMA_NAME='$db';")->fetch();
 		$sq.="\n\t<ed:structure_schemas>";
-		$sq.="\n\t\t<ed:database name=\"$db\">";
+		$sq.="\n\t\t<ed:database name=\"$db\" collate=\"{$cll[0]}\">";
 		foreach($tbs as $tb) {
 			$sq.="\n\t\t\t<ed:table name=\"$tb\">";
 			$r_st=$ed->con->query("SHOW TABLE STATUS FROM `$db` like '$tb'")->fetch();
-			$sq.=	$ed->tb_structure($db,$tb,$fopt,"\t\t\t",$r_st);
+			$sq.=$ed->tb_structure($db,$tb,$fopt,"\t\t\t",$r_st);
 			$sq.="\n\t\t\t</ed:table>";
 		}
 		foreach($vws as $vw) {
@@ -2140,12 +2137,12 @@ case "32"://export
 		$sq2.="\n\t</database>";
 		}
 		$sq.=$sq2."\n</export>";
-		if($ftype!="plain") $sql[$db.$ffext]=$sq;
+		if($ftype!="plain" && count($dbs)>1) $sql[$db.$ffext]=$sq;
 		else $sql=$sq;
 		}
 	}
 
-	if($ftype=="gzip") {//gzip
+	if($ftype=="gz") {//gz
 		$zty="application/x-gzip"; $zext=".gz";
 		ini_set('zlib.output_compression','Off');
 		if(is_array($sql) && count($sql)>1) {
@@ -2690,7 +2687,7 @@ case "53"://add,edit,update user
 	echo "<table><tr><td class='c1'>Select DB<br/>".$ed->form("54/$uu/$hh2")."<select name='dbn'><option value=''>--select--</option>";
 	foreach($ed->u_db as $r_dbs) {
 	$r_dbs0=$r_dbs[0];
-	if(!in_array($r_dbs0,$ed->deny)) {
+	if(!in_array($r_dbs0,$deny)) {
 	echo "<option value='$r_dbs0'>$r_dbs0</option>";
 	}
 	}
@@ -2882,7 +2879,7 @@ case "60"://info
 	if(empty($ed->sg[1])) {
 		$use=(extension_loaded('mysqli')?'mysqli':'pdo_mysql');
 		echo "<tr><th colspan='2'>INFO</th></tr>";
-		$q_var=['Extension'=>$use,'Php'=>PHP_VERSION,'Software'=>$_SERVER['SERVER_SOFTWARE']];
+		$q_var=['Extension'=>$use,'DB'=>$ed->ver[0],'Php'=>PHP_VERSION,'Software'=>$_SERVER['SERVER_SOFTWARE']];
 		foreach($q_var as $r_k=>$r_var) {
 		$bg=($bg==1)?2:1;
 		echo "<tr class='r c$bg'><td>$r_k</td><td>$r_var</td></tr>";
@@ -2923,7 +2920,7 @@ unset($_POST,$_SESSION["ok"],$_SESSION["err"]);
 <script src="<?=$js?>"></script>
 <script>
 var host=document.getElementById("host");
-host?host.focus():'';
+if(host)host.focus();
 $(function(){
 if($(".msg").text()!="") setTimeout(function(){$(".msg").remove();},7000);
 $(".del").on("click",function(e){
@@ -2935,8 +2932,8 @@ $(".msg .ok").on("click",function(){window.location=hrf;});
 $(".msg .err").on("click",function(){$(".msg").remove();});
 $(document).on("keyup",function(e){
 if($(".msg").is("div")){
-if(e.which==32 || e.which==89) window.location=hrf;
-if(e.which==27 || e.which==78) $(".msg").remove();
+if(e.which==32||e.which==89) window.location=hrf;
+if(e.which==27||e.which==78) $(".msg").remove();
 }
 });
 });
@@ -2948,10 +2945,10 @@ $("#rou").on("change",function(){//routine
 if($(this).val()=="FUNCTION"){$(".rou1").hide();$(".rou2").show();}else{$(".rou1").show();$(".rou2").hide();}
 });
 //param rows
-var rou_p=$('[id^="pty_"]').length;
-for(var i=1;i <=rou_p;i++) routine(i);
+var a,i,rou_p=$('[id^="pty_"]').length;
+for(i=1;i <=rou_p;i++) routine(i);
 //priv all
-for(var a=1;a<5;a++){
+for(a=1;a<5;a++){
 var fc=$("#fi"+a).children("option").length,fs=($("#fi"+a).val()||'').length;
 if(fc==fs) $("#fi"+a).siblings("[type=checkbox]").prop("checked",true);
 }
@@ -2989,16 +2986,14 @@ var crr=$('[id^="rr_"]').length;
 if(crr>1) $(el).closest("tr").remove();
 }
 function plus(el){//routine clone row
-var cid=$(el).closest("tr").prop("id");
-var cnt=$('[id^="rr_"]').length + 1;
+var cid=$(el).closest("tr").prop("id"),cnt=$('[id^="rr_"]').length + 1;
 $("#"+cid).after($("#"+cid).clone(true)).prop("id","rr_"+cnt);
 $("#rr_"+cnt).find('[id^="pty_"]').prop("id","pty_"+cnt);
 $('[id^="rr_"]').each(function(i){$(this).prop("id","rr_"+(i+1));});
 $('[id^="pty_"]').each(function(i){$(this).prop("id","pty_"+(i+1));});
 routine(cnt);
 }
-var ar1=["INT","TINYINT","SMALLINT","MEDIUMINT","BIGINT","DOUBLE","DECIMAL","FLOAT"];
-var ar2=["VARCHAR","CHAR","TEXT","TINYTEXT","MEDIUMTEXT","LONGTEXT"];
+var ar1=["INT","TINYINT","SMALLINT","MEDIUMINT","BIGINT","DOUBLE","DECIMAL","FLOAT"],ar2=["VARCHAR","CHAR","TEXT","TINYTEXT","MEDIUMTEXT","LONGTEXT"];
 function routine(id){
 //function returns
 var ej=$("#pty2"),ej1=$("#px1"),ej2=$("#px2");
@@ -3017,31 +3012,31 @@ routin1(id);
 $("#pty_"+id).on("change",function(){routin1(id);});
 }
 function selectall(cb,lb) {
-var multi=document.getElementById(lb);
-if(cb.checked) {for(var i=0;i<multi.options.length;i++) multi.options[i].selected=true;
+var i,multi=document.getElementById(lb);
+if(cb.checked) {for(i=0;i<multi.options.length;i++) multi.options[i].selected=true;
 }else{multi.selectedIndex=-1;}
 }
 function toggle(cb,el){
-var cbox=document.getElementsByName(el);
-for(var i=0;i<cbox.length;i++) cbox[i].checked=cb.checked;
+var i,cbox=document.getElementsByName(el);
+for(i=0;i<cbox.length;i++) cbox[i].checked=cb.checked;
 }
 function fmt(){
-var opt=document.getElementsByName("fopt[]"),ff=document.getElementsByName("ffmt[]"),to=opt.length,ch="",ft=document.getElementsByName("ftype")[0];
-for(var j=0; ff[j]; ++j){if(ff[j].checked) ch=ff[j].value;}
+var j,opt=document.getElementsByName("fopt[]"),ff=document.getElementsByName("ffmt[]"),to=opt.length,ch="",ft=document.getElementsByName("ftype")[0];
+for(j=0; ff[j]; ++j){if(ff[j].checked) ch=ff[j].value;}
 if(document.getElementById('tbs'))dbx('tbs');
 if(ch=="sql"){
 for(var k=0;k<to;k++) opt[k].parentElement.style.display="block";
 }else if(ch=="doc"||ch=="xml"){
-var n=ch=="xml"?4:2;
-for(var k=0;k<n;k++) opt[k].parentElement.style.display="block";
-for(var k=n;k<to;k++) {opt[k].parentElement.style.display="none";opt[k].checked=false}
+var k,n=ch=="xml"?4:2;
+for(k=0;k<n;k++) opt[k].parentElement.style.display="block";
+for(k=n;k<to;k++) {opt[k].parentElement.style.display="none";opt[k].checked=false}
 }else{
 for(var i=0;i<to;i++) {opt[i].parentElement.style.display="none";opt[i].checked=false}
 }
 }
 function dbx(el='dbs'){
-var ch="",ft=document.getElementsByName("ftype")[0],ff=document.getElementsByName("ffmt[]"),db=document.querySelectorAll("#"+el+" option:checked").length,dbs=document.getElementById('dbs'),arr=["json","csv1","csv2"];
-for(var j=0;ff[j];++j){if(ff[j].checked) ch=ff[j].value;}
+var j,ch="",ft=document.getElementsByName("ftype")[0],ff=document.getElementsByName("ffmt[]"),db=document.querySelectorAll("#"+el+" option:checked").length,dbs=document.getElementById('dbs'),arr=["json","csv1","csv2"];
+for(j=0;ff[j];++j){if(ff[j].checked) ch=ff[j].value;}
 if(ft[0].value!="plain"){
 if((db<2 && (dbs||arr.indexOf(ch)>-1))||(db>1 && (dbs||arr.indexOf(ch)==-1))){
 var op=document.createElement("option");
