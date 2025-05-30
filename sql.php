@@ -1,12 +1,11 @@
 <?php
 error_reporting(E_ALL);
-if(version_compare(PHP_VERSION,'5.4.0','<')) die('Require PHP 5.4 or higher');
 if(!extension_loaded('mysqli') && !extension_loaded('pdo_mysql')) die('Install mysqli or pdo_mysql extension!');
 session_name('SQL');
 session_start();
 $bg=2;
 $step=20;
-$version="3.19";
+$version="3.20";
 $bbs=['False','True'];
 $deny=['mysql','information_schema','performance_schema','sys'];
 $js=(file_exists('jquery.js')?"/jquery.js":"https://code.jquery.com/jquery-1.12.4.min.js");
@@ -56,8 +55,7 @@ class DBT {
 	public function begin() {
 		if($this->dbty==self::$sqltype[0]) {
 		$this->_cnx->autocommit(FALSE);
-		if(version_compare(PHP_VERSION,'5.5.0','<')) return $this->query("START TRANSACTION");
-		else return $this->_cnx->begin_transaction();
+		return $this->_cnx->begin_transaction();
 		} else {
 		return $this->_cnx->beginTransaction();
 		}
@@ -605,7 +603,7 @@ $ed=new ED;
 $head='<!DOCTYPE html><html lang="en"><head>
 <title>EdMyAdmin</title><meta charset="utf-8">
 <style>
-*{margin:0;padding:0;font-size:12px;color:#333;font-family:Arial}
+*{margin:0;padding:0;font-size:14px;color:#333;font-family:Arial}
 html{-ms-text-size-adjust:100%;-webkit-text-size-adjust:100%;background:#fff}
 html,textarea{overflow:auto}
 .container{overflow:auto;overflow-y:hidden;-ms-overflow-y:hidden;white-space:nowrap;scrollbar-width:thin}
@@ -1014,7 +1012,7 @@ case "9":
 		$q_co=$ed->con->query("SHOW FULL FIELDS FROM `$tb`")->fetch(1);
 		foreach($q_co as $k=>$r_co) {
 		if($ed->post('n1')==$r_co[0] && $r_co[4]!='PRI' && empty($r_co[6])) {
-		$ed->con->query("ALTER TABLE `$tb` MODIFY COLUMN ".$r_co[0]." ".$r_co[1]." ".(($ed->post('n2')=="x" && $q_co[0][4]!='PRI' && empty($q_co[0][6]))?"FIRST":"AFTER ".$ed->post('n2')));
+		$ed->con->query("ALTER TABLE `$tb` MODIFY COLUMN ".$r_co[0]." ".$r_co[1]." ".($r_co[3]=='NO'?'NOT NULL':'NULL')." ".(($ed->post('n2')=="x" && $q_co[0][4]!='PRI' && empty($q_co[0][6]))?"FIRST":"AFTER ".$ed->post('n2')));
 		}
 		}
 		exit;
