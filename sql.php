@@ -5,7 +5,7 @@ session_name('SQL');
 session_start();
 $bg=2;
 $step=20;
-$version="3.21";
+$version="3.22";
 $bbs=['False','True'];
 $deny=['mysql','information_schema','performance_schema','sys'];
 class DBT {
@@ -600,7 +600,7 @@ class ED {
 }
 $ed=new ED;
 $head='<!DOCTYPE html><html lang="en"><head>
-<title>EdMyAdmin</title><meta charset="utf-8">
+<meta charset="utf-8"><title>EdMyAdmin</title>
 <style>
 *{margin:0;padding:0;font-size:14px;color:#333;font-family:Arial}
 html{-ms-text-size-adjust:100%;-webkit-text-size-adjust:100%;background:#fff}
@@ -630,7 +630,7 @@ optgroup option{padding-left:8px}
 textarea,select[multiple]{min-height:90px}
 textarea{white-space:pre-wrap}
 .msg{position:absolute;top:0;right:0;z-index:9}
-.ok,.err{padding:8px;font-weight:bold;font-size:14px}
+.ok,.err{padding:8px;font-weight:bold}
 .ok{background:#efe;color:#080;border-bottom:2px solid #080}
 .err{background:#fee;color:#f00;border-bottom:2px solid #f00}
 .l1,th,button{background:#9be}
@@ -647,11 +647,10 @@ textarea{white-space:pre-wrap}
 .l3.auto select{border:0;padding:0;background:#fe3}
 .l1,.l2,.l3,.wi{width:100%}
 .msg,.a,.bb{cursor:pointer}
-.handle{font:1.25rem/.75rem Arial;font-weight:bold;vertical-align:middle}
+.handle,.bb *{font:1.5rem/1rem Arial;font-weight:bold;vertical-align:middle}
 .handle:hover{cursor:move}
 tr.dragging{opacity:0.5}
 tr.drag-over{background:#9be}
-.bb *{font:22px/18px Arial}
 .upr{list-style:none;overflow:auto;overflow-x:hidden;height:90px}
 </style>
 </head><body>'.(empty($_SESSION['ok'])?'':'<div class="msg ok">'.$_SESSION['ok'].'</div>').(empty($_SESSION['err'])?'':'<div class="msg err">'.$_SESSION['err'].'</div>').'<div class="l1"><b><a href="https://github.com/edmondsql/edmyadmin">EdMyAdmin '.$version.'</a></b>'.(isset($ed->sg[0]) && $ed->sg[0]==50 ? "":'<ul class="mn m1"><li>More <small>&#9660;</small><ul><li><a href="'.$ed->path.'60">Info</a></li><li><a href="'.$ed->path.'60/var">Variables</a></li><li><a href="'.$ed->path.'60/status">Status</a></li><li><a href="'.$ed->path.'60/process">Processes</a></li></ul></li><li><a href="'.$ed->path.'52">Users</a></li><li><a href="'.$ed->path.'51">Logout ['.(isset($_SESSION['user']) ? $_SESSION['user']:"").']</a></li></ul>').'</div>';
@@ -2220,16 +2219,19 @@ case "33"://blob download
 	} else {
 	$ph=$ed->sg[7];$nu1=" AND `".$ed->sg[5]."`='".base64_decode($ed->sg[6])."'";
 	}
-	$q_ph=$ed->con->query("SELECT $ph FROM `$tb` WHERE `$nu`='$id'$nu1 LIMIT 1")->fetch();
-	$len=strlen($q_ph[0]);
-	if($len >=2 && $q_ph[0][0]==chr(0xff) && $q_ph[0][1]==chr(0xd8)) {$tp='image/jpeg';$xt='.jpg';}
-	elseif($len >=3 && substr($q_ph[0],0,3)=='GIF') {$tp='image/gif';$xt='.gif';}
-	elseif($len >=4 && substr($q_ph[0],0,4)=="\x89PNG") {$tp='image/png';$xt='.png';}
-	else {$tp='application/octet-stream';$xt='.bin';$q_ph[0]=addslashes($q_ph[0]);}
+	$r_ph=$ed->con->query("SELECT $ph FROM `$tb` WHERE `$nu`='$id'$nu1 LIMIT 1")->fetch();
+	$r_ph=$r_ph[0];$len=strlen($r_ph);
+	$tp='application/octet-stream';$xt='bin';
+	if($len>3){
+	if(substr($r_ph,0,3)=="\xFF\xD8\xFF"){$tp='image/jpg';$xt='jpg';}
+	elseif(substr($r_ph,0,3)=="GIF"){$tp='image/gif';$xt='gif';}
+	elseif(substr($r_ph,0,4)=="\x89PNG"){$tp='image/png';$xt='png';}
+	elseif(substr($r_ph,0,4)=="RIFF"){$tp='image/webp';$xt='webp';}
+	}
 	header("Content-type: $tp");
 	header("Content-Length: $len");
-	header("Content-Disposition: attachment; filename={$tb}-blob{$xt}");
-	die($q_ph[0]);
+	header("Content-Disposition: attachment; filename={$tb}-blob.{$xt}");
+	die($r_ph);
 break;
 
 case "40"://view
@@ -2409,7 +2411,7 @@ case "42"://routine
 		}
 		echo "</select><select class='pa2' name='rop2[]'>".$swcl;
 		foreach($q_swcl as $r_rocl) echo "<option value='".$r_rocl[0]."'".(!empty($pre[4]) && $pre[4]==$r_rocl[0]?" selected":"").">".$r_rocl[0]."</option>";
-		echo "</select></td><td class='bb'><span onclick='plus(this)'>+</span> <span onclick=\"minus(this)\">-</span></td></tr>";
+		echo "</select></td><td class='bb'><span onclick='plus(this)'>+</span> <span onclick=\"minus(this)\">&#150;</span></td></tr>";
 	++$p;
 	}
 	echo "</table></td></tr><tr class='rou2 auto'><td>Return type</td><td><select id='pty2' name='rorty'>".($retrn[0]!=""?$ed->fieldtypes(strtoupper($retrn[0])):$ed->fieldtypes())."</select>
@@ -2913,34 +2915,13 @@ break;
 unset($_POST,$_SESSION["ok"],$_SESSION["err"]);
 ?></div></div><div class="l1 ce"><a href="http://edmondsql.github.io">edmondsql</a></div>
 <script>
-function byId(n){
-return document.getElementById(n);
-}
-function byName(n){
-return document.getElementsByName(n);
-}
-function bySel(n){
-return document.querySelector(n);
-}
-function byAll(n){
-return document.querySelectorAll(n);
-}
-function byClass(n){
-return document.getElementsByClassName(n);
-}
-function createEl(n){
-return document.createElement(n);
-}
-Element.prototype.show=function(ty=null){
-if(ty=='b'){
-this.style.display='inline-block';
-}else{
-this.style.display='';
-}
-};
-Element.prototype.hide=function(){
-this.style.display='none';
-};
+const $=(s)=>document.querySelector(s);
+const $$=(s)=>document.querySelectorAll(s);
+const $n=(s)=>document.getElementsByName(s);
+const $cn=(s)=>document.getElementsByClassName(s);
+const $c=(s)=>document.createElement(s);
+Element.prototype.show=function(ty=null){this.style.display=(ty=='b')?'inline-block':'';}
+Element.prototype.hide=function(){this.style.display='none';}
 HTMLCollection.prototype.showAll=function(){
 for(let i=0; i < this.length;i++){
 this[i].style.display='';
@@ -2951,15 +2932,15 @@ for(let i=0; i < this.length;i++){
 this[i].style.display='none';
 }
 };
-var host=byId("host");
+const host=$("#host");
 if(host)host.focus();
 
-let msg=byAll(".msg");
-byAll(".del").forEach(d=>{
+let msg=$$(".msg");
+$$(".del").forEach(d=>{
 d.addEventListener('click',(e)=>{
 e.preventDefault();
 msg.forEach(m=>m.remove());
-let hrf=e.target.getAttribute("href"),nMsg=createEl("div"),nOk=createEl("div"),nEr=createEl("div");
+let hrf=e.target.getAttribute("href"),nMsg=$c("div"),nOk=$c("div"),nEr=$c("div");
 nMsg.className='msg';
 nOk.className='ok';nOk.innerText='Yes';
 nEr.className='err';nEr.innerText='No';
@@ -2976,42 +2957,42 @@ if(key==27||key==78)nMsg.remove();
 });
 msg.forEach(m=>{if(m.innerText!="")setTimeout(()=>{m.remove()},7000);m.addEventListener('dblclick',()=>m.remove())});
 
-if(byId('one')){
-if(byId('one').checked==true){byId('every').hide();byId('evend').hide()}else{byId('every').show();byId('evend').show()}
-byId("one").addEventListener("click",function(){if(byId('one').checked==true){byId('every').hide();byId('evend').hide()}else{byId('every').show();byId('evend').show()}});//add event
+if($('#one')){
+if($('#one').checked==true){$('#every').hide();$('#evend').hide()}else{$('#every').show();$('#evend').show()}
+$("#one").addEventListener("click",function(){if($('#one').checked==true){$('#every').hide();$('#evend').hide()}else{$('#every').show();$('#evend').show()}});//add event
 }
-if(byId("rou")){
-if(byId("rou").value=="FUNCTION"){byClass("rou1").hideAll();byClass("rou2").showAll();}else{byClass("rou1").showAll();byClass("rou2").hideAll();}
-byId("rou").addEventListener("change",function(){//routine
-if(this.value=="FUNCTION"){byClass("rou1").hideAll();byClass("rou2").showAll();}else{byClass("rou1").showAll();byClass("rou2").hideAll();}
+if($("#rou")){
+if($("#rou").value=="FUNCTION"){$cn("rou1").hideAll();$cn("rou2").showAll();}else{$cn("rou1").showAll();$cn("rou2").hideAll();}
+$("#rou").addEventListener("change",function(){//routine
+if(this.value=="FUNCTION"){$cn("rou1").hideAll();$cn("rou2").showAll();}else{$cn("rou1").showAll();$cn("rou2").hideAll();}
 });
 }
 //param rows
-var a,i,rou_p=byAll('[id^="pty_"]').length;
+let a,i,rou_p=$$('[id^="pty_"]').length;
 for(i=1;i <=rou_p;i++) routine(i);
 //priv all
 for(a=1;a<5;a++){
-if(byId("fi"+a)){
-let fc=byId("fi"+a).options.length,fs=(byId("fi"+a).selectedOptions||'').length;
-if(fc==fs) byId("fi"+a).parentNode.querySelector("[type=checkbox]").checked=true;
+if($("#fi"+a)){
+let fc=$("#fi"+a).options.length,fs=($("#fi"+a).selectedOptions||'').length;
+if(fc==fs) $("#fi"+a).parentNode.querySelector("[type=checkbox]").checked=true;
 }
 }
 function minus(el){//routine remove row
-let crr=byAll('[id^="rr_"]').length;
+let crr=$$('[id^="rr_"]').length;
 if(crr>1) el.closest("tr").remove();
 }
 function plus(el){//routine clone row
-let cid=el.closest("tr").getAttribute("id"),cnt=byAll('[id^="rr_"]').length + 1;
-let cl=byId(cid).cloneNode(true);byId(cid).after(cl);cl.setAttribute("id","rr_"+cnt);
-byId("rr_"+cnt).querySelector('[id^="pty_"]').setAttribute("id","pty_"+cnt);
-byAll('[id^="rr_"]').forEach(function(t,i){t.setAttribute("id","rr_"+(i+1));});
-byAll('[id^="pty_"]').forEach(function(t,i){t.setAttribute("id","pty_"+(i+1));});
+let cid=el.closest("tr").getAttribute("id"),cnt=$$('[id^="rr_"]').length + 1;
+let cl=$('#'+cid).cloneNode(true);$('#'+cid).after(cl);cl.setAttribute("id","rr_"+cnt);
+$("#rr_"+cnt).querySelector('[id^="pty_"]').setAttribute("id","pty_"+cnt);
+$$('[id^="rr_"]').forEach(function(t,i){t.setAttribute("id","rr_"+(i+1));});
+$$('[id^="pty_"]').forEach(function(t,i){t.setAttribute("id","pty_"+(i+1));});
 routine(cnt);
 }
 function routine(id){
 const ar1=["INT","TINYINT","SMALLINT","MEDIUMINT","BIGINT","DOUBLE","DECIMAL","FLOAT"],ar2=["VARCHAR","CHAR","TEXT","TINYTEXT","MEDIUMTEXT","LONGTEXT"];
 //function returns
-let ej=byId("pty2"),ej1=byId("px1"),ej2=byId("px2");
+let ej=$("#pty2"),ej1=$("#px1"),ej2=$("#px2");
 function routin2(){
 if(ar1.includes(ej.value)){ej1.show('b');ej2.hide();}else if(ar2.includes(ej.value)){ej1.hide();ej2.show('b');}else{ej1.hide();ej2.hide();}
 }
@@ -3019,16 +3000,16 @@ routin2();
 ej.addEventListener("change",function(){routin2();});
 //options
 function routin1(ix){
-let el=byId("pty_"+ix).value,el1=bySel("#rr_"+ix+" .pa1"),el2=bySel("#rr_"+ix+" .pa2");
+let el=$("#pty_"+ix)?$("#pty_"+ix).value:'',el1=$("#rr_"+ix+" .pa1"),el2=$("#rr_"+ix+" .pa2");
 if(ar1.includes(el)){el1.show('b');el2.hide();}else if(ar2.includes(el)){el1.hide();el2.show('b');}else{el1.hide();el2.hide();}
 }
 if(id===undefined) id=0;
 routin1(id);
-byId("pty_"+id).addEventListener("change",function(){routin1(id);});
+$("#pty_"+id).addEventListener("change",function(){routin1(id);});
 }
 
 (function(){
-let draggedItem=null,tbody=bySel('.sort');
+let draggedItem=null,tbody=$('.sort');
 function handleDragStart(e){
 if(!e.target.classList.contains('handle')){
 e.preventDefault();
@@ -3059,14 +3040,14 @@ if(draggedItem){
 draggedItem.classList.remove('dragging');
 Array.from(draggedItem.parentNode.children).forEach(child => child.classList.remove('drag-over'));
 }
-var xhr=new window.XMLHttpRequest();
+const xhr=new window.XMLHttpRequest();
 xhr.open("POST","<?=$ed->path.'9/'.(empty($ed->sg[1])?'':$ed->sg[1].'/').(empty($ed->sg[2])?'':$ed->sg[2])?>");
 xhr.setRequestHeader("Content-type","application/x-www-form-urlencoded");
 xhr.onload=function(){
 (xhr.readyState == 4 && xhr.status == 200) ? location.reload() : alert('Error: ' + xhr.status);
 }
 pre="x";
-if(draggedItem.previousElementSibling.nodeName=="TR") pre=draggedItem.previousElementSibling.getAttribute("id");
+if(draggedItem.previousElementSibling && draggedItem.previousElementSibling.nodeName=="TR") pre=draggedItem.previousElementSibling.getAttribute("id");
 xhr.send("n1="+draggedItem.getAttribute("id")+"&n2="+pre);
 draggedItem=null;
 }
@@ -3084,18 +3065,18 @@ tbody.addEventListener('dragend',handleDragEnd);
 addDragAndDrop();
 })();
 function selectall(cb,lb) {
-let i,multi=byId(lb);
+let i,multi=$('#'+lb);
 if(cb.checked) {for(i=0;i<multi.options.length;i++) multi.options[i].selected=true;
 }else{multi.selectedIndex=-1;}
 }
 function toggle(cb,el){
-let i,cbox=byName(el);
+let i,cbox=$n(el);
 for(i=0;i<cbox.length;i++) cbox[i].checked=cb.checked;
 }
 function fmt(){
-let j,opt=byName("fopt[]"),ff=byName("ffmt[]"),to=opt.length,ch="",ft=byName("ftype")[0];
+let j,opt=$n("fopt[]"),ff=$n("ffmt[]"),to=opt.length,ch="",ft=$n("ftype")[0];
 for(j=0; ff[j]; ++j){if(ff[j].checked) ch=ff[j].value;}
-if(byId('tbs'))dbx('tbs');
+if($('#tbs'))dbx('tbs');
 if(ch=="sql"){
 for(let k=0;k<to;k++) opt[k].parentElement.show();
 }else if(ch=="doc"||ch=="xml"){
@@ -3107,11 +3088,11 @@ for(let i=0;i<to;i++) {opt[i].parentElement.hide();opt[i].checked=false}
 }
 }
 function dbx(el='dbs'){
-let j,ch="",ft=byName("ftype")[0],ff=byName("ffmt[]"),db=byAll("#"+el+" option:checked").length,dbs=byId('dbs'),arr=["json","csv1","csv2"];
+let j,ch="",ft=$n("ftype")[0],ff=$n("ffmt[]"),db=$$("#"+el+" option:checked").length,dbs=$('#dbs'),arr=["json","csv1","csv2"];
 for(j=0;ff[j];++j){if(ff[j].checked) ch=ff[j].value;}
 if(ft[0].value!="plain"){
 if((db<2 && (dbs||arr.indexOf(ch)>-1))||(db>1 && (dbs||arr.indexOf(ch)==-1))){
-let op=createEl("option");
+let op=$c("option");
 op.value="plain";op.text="None";
 ft.options.add(op,0);
 ft.options[0].selected=true;
