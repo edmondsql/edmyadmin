@@ -5,7 +5,7 @@ session_name('SQL');
 session_start();
 $bg=2;
 $step=20;
-$version="3.22";
+$version="3.23";
 $bbs=['False','True'];
 $deny=['mysql','information_schema','performance_schema','sys'];
 class DBT {
@@ -25,12 +25,13 @@ class DBT {
 		$ty=self::$sqltype;
 		if(extension_loaded($ty[0])) $this->dbty=$ty[0];
 		else $this->dbty=$ty[1];
+		$host=explode(":",$host);
 		if($this->dbty==self::$sqltype[0]) {
 			mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
-			$this->_cnx=new mysqli($host,$user,$pwd,$db);
+			$this->_cnx=new mysqli($host[0],$user,$pwd,$db,empty($host[1])?3306:$host[1]);
 			mysqli_report(MYSQLI_REPORT_OFF);
 		} else {
-			$this->_cnx=new PDO("mysql:host=".$host.";dbname=".$db,$user,$pwd);
+			$this->_cnx=new PDO("mysql:host=".$host[0].";port=".(empty($host[1])?3306:$host[1]).";dbname=".$db,$user,$pwd);
 			$this->_cnx->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
 		}
 	}
@@ -1385,14 +1386,12 @@ case "21"://table insert
 		$colu[]=$r_brw['Null'];
 	}
 	if($ed->post('save','i') || $ed->post('save2','i')) {
-		$q_res=$ed->con->query("SELECT * FROM `$tb`");
-		$nrcol=$q_res->num_col();
 		$qr1="INSERT INTO `$tb` (";
 		$qr2="";
 		$qr3="VALUES(";
 		$qr4="";
 		$n=0;
-		while($n<$nrcol) {
+		while($n<count($coln)) {
 			if($ed->post('r'.$n,'!e') || !empty($_FILES["r".$n]['tmp_name'])) {
 			$qr2.=$coln[$n].",";
 			if(stristr($colt[$n],"blob")==true) {
@@ -1424,10 +1423,8 @@ case "21"://table insert
 		else $ed->redir("$rr/$db/$tb",['err'=>"Insert failed"]);
 	} else {
 		echo $head.$ed->menu($db,$tb,1).$ed->form("21/$db/$tb",1)."<table><caption>Insert Row</caption>";
-		$q_res=$ed->con->query("SELECT * FROM `$tb`");
-		$r_col=$q_res->num_col();
 		$j=0;
-		while($j<$r_col) {
+		while($j<count($coln)) {
 			echo "<tr><td>".$coln[$j]."</td><td>";
 			if(stristr($colt[$j],"enum")==true OR stristr($colt[$j],"set")==true) {//enum
 			$enums=explode("','",preg_replace("/(enum|set)\('(.+?)'\)/","\\2",$colt[$j]));
@@ -1479,12 +1476,10 @@ case "22"://table edit row
 	}
 	$nul=("(".$nu." IS NULL OR ".$nu."='')");
 	if($ed->post('edit','i')) {//update
-	$q_re2=$ed->con->query("SELECT * FROM `$tb`");
-	$r_co=$q_re2->num_col();
 		$qr1="UPDATE `$tb` SET ";
 		$qr2="";
 		$p=0;
-		while($p<$r_co) {
+		while($p<count($coln)) {
 			if(stristr($colt[$p],"blob")==true) {
 				if(!empty($_FILES["te".$p]['tmp_name'])) {
 				$blb=addslashes(file_get_contents($_FILES["te".$p]['tmp_name']));
@@ -1504,14 +1499,12 @@ case "22"://table edit row
 		if($q_upd) $ed->redir("20/$db/$tb",['ok'=>"Successfully updated"]);
 		else $ed->redir("20/$db/$tb",['err'=>"Update failed"]);
 	} else {//edit form
-		$q_flds=$ed->con->query("SHOW COLUMNS FROM `$tb`");
-		$r_fnr=$q_flds->num_row();
 		$q_rst=$ed->con->query("SELECT ".implode(",",$cols)." FROM `$tb` WHERE ".($id==""?$nul:$nu."='".addslashes($id)."'").(!empty($colt[1]) && stristr($colt[1],"blob")==false && !empty($nu1) && !empty($id1)?" AND $nu1='".addslashes($id1)."'":""));
 		if($q_rst->num_row() < 1) $ed->redir("20/$db/$tb",['err'=>"Edit failed"]);
 		$r_rx=$q_rst->fetch();
 		echo $head.$ed->menu($db,$tb,1).$ed->form("22/$db/$tb/$nu/".($id==""?"isnull":base64_encode($id)).(!empty($colt[1]) && stristr($colt[1],"blob")==false && !empty($nu1) && !empty($id1)?"/$nu1/".base64_encode($r_rx['1']):""),1)."<table><caption>Edit Row</caption>";
 		$k=0;
-		while($k<$r_fnr) {
+		while($k<count($coln)) {
 			echo "<tr><td>".$coln[$k]."</td><td>";
 			if(stristr($colt[$k],"enum")==true OR stristr($colt[$k],"set")==true) {//enum
 				$enums=explode("','",preg_replace("/(enum|set)\('(.+?)'\)/","\\2",$colt[$k]));
@@ -1654,10 +1647,10 @@ case "27"://optimize,analyze,check,repair
 	$q_op=$ed->con->query($op." TABLE ".$tb);
 	if($op=='check' || $op=='repair') {
 	$r_op=$q_op->fetch();
-	if($r_op[3]=='OK') $ed->redir("10/$db/$tb",['ok'=>"Successfully {$op}ed"]);
+	if($r_op[3]=='OK') $ed->redir("10/$db/$tb",['ok'=>"Successfully executed"]);
 	else $ed->redir("10/$db/$tb",['err'=>$r_op[3]]);
 	}
-	$ed->redir("10/$db/$tb",['ok'=>"Successfully {$op}d"]);
+	$ed->redir("10/$db/$tb",['ok'=>"Successfully executed"]);
 	} else $ed->redir("10/$db/$tb",['err'=>"Action {$op} failed"]);
 break;
 
