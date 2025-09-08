@@ -39,7 +39,7 @@ class DBT {
 		return $this->_cnx->query("USE `$db`");
 	}
 	public function query($sql){
-		try {
+		try{
 		if($this->dbty==self::$sqltype[0]){
 		mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 		$this->_query=$this->_cnx->query($sql);
@@ -254,6 +254,7 @@ class ED {
 			if(!$se) $this->redir();
 		}
 		if(in_array('2',$level)){//check table
+			if(empty($this->sg[2])) $this->redir("5/$db",['err'=>"No table"]);
 			$q_com=$this->con->query("SHOW TABLE STATUS FROM `$db` like '".$this->sg[2]."'");
 			if(!$q_com->num_row()) $this->redir("5/$db");
 			foreach($q_com->fetch(2) as $r_com){
@@ -776,11 +777,9 @@ case "5"://Show Tables
 	$q_tbs=$ed->con->query("SELECT TABLE_NAME,TABLE_TYPE,ENGINE,TABLE_COLLATION,TABLE_COMMENT FROM information_schema.TABLES WHERE `TABLE_SCHEMA`='$db'");
 	$ttalr=$q_tbs->num_row();
 	$tables=[];
-	if($ttalr > 0){
-	foreach($q_tbs->fetch(1) as $r_tbs) $tables[]=[0=>$r_tbs[0],1=>$r_tbs[1],2=>$r_tbs[2],3=>$r_tbs[3],4=>$r_tbs[4]];
-	}
 	//paginate
 	if($ttalr > 0){
+	foreach($q_tbs->fetch(1) as $r_tbs) $tables[]=[0=>$r_tbs[0],1=>$r_tbs[1],2=>$r_tbs[2],3=>$r_tbs[3],4=>$r_tbs[4]];
 	$ttalpg=ceil($ttalr/$step);
 	if(empty($ed->sg[2])){
 		$pg=1;
