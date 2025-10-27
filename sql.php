@@ -5,7 +5,7 @@ session_name('SQL');
 session_start();
 $bg=2;
 $step=20;
-$version="3.24";
+$version="3.25";
 $bbs=['False','True'];
 $deny=['mysql','information_schema','performance_schema','sys'];
 class DBT {
@@ -2434,7 +2434,7 @@ case "42"://routine
 	echo "</select></td></tr>
 	<tr><td>SQL data access</td><td><select name='rosda'>";
 	foreach($ed->sqlda as $sda) echo "<option value='$sda'".($r_rou[7]==$sda?" selected":"").">$sda</option>";
-	echo "</select></td></tr><tr><td>Comment</td><td><input type='text' name='rocom' value='".$r_rou[8]."'/></td></tr>
+	echo "</select></td></tr><tr><td>Comment</td><td><textarea name='rocom'>".$r_rou[8]."</textarea></td></tr>
 	<tr><td colspan='2'><button type='submit'>Save</button></td></tr></table></form>";
 break;
 
@@ -2504,6 +2504,7 @@ case "48"://execute
 	$fi=[];$out='';$i=0;
 	foreach($plist as $lst){
 	preg_match('/(.*)`(.*?)`/',$lst,$ls);
+	if(!empty($ls)){
 	$rr="<tr><td>".$ls[2]."</td><td><input type='text' name='".$ls[2]."'/></td></tr>";
 	if($ty=='procedure' && trim($ls[1])=='IN'){
 	$fi[]=$ls[2];echo $rr;
@@ -2511,6 +2512,7 @@ case "48"://execute
 	$out.="@'".$ls[2]."',"; ++$i;
 	}elseif($ty=='function'){
 	$fi[]=$ls[2];echo $rr;
+	}
 	}
 	}
 	echo "<tr><td colspan='2'><button type='submit' name='run'>Call</button></td></tr></table></form>";
@@ -2521,19 +2523,24 @@ case "48"://execute
 	$re=substr($re,0,-1);
 	$out=substr($out,0,-1);
 	if($ty=='function'){
-		$q_ex=$ed->con->query("SELECT `$sp`".(empty($fi)?"":"($re)"))->fetch();
+		$q_ex=$ed->con->query("SELECT `$sp`".(empty($fi)?"":"($re)"));
+		if($q_ex){
+		$q_ex->fetch();
 		echo "<tr><td><input type='text' value='".$q_ex[0]."'/></td></tr>";
+		}
 	}elseif($ty=='procedure'){
+		$c="";
 		if($re!='' && $out!='') $c="($re,$out)";
 		elseif($re!='') $c="($re)";
 		elseif($out!='') $c="($out)";
-		else $c="";
 		$ed->con->query("CALL `$sp`".$c);
+		if($out!=''){
 		$q_ex=$ed->con->query("SELECT $out")->fetch();
 		$j=0;
 		while($j<$i){
 		echo "<tr><td><input type='text' value='".$q_ex[$j]."'/></td></tr>";
 		++$j;
+		}
 		}
 	}
 	echo "</table>";
