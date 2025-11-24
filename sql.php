@@ -5,7 +5,7 @@ session_name('SQL');
 session_start();
 $bg=2;
 $step=20;
-$version="3.25";
+$version="3.26";
 $bbs=['False','True'];
 $deny=['mysql','information_schema','performance_schema','sys'];
 class DBT {
@@ -27,7 +27,7 @@ class DBT {
 		else $this->dbty=$ty[1];
 		$host=explode(":",$host);
 		if($this->dbty==self::$sqltype[0]){
-			mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+			mysqli_report(MYSQLI_REPORT_ALL);
 			$this->_cnx=new mysqli($host[0],$user,$pwd,$db,empty($host[1])?3306:$host[1]);
 			mysqli_report(MYSQLI_REPORT_OFF);
 		}else{
@@ -2525,7 +2525,7 @@ case "48"://execute
 	if($ty=='function'){
 		$q_ex=$ed->con->query("SELECT `$sp`".(empty($fi)?"":"($re)"));
 		if($q_ex){
-		$q_ex->fetch();
+		$q_ex=$q_ex->fetch();
 		echo "<tr><td><input type='text' value='".$q_ex[0]."'/></td></tr>";
 		}
 	}elseif($ty=='procedure'){
