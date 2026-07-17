@@ -5,7 +5,7 @@ session_name('SQL');
 session_start();
 $bg=2;
 $step=20;
-$version="3.28";
+$version="3.29";
 $bbs=['False','True'];
 $deny=['mysql','information_schema','performance_schema','sys'];
 class DBT {
@@ -303,12 +303,12 @@ class ED {
 
 		$dv="<li class='divider'>---</li>";
 		if($tb!="") $str.=$dv."<li><a href='{$this->path}10/$db/$tb'>Structure</a></li><li><a href='{$this->path}20/$db/$tb'>Browse</a></li><li><a href='{$this->path}21/$db/$tb'>Insert</a></li><li><a href='{$this->path}24/$db/$tb'>Search</a></li><li><a class='del' href='{$this->path}25/$db/$tb'>Empty</a></li><li><a class='del' href='{$this->path}26/$db/$tb'>Drop</a></li>";//table
-		if(!empty($sp[1]) && $sp[0]=='view') $str.=$dv."<li><a href='{$this->path}40/$db/".$sp[1]."/view'>Structure</a></li><li><a href='{$this->path}20/$db/".$sp[1]."'>Browse</a></li><li><a class='del' href='{$this->path}49/$db/".$sp[1]."/view'>Drop</a></li>";//view
+		if(!empty($sp[1]) && $sp[0]=='view') $str.=$dv."<li><a href='{$this->path}40/$db/{$sp[1]}/view'>Structure</a></li><li><a href='{$this->path}20/$db/{$sp[1]}'>Browse</a></li><li><a class='del' href='{$this->path}49/$db/{$sp[1]}/view'>Drop</a></li>";//view
 		if($db!='') $str.="</ul></div>";
 
 		if($db!="" && $db!=1){//db select
 		$str.="<div class='l3 auto'><select onchange='location=this.value;'><optgroup label='Databases'>";
-		foreach($this->u_db as $udb) $str.="<option value='{$this->path}{$this->sg[0]}/".$udb[0]."'".($udb[0]==$db?" selected":"").">".$udb[0]."</option>";
+		foreach($this->u_db as $udb) $str.="<option value='{$this->path}{$this->sg[0]}/{$udb[0]}'".($udb[0]==$db?" selected":"").">{$udb[0]}</option>";
 		$str.="</optgroup></select>";
 
 		$q_tbs=[]; $c_sp=empty($sp) ? "":count($sp);
@@ -322,11 +322,11 @@ class ED {
 		$sl2.='<optgroup label="'.$r_tbs[1].'s">';
 		}
 		$in=($r_tbs[1]=='VIEW'?[20,40]:[10,20,21,24]);
-		$sl2.="<option value='{$this->path}".(in_array($this->sg[0],$in)?$this->sg[0]:20)."/$db/".$r_tbs[0]."'".($r_tbs[0]==$tb || ($c_sp >1 && $r_tbs[0]==$sp[1])?" selected":"").">".$r_tbs[0]."</option>";
+		$sl2.="<option value='{$this->path}".(in_array($this->sg[0],$in)?$this->sg[0]:20)."/$db/".$r_tbs[0]."'".($r_tbs[0]==$tb || ($c_sp >1 && $r_tbs[0]==$sp[1])?" selected":"").">{$r_tbs[0]}</option>";
 		$qtype=$r_tbs[1];
 		}
 		if($qtype!='') $sl2.='</optgroup>';
-		if($c_sp <1 || $sp[0]=='view') $str.=$sl2."</select>".((!empty($_SESSION['_sqlsearch_'.$db.'_'.$tb]) && $this->sg[0]==20) ? " [<a href='{$this->path}24/$db/$tb/reset'>reset search</a>]":"");
+		if($c_sp <1 || $sp[0]=='view') $str.=$sl2."</select>".((!empty($_SESSION["_sqlsearch_{$db}_{$tb}"]) && $this->sg[0]==20) ? " [<a href='{$this->path}24/$db/$tb/reset'>reset search</a>]":"");
 		else $str.=" ".$sp[0].": ".$sp[1];
 		}
 		$str.="</div>";
@@ -351,15 +351,15 @@ class ED {
 	}
 	public function pg_number($pg,$totalpg){
 		if($totalpg > 1){
-		if($this->sg[0]==20) $link=$this->path."20/".$this->sg[1]."/".$this->sg[2];
-		elseif($this->sg[0]==5) $link=$this->path."5/".$this->sg[1];
+		if($this->sg[0]==20) $lnk=$this->path."20/".$this->sg[1]."/".$this->sg[2];
+		elseif($this->sg[0]==5) $lnk=$this->path."5/".$this->sg[1];
 		$pgs='';$k=1;
 		while($k <= $totalpg){
-		$pgs.="<option ".(($k==$pg) ? "selected>":"value='$link/$k'>")."$k</option>";
+		$pgs.="<option ".(($k==$pg) ? "selected>":"value='$lnk/$k'>")."$k</option>";
 		++$k;
 		}
-		$lft=($pg>1?"<a href='$link/1'>First</a><a href='$link/".($pg-1)."'>Prev</a>":"");
-		$rgt=($pg < $totalpg?"<a href='$link/".($pg+1)."'>Next</a><a href='$link/$totalpg'>Last</a>":"");
+		$lft=($pg>1?"<a href='$lnk/1'>First</a><a href='$lnk/".($pg-1)."'>Prev</a>":"");
+		$rgt=($pg < $totalpg?"<a href='$lnk/".($pg+1)."'>Next</a><a href='$lnk/$totalpg'>Last</a>":"");
 		return "<div class='pg'>$lft<select onchange='location=this.value;'>$pgs</select>$rgt</div>";
 		}
 	}
@@ -465,9 +465,9 @@ class ED {
 		}
 		$q_ex=$this->con->query("SHOW FULL FIELDS FROM `$tb` FROM `$db`");
 		if($q_ex){
-		$sq="\n{$tab}CREATE TABLE ".$ifnot."`".$tb."` (";
+		$sq="\n{$tab}CREATE TABLE $ifnot`$tb`(";
 		foreach($q_ex->fetch(2) as $r_ex){
-			$nul=($r_ex['Null']=='YES' ? "NULL" : "NOT NULL");
+			$nul=($r_ex['Null']=='YES' ? "NULL":"NOT NULL");
 			$def='';
 			if($r_ex['Default']!=''){
 			$def.=" default ".(stristr($r_ex['Default'],'CURRENT_TIMESTAMP') ? $r_ex['Default']:"'".$r_ex['Default']."'");
@@ -488,16 +488,16 @@ class ED {
 		}
 		$sq.=(count($idx1) > 0 ? "\n{$tab}PRIMARY KEY(`".implode("`,`",$idx1)."`),":"");
 		foreach($idx2 as $k2=>$q2){
-		if(is_array($q2)) $sq.="\n{$tab}KEY `".$k2."` (`".implode("`,`",$q2)."`),";
-		else $sq.="\n{$tab}KEY `".$k2."` (`".$q2."`),";
+		if(is_array($q2)) $sq.="\n{$tab}KEY `$k2` (`".implode("`,`",$q2)."`),";
+		else $sq.="\n{$tab}KEY `".$k2."` (`$q2`),";
 		}
 		foreach($idx3 as $k3=>$q3){
-		if(is_array($q3)) $sq.="\n{$tab}UNIQUE KEY `".$k3."` (`".implode("`,`",$q3)."`),";
-		else $sq.="\n{$tab}UNIQUE KEY `".$k3."` (`".$q3."`),";
+		if(is_array($q3)) $sq.="\n{$tab}UNIQUE KEY `$k3` (`".implode("`,`",$q3)."`),";
+		else $sq.="\n{$tab}UNIQUE KEY `$k3` (`$q3`),";
 		}
 		foreach($idx4 as $k4=>$q4){
-		if(is_array($q4)) $sq.="\n{$tab}FULLTEXT INDEX `".$k4."` (`".implode("`,`",$q4)."`),";
-		else $sq.="\n{$tab}FULLTEXT INDEX `".$k4."` (`".$q4."`),";
+		if(is_array($q4)) $sq.="\n{$tab}FULLTEXT INDEX `$k4` (`".implode("`,`",$q4)."`),";
+		else $sq.="\n{$tab}FULLTEXT INDEX `$k4` (`$q4`),";
 		}
 		$q_kcu=$this->con->query("SELECT * FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE ke JOIN INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS re on ke.constraint_name=re.constraint_name WHERE ke.`CONSTRAINT_SCHEMA`='$db' AND ke.`TABLE_NAME`='$tb' AND ke.`REFERENCED_COLUMN_NAME` IS NOT NULL");
 		if($q_kcu->num_row()){
@@ -599,7 +599,8 @@ html,textarea{overflow:auto}
 .m1{position:absolute;right:0;top:0}
 .mn li:hover ul{display:block;position:absolute}
 .ce{text-align:center}
-.link{float:right;padding:3px 0}
+.right{float:right}
+.link{padding:3px 0}
 .pg *{margin:0 2px;width:auto}
 caption{font-weight:bold;border:2px solid #9be}
 .l1 ul,.l2 ul{list-style:none}
@@ -784,14 +785,14 @@ case "5"://Show Tables
 		$tbs=$tables[$ofset][0];
 		$_vl="/$db/".$tbs;
 		if($tables[$ofset][1]=='VIEW'){
-			$lnk="40{$_vl}/view";$dro="49{$_vl}/view";
+			$lk="40{$_vl}/view";$dro="49{$_vl}/view";
 		}else{
-			$lnk="10".$_vl;$dro="26".$_vl;
+			$lk="10".$_vl;$dro="26".$_vl;
 		}
 		$q_rows[0]=0;
 		$q_t=$ed->con->query("SELECT COUNT(*) FROM `$tbs`");
 		if($q_t) $q_rows=$q_t->fetch();
-		echo "<tr class='r c$bg'><td>$tbs</td><td>".$q_rows[0]."</td><td>".$tables[$ofset][2]."</td><td>".$tables[$ofset][3]."</td><td>".$tables[$ofset][4]."</td><td><a href='".$ed->path.$lnk."'>Structure</a><a class='del' href='".$ed->path.$dro."'>Drop</a><a href='".$ed->path."20/$db/$tbs'>Browse</a></td></tr>";
+		echo "<tr class='r c$bg'><td>$tbs</td><td>{$q_rows[0]}</td><td>{$tables[$ofset][2]}</td><td>{$tables[$ofset][3]}</td><td>{$tables[$ofset][4]}</td><td><a href='{$ed->path}$lk'>Structure</a><a class='del' href='{$ed->path}$dro'>Drop</a><a href='{$ed->path}20/$db/$tbs'>Browse</a></td></tr>";
 		}
 		++$ofset;
 	}
@@ -803,7 +804,7 @@ case "5"://Show Tables
 		echo "<table><tr><th>Trigger</th><th>Table</th><th>Timing</th><th>Event</th><th>Actions</th></tr>";
 		foreach($q_trg->fetch(1) as $r_tg){
 		$bg=($bg==1)?2:1;
-		echo "<tr class='r c$bg'><td>".$r_tg[0]."</td><td>".$r_tg[2]."</td><td>".$r_tg[4]."</td><td>".$r_tg[1]."</td><td><a href='{$ed->path}41/$db/".$r_tg[0]."/trigger'>Edit</a><a class='del' href='{$ed->path}49/$db/".$r_tg[0]."/trigger'>Drop</a></td></tr>";
+		echo "<tr class='r c$bg'><td>{$r_tg[0]}</td><td>{$r_tg[2]}</td><td>".$r_tg[4]."</td><td>{$r_tg[1]}</td><td><a href='{$ed->path}41/$db/{$r_tg[0]}/trigger'>Edit</a><a class='del' href='{$ed->path}49/$db/{$r_tg[0]}/trigger'>Drop</a></td></tr>";
 		}
 	echo "</table>";
 	}
@@ -812,7 +813,7 @@ case "5"://Show Tables
 	$spps=['procedure','function'];
 	$q_sp=[];
 	foreach($spps as $spp){
-		$q_spp=$ed->con->query("SHOW {$spp} STATUS");
+		$q_spp=$ed->con->query("SHOW $spp STATUS");
 		if($q_spp){
 		foreach($q_spp->fetch(1) as $r_spp){
 		if($r_spp[0]==$db){
@@ -827,8 +828,8 @@ case "5"://Show Tables
 	foreach($q_sp as $r_sp){
 		$bg=($bg==1)?2:1;
 		if($r_sp[0]==$db){
-		echo "<tr class='r c$bg'><td>".$r_sp[1]."</td><td>".$r_sp[2]."</td><td>".(strlen($r_sp[7]) > 70 ? substr($r_sp[7],0,70)."[...]":$r_sp[7])
-		."</td><td><a href='{$ed->path}42/".$r_sp[0]."/".$r_sp[1]."/".strtolower($r_sp[2])."'>Edit</a><a href='{$ed->path}48/".$r_sp[0]."/".$r_sp[1]."/".strtolower($r_sp[2])."'>Execute</a><a class='del' href='{$ed->path}49/".$r_sp[0]."/".$r_sp[1]."/".strtolower($r_sp[2])."'>Drop</a></td></tr>";
+		echo "<tr class='r c$bg'><td>{$r_sp[1]}</td><td>{$r_sp[2]}</td><td>".(strlen($r_sp[7]) > 70 ? substr($r_sp[7],0,70)."[...]":$r_sp[7])
+		."</td><td><a href='{$ed->path}42/{$r_sp[0]}/{$r_sp[1]}/".strtolower($r_sp[2])."'>Edit</a><a href='{$ed->path}48/{$r_sp[0]}/{$r_sp[1]}/".strtolower($r_sp[2])."'>Execute</a><a class='del' href='{$ed->path}49/{$r_sp[0]}/{$r_sp[1]}/".strtolower($r_sp[2])."'>Drop</a></td></tr>";
 		}
 	}
 	echo "</table>";
@@ -841,8 +842,8 @@ case "5"://Show Tables
 	echo "<table><tr><th>Event</th><th>Schedule</th><th>Start</th><th>End</th><th>Actions</th></tr>";
 	foreach($q_eve->fetch(2) as $r_eve){
 	$bg=($bg==1)?2:1;
-	echo "<tr class='r c$bg'><td>".$r_eve['Name']."</td><td>".
-	($r_eve['Type']=='RECURRING' ? "Every ".$r_eve['Interval value'].$r_eve['Interval field']."</td><td>".$r_eve['Starts']."</td><td>".$r_eve['Ends']:"AT </td><td>".$r_eve['Execute at']."</td><td>")."</td><td><a href='{$ed->path}43/$db/".$r_eve['Name']."/event'>Edit</a><a class='del' href='{$ed->path}49/$db/".$r_eve['Name']."/event'>Drop</a></td></tr>";
+	echo "<tr class='r c$bg'><td>{$r_eve['Name']}</td><td>".
+	($r_eve['Type']=='RECURRING' ? "Every ".$r_eve['Interval value'].$r_eve['Interval field']."</td><td>{$r_eve['Starts']}</td><td>".$r_eve['Ends']:"AT </td><td>{$r_eve['Execute at']}</td><td>")."</td><td><a href='{$ed->path}43/$db/{$r_eve['Name']}/event'>Edit</a><a class='del' href='{$ed->path}49/$db/{$r_eve['Name']}/event'>Drop</a></td></tr>";
 	}
 	echo "</table>";
 	}
@@ -882,20 +883,20 @@ case "6"://create table
 		$nf=0;
 		while($nf<$ed->post('nrf')){
 			$bg=($bg==1)?2:1;
-			echo "<tr class='c$bg'><td><input type='text' name='fi".$nf."'/></td>
-			<td><select name='ty".$nf."'>".$ed->fieldtypes()."</select></td>
-			<td><input type='text' name='va".$nf."'/></td><td><select name='at".$nf."'>";
+			echo "<tr class='c$bg'><td><input type='text' name='fi$nf'/></td>
+			<td><select name='ty$nf'>".$ed->fieldtypes()."</select></td>
+			<td><input type='text' name='va$nf'/></td><td><select name='at$nf'>";
 			foreach($inttype as $intk=>$intt) echo "<option value='$intk'>$intt</option>";
 			echo "</select></td>
-			<td><select name='nc".$nf."'><option value='NOT NULL'>NOT NULL</option><option value='NULL'>NULL</option></select></td>
-			<td><input type='text' name='de".$nf."'/></td><td>".
+			<td><select name='nc$nf'><option value='NOT NULL'>NOT NULL</option><option value='NULL'>NULL</option></select></td>
+			<td><input type='text' name='de$nf'/></td><td>".
 			$ed->collate("clls".$nf)."</td><td><input type='radio' name='ex[]' value='$nf'/></td></tr>";
 			++$nf;
 		}
 		echo "<tr><td colspan='1'>Engine<br/><select name='engs'><option value=''>&nbsp;</option>";
 		$q_eng=$ed->con->query("SELECT ENGINE FROM information_schema.ENGINES WHERE ENGINE IS NOT NULL AND SUPPORT<>'NO'")->fetch(1);
 		foreach($q_eng as $r_eng){
-			echo "<option value='".$r_eng[0]."'>".$r_eng[0]."</option>";
+			echo "<option value='{$r_eng[0]}'>{$r_eng[0]}</option>";
 		}
 		echo "</select></td><td colspan='7'>Table Comment:<br/><input type='text' name='tcomm'/></td></tr>
 		<tr><td colspan='8'><button type='submit' name='crtb'>Create Table</button></td></tr></table></form>";
@@ -1048,11 +1049,11 @@ case "10"://structure
 		$bg=($bg==1)?2:1;
 		echo "<tr class='r c$bg' id='".$r_fi['Field']."'><td><input type='checkbox' name='idx[]' value='".$r_fi['Field']."'/></td><td>".$r_fi['Field']."</td><td>".$r_fi['Type']."</td><td>".$r_fi['Null']."</td>";
 		echo "<td>".($r_fi['Collation']!='NULL' ? $r_fi['Collation']:'')."</td>";
-		echo "<td>".$r_fi['Default']."</td><td>".$r_fi['Extra']."</td><td><a href='{$ed->path}12/$db/$tb/".$r_fi['Field']."'>change</a><a class='del' href='{$ed->path}13/$db/$tb/".$r_fi['Field']."'>drop</a><a href='{$ed->path}11/$db/$tb/".$r_fi['Field']."'>add</a><span draggable='true' class='handle' title='move'>&#x21F5;</span></td></tr>";
+		echo "<td>".$r_fi['Default']."</td><td>".$r_fi['Extra']."</td><td><a href='{$ed->path}12/$db/$tb/{$r_fi['Field']}'>change</a><a class='del' href='{$ed->path}13/$db/$tb/{$r_fi['Field']}'>drop</a><a href='{$ed->path}11/$db/$tb/{$r_fi['Field']}'>add</a><span draggable='true' class='handle' title='move'>&#x21F5;</span></td></tr>";
 	}
 	$q_comm=$ed->con->query("SELECT TABLE_COMMENT FROM INFORMATION_SCHEMA.TABLES WHERE `TABLE_SCHEMA`='$db' AND `TABLE_NAME`='$tb'")->fetch();
 	echo "</tbody><tfoot><tr><td colspan='3'><button type='submit' name='changeb'>Change Comment</button></td><td colspan='5'><input type='text' name='changec' value=\"".$q_comm[0]."\"/></td></tr>
-	<tr><td class='auto' colspan='8'><div class='left'><button type='submit' name='primary'>Primary</button><button type='submit' name='index'>Index</button><button type='submit' name='unique'>Unique</button><button type='submit' name='fulltext'>Fulltext</button></div><div class='link'><a href='{$ed->path}27/$db/$tb/analyze'>Analyze</a><a href='{$ed->path}27/$db/$tb/optimize'>Optimize</a><a href='{$ed->path}27/$db/$tb/check'>Check</a><a href='{$ed->path}27/$db/$tb/repair'>Repair</a></div></td></tr></tfoot></table></form>
+	<tr><td class='auto' colspan='8'><div class='left'><button type='submit' name='primary'>Primary</button><button type='submit' name='index'>Index</button><button type='submit' name='unique'>Unique</button><button type='submit' name='fulltext'>Fulltext</button></div><div class='right link'><a href='{$ed->path}27/$db/$tb/analyze'>Analyze</a><a href='{$ed->path}27/$db/$tb/optimize'>Optimize</a><a href='{$ed->path}27/$db/$tb/check'>Check</a><a href='{$ed->path}27/$db/$tb/repair'>Repair</a></div></td></tr></tfoot></table></form>
 	<table><caption>Index</caption><tr><th>Key name</th><th>Field</th><th>Type</th><th>Actions</th></tr>";
 	$q_idx=$ed->con->query("SHOW KEYS FROM `$tb`");
 	if($q_idx->num_row()){
@@ -1224,9 +1225,9 @@ case "12"://structure change
 	echo $ed->form("12/$db/$tb/".$ed->sg[3]).$stru;
 	$r_fe=$ed->con->query("SHOW FULL FIELDS FROM `$db`.`$tb` LIKE '".$ed->sg[3]."'")->fetch();
 	$fe_type=preg_split("/[()]+/",$r_fe[1],-1,PREG_SPLIT_NO_EMPTY);
-	echo "<tr><td><input type='hidden' name='fi_' value='".$r_fe[0]."'/><input type='text' name='fi' value=".$r_fe[0]." /></td>
+	echo "<tr><td><input type='hidden' name='fi_' value='".$r_fe[0]."'/><input type='text' name='fi' value=".$r_fe[0]."/></td>
 	<td><select name='ty'>".$ed->fieldtypes(strtoupper($fe_type[0]))."</select></td>
-	<td><input type='text' name='va' value=\"".(isset($fe_type[1])?$fe_type[1]:"")."\" /></td><td><select name='at'>";
+	<td><input type='text' name='va' value=\"".(isset($fe_type[1])?$fe_type[1]:"")."\"/></td><td><select name='at'>";
 	$fe_atr=substr($r_fe[1],strpos($r_fe[1]," ")+1);
 	$big=strtoupper($fe_atr);
 	foreach($inttype as $b=>$b2) echo "<option value='$b'".($b==$big || (!empty($r_fe[6]) && $r_fe[6]==$b) ? " selected":"").">".$b2."</option>";
@@ -1234,7 +1235,7 @@ case "12"://structure change
 	$cc=['NOT NULL','NULL'];
 	foreach($cc as $c) echo("<option value='$c'".(($r_fe[3]=="YES" && $c=="NULL")?" selected":"").">$c</option>");
 	echo "</select></td><td><input type='text' name='de' value='".$r_fe[5]."'/></td><td>".$ed->collate("clls",$r_fe[2]).
-	"</td><td><input type='radio' name='ex[]' value='1' ".($r_fe[6]=="auto_increment" ? "checked":"")." /></td>
+	"</td><td><input type='radio' name='ex[]' value='1' ".($r_fe[6]=="auto_increment" ? "checked":"")."/></td>
 	</tr><tr><td colspan='8'><button type='submit'>Change field</button></td></tr></table></form>";
 	}
 break;
@@ -1303,7 +1304,7 @@ case "20"://table browse
 	$db=$ed->sg[1];
 	$tb=$ed->sg[2];
 	$ed->con->query("SET NAMES 'utf8'");
-	$where=(empty($_SESSION['_sqlsearch_'.$db.'_'.$tb])?"":" ".$_SESSION['_sqlsearch_'.$db.'_'.$tb]);
+	$where=(empty($_SESSION["_sqlsearch_{$db}_{$tb}"])?"":" ".$_SESSION["_sqlsearch_{$db}_{$tb}"]);
 	$q_cnt=$ed->con->query("SELECT COUNT(*) FROM `$tb`".$where)->fetch();
 	$totalr=$q_cnt[0];
 	$totalpg=ceil($totalr/$step);
@@ -1337,7 +1338,7 @@ case "20"://table browse
 		$nu=$coln[0]."/".($r_rw[0]==""?"isnull":base64_encode($r_rw[0])).(isset($colt[1]) && (stristr($colt[1],"int") || stristr($colt[1],"varchar")) && stristr($colt[1],"blob")==false && !empty($coln[1]) && !empty($r_rw[1]) ? "/".$coln[1]."/".base64_encode($r_rw[1]):"");
 		echo "<tr class='r c$bg'>";
 		if($q_vic[17]!='VIEW'){
-		echo "<td><a href='".$ed->path."22/$db/$tb/$nu'>Edit</a><a class='del' href='".$ed->path."23/$db/$tb/$nu'>Delete</a></td>";
+		echo "<td><a href='{$ed->path}22/$db/$tb/$nu'>Edit</a><a class='del' href='{$ed->path}23/$db/$tb/$nu'>Delete</a></td>";
 		}
 		$i=0;
 		while($i<$r_cl){
@@ -1345,12 +1346,7 @@ case "20"://table browse
 			echo "<td>";
 			if(stristr($colt[$i],"blob")==true && !in_array($db,$deny)){
 				$le=strlen($r_rw[$i]);
-				echo "[blob] ";
-				if($le > 4){
-				echo "<a href='".$ed->path."33/$db/$tb/$nu/".$coln[$i]."'>".number_format(($le/1024),2)." KB</a>";
-				}else{
-				echo number_format(($le/1024),2)." KB";
-				}
+				echo "blob: ".($le>4 ? "<a href='{$ed->path}33/$db/$tb/$nu/".$coln[$i]."'>".number_format(($le/1024),2)." KB</a>":"0.00 KB");
 			}elseif(strlen($val) > 70){
 				echo substr($val,0,70)."[...]";
 			}else{
@@ -1474,7 +1470,9 @@ case "22"://table edit row
 		$p=0;
 		while($p<count($coln)){
 			if(stristr($colt[$p],"blob")==true){
-				if(!empty($_FILES["te".$p]['tmp_name'])){
+				if($ed->post('r'.$p,'i')){
+				$qr2.=$coln[$p]."='',";
+				}elseif(!empty($_FILES["te".$p]['tmp_name'])){
 				$blb=addslashes(file_get_contents($_FILES["te".$p]['tmp_name']));
 				$qr2.=$coln[$p]."='".$blb."',";
 				}
@@ -1512,11 +1510,11 @@ case "22"://table edit row
 				echo "<input type='text' name='te{$k}' value='".$r_rx[$k]."'/>";
 				}else{
 				foreach($bbs as $kk=>$bb){
-				echo "<input type='radio' name='te{$k}[]' value='$kk'".($r_rx[$k]==$kk ? " checked":"")." /> $bb ";
+				echo "<input type='radio' name='te{$k}[]' value='$kk'".($r_rx[$k]==$kk ? " checked":"")."/> $bb ";
 				}
 				}
 			}elseif(stristr($colt[$k],"blob")==true && !in_array($db,$deny)){//blob
-			echo "[blob] ".number_format((strlen($r_rx[$k])/1024),2)." KB<br/><input type='file' name='te{$k}'/>";
+			echo number_format((strlen($r_rx[$k])/1024),2)." KB<i class='right'><input type='checkbox' name='r{$k}'/> reset</i><br/><input type='file' name='te{$k}'/>";
 			}elseif(stristr($colt[$k],"text")==true){//text
 			echo "<textarea name='te{$k}'>".($r_rx[$k]==''?'':htmlentities($r_rx[$k],ENT_QUOTES))."</textarea>";
 			}else{
@@ -1525,7 +1523,7 @@ case "22"://table edit row
 			echo "</td></tr>";
 			++$k;
 		}
-	echo "<tr><td><a class='del link' href='".$ed->path."23/$db/$tb/$nu/".($id==""?"isnull":base64_encode($id)).(!empty($nu1) && !empty($id1)?"/$nu1/".base64_encode($id1):"")."'>Delete</a></td><td><button type='submit' name='edit'>Update</button></td></tr></table></form>";
+	echo "<tr><td><a class='del right link' href='{$ed->path}23/$db/$tb/$nu/".($id==""?"isnull":base64_encode($id)).(!empty($nu1) && !empty($id1)?"/$nu1/".base64_encode($id1):"")."'>Delete</a></td><td><button type='submit' name='edit'>Update</button></td></tr></table></form>";
 	}
 break;
 
@@ -1824,11 +1822,11 @@ case "31"://export form
 	}
 	echo "<h3><input type='checkbox' onclick='toggle(this,\"fopt[]\");fmt()'/> Options</h3>";
 	$opts=['structure'=>'Structure','data'=>'Data','drop'=>'Drop if exist','ifnot'=>'If not exist','auto'=>'Auto Increment','lock'=>'Lock table','cdb'=>'Create DB','trigger'=>'Triggers','procfunc'=>'Routines','event'=>'Events'];
-	foreach($opts as $k=> $opt) echo "<p><input type='checkbox' name='fopt[]' value='$k' /> $opt</p>";
+	foreach($opts as $k=> $opt) echo "<p><input type='checkbox' name='fopt[]' value='$k'/> $opt</p>";
 	echo "<h3>File format</h3>";
 	$ffo=['sql'=>'SQL','xls'=>'Spreadsheet','xml'=>'XML','doc'=>'Word'];
 	if(!empty($ed->sg[1])) $ffo=array_merge($ffo,['json'=>'JSON','csv1'=>'CSV,','csv2'=>'CSV;']);
-	foreach($ffo as $k=> $ff) echo "<p><input type='radio' name='ffmt[]' onclick='fmt()' value='$k'".($k=='sql' ? ' checked':'')." /> $ff</p>";
+	foreach($ffo as $k=> $ff) echo "<p><input type='radio' name='ffmt[]' onclick='fmt()' value='$k'".($k=='sql' ? ' checked':'')."/> $ff</p>";
 	echo "<h3>File compression</h3><p><select name='ftype'>";
 	$fty=['plain'=>'None','zip'=>'Zip','gz'=>'GZ'];
 	foreach($fty as $k=> $ft) echo "<option value='$k'>$ft</option>";
@@ -2660,14 +2658,14 @@ case "53"://add,edit,update user
 	<tr><td>Host </td><td><input type='text' name='host' value='$hh'/></td></tr>
 	<tr><td>Name </td><td><input type='text' name='username' value='$uu'/></td></tr>
 	<tr><td>Password </td><td><input type='password' name='password'/></td></tr>";
-	echo "<tr><td>Global Privileges</td><td><input type='checkbox' name='priall' onclick='toggle(this,\"prialls[]\")' /> All privileges</td></tr>
+	echo "<tr><td>Global Privileges</td><td><input type='checkbox' name='priall' onclick='toggle(this,\"prialls[]\")'/> All privileges</td></tr>
 	<tr><td></td><td class='c1'><ul class='upr'>";
 	foreach($q_prs as $r_prs){
 	if($r_prs[0]!='Grant option' && $r_prs[0]!='Usage' && $r_prs[0]!='Proxy')
-	echo "<li><input type='checkbox' name='prialls[]' value='".$r_prs[0]."'".(in_array(strtoupper($r_prs[0]),$a_pri)? " checked":"")." /> ".$r_prs[0]."</li>";
+	echo "<li><input type='checkbox' name='prialls[]' value='".$r_prs[0]."'".(in_array(strtoupper($r_prs[0]),$a_pri)? " checked":"")."/> ".$r_prs[0]."</li>";
 	}
 	echo "</ul></td></tr>
-	<tr><td>Options</td><td><input type='checkbox' name='agrant' value='GRANT OPTION'".($a_gr=="YES" ? " checked":"")." /> Grant Option</td></tr>
+	<tr><td>Options</td><td><input type='checkbox' name='agrant' value='GRANT OPTION'".($a_gr=="YES" ? " checked":"")."/> Grant Option</td></tr>
 	<tr><td>Max queries/hour</td><td><input type='text' name='MAX_QUERIES_PER_HOUR' value='$mx1'/></td></tr>
 	<tr><td>Max updates/hour</td><td><input type='text' name='MAX_UPDATES_PER_HOUR' value='$mx2'/></td></tr>
 	<tr><td>Max connections/hour</td><td><input type='text' name='MAX_CONNECTIONS_PER_HOUR' value='$mx3'/></td></tr>
@@ -2746,14 +2744,14 @@ case "54"://db priv
 	echo $head.$ed->menu(1,'',2).$ed->form("54/$uu/$hh2").
 	"<table><tr><th colspan='2'>Database Privileges</th></tr>
 	<tr><td>Selected DB</td><td><select name='dbs'><option value='$dbn'>$dbn</option></select></td></tr>
-	<tr><td>DB Privileges</td><td><input type='checkbox' onclick='toggle(this,\"pridbs[]\")' /> All privileges</td></tr>
+	<tr><td>DB Privileges</td><td><input type='checkbox' onclick='toggle(this,\"pridbs[]\")'/> All privileges</td></tr>
 	<tr><td></td><td class='c1'><ul class='upr'>";
 	foreach($q_prs as $r_prs){
 	if($r_prs[0]=='Event' || stripos($r_prs[1],'Server')===false && $r_prs[0]!='Grant option' && $r_prs[0]!='Usage' && $r_prs[0]!='Proxy')
-	echo "<li><input type='checkbox' name='pridbs[]' value='".$r_prs[0]."'".(in_array(strtoupper($r_prs[0]),$db_pri)?" checked":"")." /> ".$r_prs[0]."</li>";
+	echo "<li><input type='checkbox' name='pridbs[]' value='".$r_prs[0]."'".(in_array(strtoupper($r_prs[0]),$db_pri)?" checked":"")."/> ".$r_prs[0]."</li>";
 	}
 	echo "</ul></td></tr>
-	<tr><td>DB Options</td><td><input type='checkbox' name='dbgrant' value='GRANT OPTION'".($dbgr=="YES"?" checked":"")." /> Grant Option</td></tr>
+	<tr><td>DB Options</td><td><input type='checkbox' name='dbgrant' value='GRANT OPTION'".($dbgr=="YES"?" checked":"")."/> Grant Option</td></tr>
 	<tr><td class='c1'><button type='submit' name='savedb'>Save</button></td><td class='c1'><button type='submit' name='savedbc'>Save &amp; Continue</button></td></tr></table></form>";
 
 	echo "<table><tr><td class='c1'>Select Table<br/>".$ed->form("55/$uu/$hh2").
@@ -2822,7 +2820,7 @@ case "55"://tb priv
 	echo $head.$ed->menu(1,'',2).$ed->form("55/$uu/$hh2").
 	"<input type='hidden' name='tbn' value='$tbn'/><table><tr><th colspan='5'>Table Privileges</th></tr>
 	<tr><td class='c1'>SELECT</td><td class='c1'>INSERT</td><td class='c1'>UPDATE</td><td class='c1'>REFERENCES</td>
-	<td class='c1'><input type='checkbox' name='tbgr'".(($gr[0]=="YES" || $gr2=="YES")?" checked":"")." /> GRANT</td></tr>
+	<td class='c1'><input type='checkbox' name='tbgr'".(($gr[0]=="YES" || $gr2=="YES")?" checked":"")."/> GRANT</td></tr>
 	<tr><td><input type='checkbox' onclick='selectall(this,\"fi1\")'/> All/None<br/>
 	<select id='fi1' name='fi1[]' multiple='multiple'>";
 	foreach($q_fi as $r_fi) echo "<option value='".$r_fi['Field']."'".(isset($r_cpr['SELECT']) && in_array($r_fi['Field'],array_keys($r_cpr['SELECT']))?" selected":"").">".$r_fi['Field']."</option>";
@@ -2840,7 +2838,7 @@ case "55"://tb priv
 	foreach($q_fi as $r_fi) echo "<option value='".$r_fi['Field']."'".(isset($r_cpr['REFERENCES']) && in_array($r_fi['Field'],array_keys($r_cpr['REFERENCES']))?" selected":"").">".$r_fi['Field']."</option>";
 	echo "</select></td><td>";
 	foreach($tblistpr as $tblpr){
-	echo "<input type='checkbox' name='tbpr[]' value='$tblpr'".(in_array($tblpr,array_keys($r_tpr))?" checked":"")." /> $tblpr<br/>";
+	echo "<input type='checkbox' name='tbpr[]' value='$tblpr'".(in_array($tblpr,array_keys($r_tpr))?" checked":"")."/> $tblpr<br/>";
 	}
 	echo "</td></tr><tr><td colspan='5'><button type='submit' name='savetb'>Save</button></td></tr></table></form>";
 break;
