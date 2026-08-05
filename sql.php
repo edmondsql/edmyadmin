@@ -5,7 +5,7 @@ session_name('SQL');
 session_start();
 $bg=2;
 $step=20;
-$version="3.30";
+$version="3.31";
 $bbs=['False','True'];
 $deny=['mysql','information_schema','performance_schema','sys'];
 class DBT {
@@ -468,9 +468,12 @@ class ED {
 		$sq="\n{$tab}CREATE TABLE $ifnot`$tb`(";
 		foreach($q_ex->fetch(2) as $r_ex){
 			$nul=($r_ex['Null']=='YES' ? "NULL":"NOT NULL");
-			$def='';
-			if($r_ex['Default']!=''){
-			$def.=" default ".(stristr($r_ex['Default'],'CURRENT_TIMESTAMP') ? $r_ex['Default']:"'".$r_ex['Default']."'");
+			$def='';$rex=$r_ex['Default'];
+			if($rex!=''){
+			$def.=" DEFAULT ";
+			if(stristr($rex,'CURRENT_TIMESTAMP')) $def.=$rex;
+			elseif($r_ex['Extra']=='DEFAULT_GENERATED') $def.="(".$rex.")";
+			else $def.="'".$rex."'";
 			}
 			$clls=(($r_ex['Collation']!='' && $r_ex['Collation']!='NULL' && $r_ex['Collation']!=$r_st[14]) ? " COLLATE '".$r_ex['Collation']."'" : "");
 			$xtr=($r_ex['Extra']!='' ? " ".$r_ex['Extra'] : "");
@@ -860,7 +863,7 @@ case "6"://create table
 			$c4=($ed->post('at'.$nf,'!e') ? " ".$ed->post('at'.$nf):"");
 			$c5=$ed->post('nc'.$nf);
 			$c7=($ed->post('ex','!e') && $ed->post('ex',0)!='on' && $ed->post('ex',0)==$nf ? " AUTO_INCREMENT PRIMARY KEY":"");
-			$c6=($ed->post('de'.$nf,'!e') ? " default '".$ed->post('de'.$nf)."'":"");
+			$c6=($ed->post('de'.$nf,'!e') ? " default ".$ed->post('de'.$nf):"");
 			$c8=($ed->post('clls'.$nf,'!e') ? " collate ".$ed->post('clls'.$nf):"");
 			if(stripos($c4,'on update') || $ed->post('de'.$nf)=='CURRENT_TIMESTAMP'){
 			$c8.=$c4;$c4='';
@@ -1114,7 +1117,7 @@ case "11"://Add field
 	if($ed->post('fi','!e') && $ed->post('ty','!e') && !is_numeric(substr($ed->post('fi'),0,1))){
 		$va=($ed->post('va','!e') ? "(".$ed->post('va').")":"");
 		$at=($ed->post('at')!='' ? " ".$ed->post('at'):"");
-		$def=($ed->post('de','!e') ? " default '".$ed->post('de')."'":"");
+		$def=($ed->post('de','!e') ? " default ".$ed->post('de'):"");
 		$clls=($ed->post('clls','!e') ? " collate ".$ed->post('clls'):"");
 		$ex=($ed->post('ex','!e') && $ed->post('ex',0)==1 ? " AUTO_INCREMENT PRIMARY KEY":"");
 		$col=($ed->post('col')=="FIRST" ? " FIRST":" AFTER ".$ed->post('col'));
@@ -1145,7 +1148,7 @@ case "12"://structure change
 		$fi_=$ed->post('fi_');
 		$va=($ed->post('va','e') ? "":"(".$ed->post('va').")");
 		$at=($ed->post('at','e') ? "":" ".$ed->post('at'));
-		$def=($ed->post('de','e') ? "":" default '".$ed->post('de')."'");
+		$def=($ed->post('de','e') ? "":" default ".$ed->post('de'));
 		$clls=($ed->post('clls','e') ? "":" collate ".$ed->post('clls'));
 		if(stripos($at,'on update') || $ed->post('de')=='CURRENT_TIMESTAMP'){
 		$def=($ed->post('de','e') ? "":" default ".$ed->post('de'));
@@ -1768,6 +1771,7 @@ case "30"://import
 	}
 	if(!empty($e) && is_array($e)){
 		$ed->con->begin();
+		$ed->con->query('SET FOREIGN_KEY_CHECKS = 0');
 		foreach($e as $qry){
 			$qry=trim($qry);
 			if(!empty($qry)){
@@ -1779,6 +1783,7 @@ case "30"://import
 				else $out.="<p><b>FAILED!</b> $qry</p>";
 			}
 		}
+		$ed->con->query('SET FOREIGN_KEY_CHECKS = 1');
 		$ed->con->commit();
 		echo $head.$ed->menu($db)."<div class='col2'><p>Successfully executed: <b>$q quer".($q>1?'ies':'y')."</b></p>$out";
 	}
