@@ -5,7 +5,7 @@ session_name('SQL');
 session_start();
 $bg=2;
 $step=20;
-$version="3.32";
+$version="3.33";
 $bbs=['False','True'];
 $deny=['mysql','information_schema','performance_schema','sys'];
 class DBT {
@@ -1231,9 +1231,11 @@ case "12"://structure change
 	$cc=['NOT NULL','NULL'];
 	foreach($cc as $c) echo("<option value='$c'".(($r_fe[3]=="YES" && $c=="NULL")?" selected":"").">$c</option>");
 	$d=$r_fe[5];
+	if(!empty($d)){
 	if(stristr($d,'CURRENT_TIMESTAMP')) $de=$d;
 	elseif($r_fe[6]=='DEFAULT_GENERATED') $de="(".$d.")";
 	else $de="'".$d."'";
+	}
 	echo "</select></td><td><input type='text' name='de' value=\"$de\"/></td><td>".$ed->collate("clls",$r_fe[2])."</td><td><input type='radio' name='ex[]' value='1' ".($r_fe[6]=="auto_increment" ? "checked":"")."/></td></tr><tr><td colspan='8'><button type='submit'>Change field</button></td></tr></table></form>";
 	}
 break;
